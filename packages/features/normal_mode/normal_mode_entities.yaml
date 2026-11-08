@@ -515,7 +515,10 @@ button:
                         ESP_LOGE("HA_API", "Fetch device10 light state request failed");
 
 http_request:
-  timeout: 15s
+  # GitHub release downloads redirect to signed URLs with long response headers.
+  buffer_size_rx: 4096
+  buffer_size_tx: 2048
+  timeout: 30s
 
 select:
   - id: device1_config
