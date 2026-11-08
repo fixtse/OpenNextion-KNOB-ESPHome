@@ -4322,7 +4322,8 @@ inline size_t build_standby_weather_config_options(HaEntityOptionArray &options)
   return build_filtered_config_options(options, is_supported_standby_weather_entity_id);
 }
 
-inline bool select_options_match(const esphome::FixedVector<const char *> &current_options,
+template<typename Options>
+inline bool select_options_match(const Options &current_options,
                                  const HaEntityOptionArray &new_options, size_t count) {
   if (current_options.size() != count) {
     return false;
@@ -4498,7 +4499,7 @@ inline bool save_device_config_from_select(size_t slot, esphome::select::Select 
   if (!is_configurable_device_slot(slot) || my_select == nullptr) {
     return false;
   }
-  const std::string entity_id = extract_entity_id_from_device1_option(my_select->state);
+  const std::string entity_id = extract_entity_id_from_device1_option(my_select->current_option().str());
   load_device_config_if_needed(slot);
   const std::string previous_entity_id = cached_device_entity_id(slot);
   const bool changed = previous_entity_id != entity_id;
@@ -4561,7 +4562,7 @@ inline bool save_standby_weather_config_from_select(esphome::select::Select *my_
   if (my_select == nullptr) {
     return false;
   }
-  const std::string entity_id = extract_entity_id_from_device1_option(my_select->state);
+  const std::string entity_id = extract_entity_id_from_device1_option(my_select->current_option().str());
   load_standby_weather_config_if_needed();
   const std::string previous_entity_id = cached_standby_weather_entity_id;
   const bool changed = previous_entity_id != entity_id;
