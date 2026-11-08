@@ -3722,9 +3722,10 @@ inline bool save_device_config_entity_id(size_t slot, const std::string &raw_ent
   StoredDevice1Config stored{};
   stored.magic = device_config_magic(slot);
   copy_string_to_fixed_buffer(entity_id, stored.entity_id);
+  const auto previous_domain = ha_domain_from_entity_id(cached_device_entity_id(slot));
   cached_device_entity_id(slot) = stored.entity_id;
   if (!cached_device_entity_id(slot).empty()) {
-    if (cached_device_custom_type(slot).empty()) {
+    if (cached_device_custom_type(slot).empty() || previous_domain != ha_domain_from_entity_id(cached_device_entity_id(slot))) {
       set_cached_device_custom_config_from_entity_default(slot, cached_device_entity_id(slot));
     }
     device_inferred_config(slot) = default_device_config_from_entity_id(slot, cached_device_entity_id(slot));

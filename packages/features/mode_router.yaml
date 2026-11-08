@@ -10,6 +10,7 @@ external_components:
       - onx_storage
       - onx_mode_manager
       - onx_ui
+      - onx_config_web
 
 # Shared runtime state for all future modes.
 onx_app_state:
@@ -34,3 +35,41 @@ onx_ui:
   app_state_id: app_state
   storage_id: app_storage
 
+
+onx_config_web:
+  id: entity_config_web
+  handler: !lambda |-
+    if (query.op == "state") return onx_entity_config::state();
+    if (query.op == "search") return onx_entity_config::search(query);
+    if (query.op == "refresh") {
+      id(fetch_entities_btn).press();
+      return std::string("{\"ok\":true}");
+    }
+    if (query.op != "save" || query.slot < 0 || query.slot >= 10)
+      return onx_entity_config::error("Unknown configuration request");
+    if ((!query.entity.empty() && ((!onx_config::valid_entity(query.entity) && !custom_logic::is_local_hmi_gpio_switch_preset_option(query.entity)) ||
+          !custom_logic::is_supported_normal_device_entity_id(query.entity.c_str()))) ||
+        !onx_config::valid_action(query.action) || (query.entity.empty() && !query.action.empty()))
+      return onx_entity_config::error("Select a supported entity and an automation or script action");
+    if (!custom_logic::save_device_config_entity_id(query.slot, query.entity))
+      return onx_entity_config::error("Could not save the displayed entity; retry");
+    if (!onx_entity_config::save_action(query.slot, query.entity, query.action))
+      return onx_entity_config::error("Entity saved, but press action could not be saved; retry");
+    esphome::select::Select *entities[] = {id(device1_config), id(device2_config), id(device3_config),
+        id(device4_config), id(device5_config), id(device6_config), id(device7_config),
+        id(device8_config), id(device9_config), id(device10_config)};
+    esphome::select::Select *types[] = {id(device1_type), id(device2_type), id(device3_type),
+        id(device4_type), id(device5_type), id(device6_type), id(device7_type),
+        id(device8_type), id(device9_type), id(device10_type)};
+    onx_entity_config::sync_select(query.slot, entities[query.slot]);
+    custom_logic::apply_device_type_options(query.slot, types[query.slot]);
+    id(normal_device_count) = static_cast<int>(custom_logic::configured_normal_device_count());
+    id(normal_device_detail_active) = false;
+    id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_NONE;
+    id(normal_page_index) = 0;
+    id(normal_device_selected_index) = 0;
+    if (!query.entity.empty()) custom_logic_entity_sub::subscribe_entity(id(api_server), query.slot, query.entity);
+    id(show_normal_device_entry_page).execute(0);
+    id(refresh_normal_device_page).execute();
+    custom_logic::disconnect_all_clients_for_refresh(id(api_server));
+    return std::string("{\"ok\":true}");

@@ -813,6 +813,12 @@ select:
 
 text_sensor:
   - platform: template
+    name: "Entity configuration"
+    icon: mdi:tune
+    entity_category: diagnostic
+    update_interval: 60s
+    lambda: return std::string("http://") + App.get_name() + ".local/knob";
+  - platform: template
     name: "HA Token Status"
     id: ha_token_status
     icon: "mdi:shield-key"

@@ -2300,3 +2300,25 @@ script:
           lv_obj_set_style_arc_color(id(normal_timer_detail_arc), lv_color_hex(color), LV_PART_INDICATOR);
           lv_obj_set_style_text_opa(id(normal_timer_detail_countdown),
               finished ? static_cast<lv_opa_t>(160 + 95 * (0.5 + 0.5 * sin(millis() / 250.0))) : LV_OPA_COVER, 0);
+
+  - id: emit_configured_press_action
+    parameters:
+      detail_index: int
+    then:
+      - if:
+          condition:
+            lambda: return onx_entity_config::action_for_ui(detail_index).rfind("automation.", 0) == 0;
+          then:
+            - homeassistant.service:
+                service: automation.trigger
+                data:
+                  entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);
+                  skip_condition: "false"
+      - if:
+          condition:
+            lambda: return onx_entity_config::action_for_ui(detail_index).rfind("script.", 0) == 0;
+          then:
+            - homeassistant.service:
+                service: script.turn_on
+                data:
+                  entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);

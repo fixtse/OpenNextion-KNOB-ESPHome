@@ -210,3 +210,25 @@ remain managed by the voice device; the display shows the next one.
 Automatic updates use the `onx2424g013_manifest.yml` release manifest in
 `fixtse/esp-ota`. Source packages come from `fixtse/OpenNextion-KNOB-ESPHome`.
 The factory image is for compatible ONX2424G013 hardware only.
+
+## Searchable configuration and press actions
+
+Open `http://<knob IP>/knob`, or follow **Entity configuration** on its Home
+Assistant device page. The page runs on the knob and needs no cloud frontend.
+Select a slot, search by entity name, ID, or room, and use the type filters to
+find an entity. Local HMI GPIO switches are included. An entity ID can also be
+entered directly if it is absent from the cached list. Use **Refresh from Home
+Assistant** after configuring the existing HA host/token to update the list.
+
+Each slot has **Show on the display** and **When pressed** settings. Choose an
+automation or script for the press action, then **Save slot**. No Home Assistant
+event automation is needed. Automation conditions are checked; scripts use
+`script.turn_on`. **Device default** keeps native controls, while **No action**
+disables a short press. Configured actions replace a short press only; rotation
+and holding retain their normal behavior. Light mode changes and held cover
+position adjustment remain available.
+
+Actions persist on the device and are bound to the selected entity and slot, so
+reordering compact display slots or changing an entity cannot run another
+entity's action. The existing HA dropdowns remain compatible, but the webpage
+provides search and paired action selection. The page never returns the HA token.

@@ -14,7 +14,7 @@ substitutions:
   lcd_spi_data_rate: 40MHz
   lcd_backlight_default: 100%
   encoder_resolution: "4"
-  product_firmware_version: "2026.10.2"
+  product_firmware_version: "2026.10.2.1"
   product_firmware_manifest_url: "https://raw.githubusercontent.com/fixtse/esp-ota/main/ota/releases/onx2424g013_manifest.yml"
 
 packages:
@@ -33,7 +33,9 @@ preferences:
 # Enable AUTHCODE storage in eFuse via compile flag
 esphome:
   includes:
+    - onx_config_rules.h
     - onx_timer_state.h
     - custom_logic.h
     - custom_logic_entity_sub.h
+    - onx_entity_config.h
   name: ${project_name}

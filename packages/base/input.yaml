@@ -95,6 +95,19 @@ binary_sensor:
               id(key_long_press_handled) = true;
               return;
             }
+            if (!id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
+                !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
+                !id(normal_device_detail_curtain_adjust_active) &&
+                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) &&
+                id(normal_device_detail_index) >= 0 && id(normal_ha_api_connected) &&
+                !onx_entity_config::action_for_ui(id(normal_device_detail_index)).empty()) {
+              const bool adjustable_light = id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_LIGHT &&
+                                            id(normal_detail_light_mode_count) > 0;
+              if (held_ms < (adjustable_light ? 300u : 688u)) {
+                id(emit_configured_press_action).execute(id(normal_device_detail_index));
+                id(key_long_press_handled) = true;
+              }
+            }
             if (id(normal_device_detail_active) &&
                 id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_LIGHT) {
               if (id(normal_detail_light_mode_count) > 0) {
