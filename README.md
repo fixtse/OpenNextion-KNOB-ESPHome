@@ -21,9 +21,9 @@ The main configuration is [ONX2424G013.yaml](ONX2424G013.yaml). The target hardw
 
 ## Requirements
 
-Build this project with **ESPHome 2026.10.0**. Docker is recommended to keep ESPHome, PlatformIO, and ESP-IDF versions consistent.
+Build this project with **ESPHome 2026.10.2**. Docker is recommended to keep ESPHome, PlatformIO, and ESP-IDF versions consistent.
 
-- Docker, or a local Python environment with `esphome==2026.10.0`
+- Docker, or a local Python environment with `esphome==2026.10.2`
 - Network access for the first build to download dependencies
 - A data-capable USB cable for serial flashing
 
@@ -44,20 +44,20 @@ Linux/macOS:
 docker run --rm \
   -v "$PWD":/config \
   -w /config \
-  ghcr.io/esphome/esphome:2026.10.0 \
+  ghcr.io/esphome/esphome:2026.10.2 \
   compile ONX2424G013.yaml
 ```
 
 Windows PowerShell:
 
 ```powershell
-docker run --rm -v "${PWD}:/config" -w /config ghcr.io/esphome/esphome:2026.10.0 compile ONX2424G013.yaml
+docker run --rm -v "${PWD}:/config" -w /config ghcr.io/esphome/esphome:2026.10.2 compile ONX2424G013.yaml
 ```
 
 ### Local ESPHome
 
 ```bash
-python -m pip install "esphome==2026.10.0"
+python -m pip install "esphome==2026.10.2"
 esphome version
 esphome compile ONX2424G013.yaml
 ```
@@ -77,7 +77,7 @@ docker run --rm \
   --device=/dev/ttyACM0 \
   -v "$PWD":/config \
   -w /config \
-  ghcr.io/esphome/esphome:2026.10.0 \
+  ghcr.io/esphome/esphome:2026.10.2 \
   run --device /dev/ttyACM0 ONX2424G013.yaml
 ```
 
@@ -85,7 +85,7 @@ Replace `/dev/ttyACM0` with the serial port of your device. If the device does n
 
 ### Local ESPHome CLI
 
-If you installed `esphome==2026.10.0` locally as described above, connect the device and run the following command. It compiles the firmware when needed and uploads it. When prompted, select the corresponding serial port, for example `/dev/ttyACM0` or `/dev/ttyUSB0` on Linux, or `COM3` on Windows:
+If you installed `esphome==2026.10.2` locally as described above, connect the device and run the following command. It compiles the firmware when needed and uploads it. When prompted, select the corresponding serial port, for example `/dev/ttyACM0` or `/dev/ttyUSB0` on Linux, or `COM3` on Windows:
 
 ```bash
 esphome run ONX2424G013.yaml
