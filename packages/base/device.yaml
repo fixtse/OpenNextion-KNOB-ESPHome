@@ -68,7 +68,10 @@ esphome:
           id(mode_manager)->mark_boot_finished();
   name_add_mac_suffix: true
 
+# Keep the API large-select batch patch active until ESPHome provides the fix.
+# Native ESP-IDF builds do not run PlatformIO pre-build scripts.
 esp32:
+  toolchain: platformio
   board: esp32-s3-devkitc-1
   variant: esp32s3
   flash_size: 16MB
