@@ -88,3 +88,12 @@ improv_ble:
   authorizer: key_btn
   authorized_duration: 1min
   wifi_timeout: 10s
+
+# Advertise the HTTP port through ESPHome's device info so Home Assistant shows
+# Visit. The custom handler owns the normal-mode root page and all config routes.
+web_server:
+  port: 80
+  version: 3
+  log: false
+  js_url: ""
+  css_url: ""

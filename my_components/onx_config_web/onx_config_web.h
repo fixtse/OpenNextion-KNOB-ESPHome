@@ -17,7 +17,7 @@ class ConfigWeb : public Component, public AsyncWebHandler {
  public:
   void setup() override;
   void loop() override;
-  float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
+  float get_setup_priority() const override { return setup_priority::WIFI - 0.5f; }
   void set_handler(std::function<std::string(const Query &)> handler) { handler_ = std::move(handler); }
   bool canHandle(AsyncWebServerRequest *request) const override;
   void handleRequest(AsyncWebServerRequest *request) override;

@@ -17,7 +17,7 @@ const { chromium } = require('playwright');
   const results = new Map(); let ticket=0, failSave=false, saved=[];
   await page.route('http://knob.test/**',async route=>{
    const request=route.request(),url=new URL(request.url());
-   if(url.pathname==='/knob'){await route.fulfill({contentType:'text/html',body:html});return}
+   if(url.pathname==='/'||url.pathname==='/knob'){await route.fulfill({contentType:'text/html',body:html});return}
    if(url.pathname==='/knob/api'){
     const values=new URLSearchParams(request.postData());
     let result;
@@ -35,7 +35,7 @@ const { chromium } = require('playwright');
    if(url.pathname==='/knob/result'){await route.fulfill({json:results.get(Number(url.searchParams.get('ticket')))});return}
    throw Error('Unexpected request: '+request.url());
   });
-  await page.goto('http://knob.test/knob');
+  await page.goto('http://knob.test/');
   await page.getByRole('button',{name:'Living room temperature'}).waitFor();
   await page.locator('#search').fill('living room');
   await page.getByRole('button',{name:'Living room temperature'}).click();

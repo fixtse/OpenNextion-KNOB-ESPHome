@@ -213,8 +213,10 @@ The factory image is for compatible ONX2424G013 hardware only.
 
 ## Searchable configuration and press actions
 
-Open `http://<knob IP>/knob`, or follow **Entity configuration** on its Home
-Assistant device page. The page runs on the knob and needs no cloud frontend.
+In Home Assistant, open **Settings → Devices & services → ESPHome → this device**,
+then click **Visit**. It opens the searchable configuration page directly.
+The **Entity configuration** diagnostic entity also shows its URL.
+You can open `http://<knob IP>/` or `http://<knob IP>/knob` directly. The page runs on the knob and needs no cloud frontend.
 Select a slot, search by entity name, ID, or room, and use the type filters to
 find an entity. Local HMI GPIO switches are included. An entity ID can also be
 entered directly if it is absent from the cached list. Use **Refresh from Home

@@ -1,5 +1,6 @@
 #include "onx_config_web.h"
 #include "config_page.h"
+#include "esphome/components/wifi/wifi_component.h"
 #include <array>
 #include <charconv>
 
@@ -17,6 +18,10 @@ void ConfigWeb::setup() {
 bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
+  // Keep captive-portal routing during provisioning, and make HA Visit's root
+  // address open our app after Wi-Fi connects. Do not expose the generic server
+  // entity-control endpoints alongside the configuration app.
+  if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) return true;
   return url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result";
 }
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
@@ -27,7 +32,7 @@ void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::st
 void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
-  if ((url == "/knob" || url == "/knob/") && request->method() == HTTP_GET) {
+  if ((url == "/" || url == "/knob" || url == "/knob/") && request->method() == HTTP_GET) {
     std::string page(CONFIG_PAGE);
     const auto token = page.find("__ONX_TOKEN__");
     page.replace(token, 13, nonce_);
