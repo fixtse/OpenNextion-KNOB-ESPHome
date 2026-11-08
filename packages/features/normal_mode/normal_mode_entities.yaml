@@ -1295,55 +1295,55 @@ globals:
     initial_value: '"unknown"'
 
 image:
-  - file: "assets/guide_a.png"
+  - file: "../../../assets/guide_a.png"
     id: guide_img_a
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/guide_b.png"
+  - file: "../../../assets/guide_b.png"
     id: guide_img_b
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/wifi_ap.svg"
+  - file: "../../../assets/wifi_ap.svg"
     id: wifi_ap_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/homeassistant.svg"
+  - file: "../../../assets/homeassistant.svg"
     id: homeassistant_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/icons_wifi_online.svg"
+  - file: "../../../assets/icons_wifi_online.svg"
     id: standby_wifi_online_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/icons_wifi_offline.svg"
+  - file: "../../../assets/icons_wifi_offline.svg"
     id: standby_wifi_offline_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/icons_homeassistant_online.svg"
+  - file: "../../../assets/icons_homeassistant_online.svg"
     id: standby_homeassistant_online_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/icons_homeassistant_offline.svg"
+  - file: "../../../assets/icons_homeassistant_offline.svg"
     id: standby_homeassistant_offline_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/vector.svg"
+  - file: "../../../assets/vector.svg"
     id: vector_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/icon_edit.svg"
+  - file: "../../../assets/icon_edit.svg"
     id: icon_edit_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/emojione_monotone_digit_one.svg"
+  - file: "../../../assets/emojione_monotone_digit_one.svg"
     id: emojione_monotone_digit_one_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/emojione_monotone_digit_three.svg"
+  - file: "../../../assets/emojione_monotone_digit_three.svg"
     id: emojione_monotone_digit_three_img
     type: RGB565
     transparency: alpha_channel
-  - file: "assets/emojione_monotone_digit_two.svg"
+  - file: "../../../assets/emojione_monotone_digit_two.svg"
     id: emojione_monotone_digit_two_img
     type: RGB565
     transparency: alpha_channel
