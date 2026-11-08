@@ -32,6 +32,12 @@ wifi:
     then:
       - lambda: |-
           id(normal_wifi_connected) = true;
+      - delay: 2s
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - ble.disable:
       - if:
           condition:
             lambda: |-
@@ -45,6 +51,7 @@ wifi:
             - script.execute: refresh_normal_curtain_detail_page
   on_disconnect:
     then:
+      - ble.enable:
       - lambda: |-
           id(normal_wifi_connected) = false;
       - if:
@@ -69,3 +76,15 @@ uart:
   tx_pin: GPIO43
   rx_pin: GPIO44
   baud_rate: ${uart_baud}
+
+# Improv Serial shares the existing native USB Serial/JTAG logger port.
+improv_serial:
+
+esp32_ble:
+  id: onx_ble
+
+# BLE provisioning is authorized with a physical knob press.
+improv_ble:
+  authorizer: key_btn
+  authorized_duration: 1min
+  wifi_timeout: 10s

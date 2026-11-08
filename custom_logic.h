@@ -2092,6 +2092,12 @@ inline std::string custom_type_from_device1_type_option(const std::string &optio
       option == "Color Temperature Light" || option == "RGB Light") {
     return "light";
   }
+  if (option == "Sensor") return "sensor";
+  if (option == "Binary Sensor") return "binary_sensor";
+  if (option == "Climate") return "climate";
+  if (option == "Script") return "script";
+  if (option == "Weather") return "weather";
+  if (option == "Timer") return "timer";
   if (option == "Automation") {
     return "automation";
   }
@@ -2217,6 +2223,8 @@ inline std::string preferred_device_type_option(size_t slot, const char *const *
     preferred = light_type_option_from_custom_mask(cached_device_custom_light_capability_mask(slot));
   } else if (domain == "automation") {
     preferred = "Automation";
+  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer") {
+    preferred = domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : "Script";
   } else {
     preferred = "Switch";
   }
@@ -2249,6 +2257,8 @@ inline bool apply_device_type_options(size_t slot, esphome::select::Select *my_s
     option_count = build_light_type_options(get_device_inferred_light_capability_mask(slot), options, 4);
   } else if (domain == "automation") {
     options[option_count++] = "Automation";
+  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer") {
+    options[option_count++] = domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : "Script";
   } else {
     options[option_count++] = "none";
   }
@@ -3580,7 +3590,10 @@ inline bool is_supported_normal_device_entity_id(const char *entity_id) {
     return true;
   }
   return strncmp(entity_id, "switch.", 7) == 0 || strncmp(entity_id, "light.", 6) == 0 ||
-         strncmp(entity_id, "cover.", 6) == 0 || strncmp(entity_id, "automation.", 11) == 0;
+         strncmp(entity_id, "cover.", 6) == 0 || strncmp(entity_id, "automation.", 11) == 0 ||
+         strncmp(entity_id, "sensor.", 7) == 0 || strncmp(entity_id, "binary_sensor.", 14) == 0 ||
+         strncmp(entity_id, "climate.", 8) == 0 || strncmp(entity_id, "script.", 7) == 0 ||
+         strncmp(entity_id, "weather.", 8) == 0 || strncmp(entity_id, "timer.", 6) == 0;
 }
 
 inline bool is_local_hmi_gpio_switch_entity_id(const std::string &entity_id) {

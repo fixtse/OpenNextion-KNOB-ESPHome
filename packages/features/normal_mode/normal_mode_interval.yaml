@@ -286,3 +286,8 @@ interval:
             - script.execute:
                 id: show_normal_device_entry_page
                 direction: 0
+
+  # Animate only the currently visible timer; all other pages keep their cadence.
+  - interval: 100ms
+    then:
+      - script.execute: refresh_normal_timer_detail

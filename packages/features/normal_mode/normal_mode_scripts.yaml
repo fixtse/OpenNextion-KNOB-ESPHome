@@ -168,7 +168,7 @@ script:
                 device_kind = 2;
               } else if (device_type == "curtain" || device_type == "cover") {
                 device_kind = 4;
-              } else if (device_type == "automation") {
+              } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer") {
                 device_kind = 10;
               }
             }
@@ -196,6 +196,7 @@ script:
             set_hidden(w.icon_curtain, device_kind != 4);
             set_hidden(w.icon_settings, device_kind != 5);
             lv_img_set_src(w.icon_switch,
+                           device_type == "weather" ? id(standby_weather_icon_partlycloudy_img) :
                            device_kind == 10 ? id(normal_device_automation_img)
                                              : id(normal_device_icon_switch_img));
             if (device_kind == 4 && !settings_entry) {
@@ -484,17 +485,73 @@ script:
             title = entity_id.empty() ? "Automation" : entity_id;
           }
           lv_label_set_text(id(normal_automation_detail_title), title.c_str());
+          const bool timer_detail = custom_logic_entity_sub::is_timer_detail(entity_id);
+          auto *timer_state = custom_logic_entity_sub::entity_detail(entity_id);
+          if (timer_detail && timer_state != nullptr && !timer_state->timer_name.empty())
+            lv_label_set_text(id(normal_automation_detail_title), timer_state->timer_name.c_str());
+          if (timer_detail) {
+            lv_obj_clear_flag(id(normal_timer_detail_arc), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(normal_timer_detail_countdown), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(normal_timer_detail_status), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(normal_automation_detail_action), LV_OBJ_FLAG_HIDDEN);
+            id(refresh_normal_timer_detail).execute();
+          } else {
+            lv_obj_add_flag(id(normal_timer_detail_arc), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(normal_timer_detail_countdown), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(normal_timer_detail_status), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(normal_automation_detail_action), LV_OBJ_FLAG_HIDDEN);
+          }
           std::string last_trigger_text = "Never";
           const auto now = id(ha_time).now();
           if (now.is_valid()) {
             last_trigger_text = custom_logic_entity_sub::automation_last_triggered_relative_text(
                 detail_index, entity_id, now.timestamp);
           }
+          if (auto *detail = custom_logic_entity_sub::entity_detail(entity_id)) {
+            if (entity_id.rfind("climate.", 0) == 0) {
+              last_trigger_text = detail->state + "\nNow: " + detail->current;
+              if (std::isfinite(custom_logic_entity_sub::detail_number(detail->target)))
+                last_trigger_text += "\nSet: " + detail->target;
+              else
+                last_trigger_text += "\nRange: " + detail->low + " - " + detail->high;
+            } else if (entity_id.rfind("weather.", 0) == 0) {
+              last_trigger_text = detail->state + "\n" + detail->target + detail->unit +
+                                  "\nHumidity: " + detail->humidity + "%";
+            } else {
+              last_trigger_text = detail->state;
+              if (!detail->unit.empty()) last_trigger_text += " " + detail->unit;
+            }
+          }
+          lv_obj_set_y(id(normal_automation_detail_action), (entity_id.rfind("climate.", 0) == 0 || entity_id.rfind("weather.", 0) == 0) ? 126 : 148);
           lv_label_set_text(id(normal_automation_detail_action), last_trigger_text.c_str());
           lv_img_set_src(id(normal_automation_detail_icon),
                          id(normal_automation_press_feedback_active)
                              ? id(normal_device_automation_detail_press_img)
                              : id(normal_device_automation_detail_img));
+
+          if (entity_id.rfind("weather.", 0) == 0) {
+            const auto *detail = custom_logic_entity_sub::entity_detail(entity_id);
+            const std::string state = detail == nullptr ? "" : detail->state;
+            const void *icon = id(standby_weather_icon_unknown_img);
+            if (state == "clear-night") icon = id(standby_weather_icon_clear_night_img);
+            if (state == "cloudy") icon = id(standby_weather_icon_cloudy_img);
+            if (state == "exceptional") icon = id(standby_weather_icon_exceptional_img);
+            if (state == "fog") icon = id(standby_weather_icon_fog_img);
+            if (state == "hail") icon = id(standby_weather_icon_hail_img);
+            if (state == "lightning") icon = id(standby_weather_icon_lightning_img);
+            if (state == "lightning-rainy") icon = id(standby_weather_icon_lightning_rainy_img);
+            if (state == "partlycloudy") icon = id(standby_weather_icon_partlycloudy_img);
+            if (state == "pouring") icon = id(standby_weather_icon_pouring_img);
+            if (state == "rainy") icon = id(standby_weather_icon_rainy_img);
+            if (state == "snowy") icon = id(standby_weather_icon_snowy_img);
+            if (state == "snowy-rainy") icon = id(standby_weather_icon_snowy_rainy_img);
+            if (state == "sunny") icon = id(standby_weather_icon_sunny_img);
+            if (state == "windy") icon = id(standby_weather_icon_windy_img);
+            if (state == "windy-variant") icon = id(standby_weather_icon_windy_variant_img);
+            lv_img_set_src(id(normal_automation_detail_icon), icon);
+          }
 
           const bool is_online = (id(normal_device_online_mask) & (1 << detail_index)) != 0;
           id(normal_device_detail_online) = is_online;
@@ -1294,6 +1351,47 @@ script:
       - if:
           condition:
             lambda: |-
+              return id(normal_device_detail_active) &&
+                     id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
+                     id(normal_device_detail_index) == detail_index &&
+                     id(normal_device_detail_online) && id(normal_ha_api_connected) &&
+                     !id(detail_long_press_exit_fired);
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                    return entity.rfind("sensor.", 0) == 0 || entity.rfind("binary_sensor.", 0) == 0;
+                then:
+                  - homeassistant.event:
+                      event: esphome.onx_sensor_press
+                      data:
+                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                        state: !lambda |-
+                          auto *detail = custom_logic_entity_sub::entity_detail(id(ui_presenter)->get_normal_device_entity_id(detail_index));
+                          return detail == nullptr ? std::string("") : detail->state;
+            - if:
+                condition:
+                  lambda: return id(ui_presenter)->get_normal_device_entity_id(detail_index).rfind("script.", 0) == 0;
+                then:
+                  - homeassistant.service:
+                      service: script.turn_on
+                      data:
+                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+            - if:
+                condition:
+                  lambda: |-
+                    const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                    return entity.rfind("climate.", 0) == 0 && !custom_logic_entity_sub::next_climate_mode(entity).empty();
+                then:
+                  - homeassistant.service:
+                      service: climate.set_hvac_mode
+                      data:
+                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                        hvac_mode: !lambda return custom_logic_entity_sub::next_climate_mode(id(ui_presenter)->get_normal_device_entity_id(detail_index));
+      - if:
+          condition:
+            lambda: |-
               const int index = std::clamp(detail_index, 0, 9);
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(index);
               return id(normal_device_detail_active) &&
@@ -1728,7 +1826,7 @@ script:
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_LIGHT;
           } else if (device_type == "curtain" || device_type == "cover") {
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_CURTAIN;
-          } else if (device_type == "automation") {
+          } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer") {
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
           }
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_NONE) {
@@ -2093,3 +2191,112 @@ script:
       - script.execute:
           id: show_normal_device_entry_page
           direction: 0
+
+  # HA evaluates these templates against its authoritative target and capability data.
+  - id: adjust_normal_climate_temperature
+    mode: restart
+    parameters:
+      direction: int
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(normal_knob_event_pass) || id(screen_off_state) ||
+                  !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
+                  id(standby_wakeup_pending) || id(sleep_wakeup_pending) || id(key_btn).state ||
+                  !id(normal_device_detail_active) ||
+                  id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_AUTOMATION ||
+                  !id(normal_device_detail_online) || !id(normal_ha_api_connected)) return false;
+              const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+              auto *detail = custom_logic_entity_sub::entity_detail(entity);
+              return entity.rfind("climate.", 0) == 0 && detail != nullptr &&
+                     (std::isfinite(custom_logic_entity_sub::detail_number(detail->target)) ||
+                      (std::isfinite(custom_logic_entity_sub::detail_number(detail->low)) &&
+                       std::isfinite(custom_logic_entity_sub::detail_number(detail->high)) &&
+                       custom_logic_entity_sub::detail_number(detail->low) <= custom_logic_entity_sub::detail_number(detail->high))) &&
+                     std::isfinite(detail->minimum) && std::isfinite(detail->maximum) &&
+                     detail->minimum <= detail->maximum;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    auto *detail = custom_logic_entity_sub::entity_detail(id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index)));
+                    return detail != nullptr && std::isfinite(custom_logic_entity_sub::detail_number(detail->target));
+                then:
+                  - homeassistant.service:
+                      service: climate.set_temperature
+                      data_template:
+                        entity_id: "{{ entity }}"
+                        temperature: >-
+                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
+                          {% set value = state_attr(entity, 'temperature') | float + direction * (step if step > 0 else 0.5) %}
+                          {{ [state_attr(entity, 'max_temp') | float, [state_attr(entity, 'min_temp') | float, value] | max] | min }}
+                      variables:
+                        entity: !lambda return id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+                        direction: !lambda return direction;
+                else:
+                  - homeassistant.service:
+                      service: climate.set_temperature
+                      data_template:
+                        entity_id: "{{ entity }}"
+                        target_temp_low: >-
+                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
+                          {% set lo = state_attr(entity, 'target_temp_low') | float %}
+                          {% set hi = state_attr(entity, 'target_temp_high') | float %}
+                          {% set delta = [state_attr(entity, 'max_temp') | float - hi, [state_attr(entity, 'min_temp') | float - lo, direction * (step if step > 0 else 0.5)] | max] | min %}
+                          {{ lo + delta }}
+                        target_temp_high: >-
+                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
+                          {% set lo = state_attr(entity, 'target_temp_low') | float %}
+                          {% set hi = state_attr(entity, 'target_temp_high') | float %}
+                          {% set delta = [state_attr(entity, 'max_temp') | float - hi, [state_attr(entity, 'min_temp') | float - lo, direction * (step if step > 0 else 0.5)] | max] | min %}
+                          {{ hi + delta }}
+                      variables:
+                        entity: !lambda return id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+                        direction: !lambda return direction;
+
+  - id: refresh_normal_timer_detail
+    mode: restart
+    then:
+      - lambda: |-
+          if (id(screen_off_state) || !id(normal_device_detail_active) ||
+              id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_AUTOMATION ||
+              !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active()) return;
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          auto *detail = custom_logic_entity_sub::entity_detail(entity);
+          if (!custom_logic_entity_sub::is_timer_detail(entity) || detail == nullptr) return;
+          onx_timer::View view;
+          if (detail->voice_timer) {
+            const uint32_t age = millis() - detail->timer_received_ms;
+            const bool fresh = detail->state != "active" || age < 5000;
+            if (fresh) view = onx_timer::view(detail->state, detail->voice_duration,
+                detail->voice_remaining, detail->voice_remaining + 1,
+                1.0 + age / 1000.0);
+          } else {
+            const auto now = id(ha_time).now();
+            time_t finish = 0;
+            const bool has_finish = custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_finishes_at, &finish);
+            // Interpolate between HA clock seconds for a smoothly shrinking ring.
+            static time_t last_epoch = 0;
+            static uint32_t clock_tick_ms = 0;
+            if (now.timestamp != last_epoch) {
+              last_epoch = now.timestamp;
+              clock_tick_ms = millis();
+            }
+            const double clock = now.is_valid() ? now.timestamp + (millis() - clock_tick_ms) / 1000.0 : 0;
+            view = onx_timer::view(detail->state, onx_timer::duration_seconds(detail->timer_duration),
+                onx_timer::duration_seconds(detail->timer_remaining), has_finish ? finish : NAN, clock);
+          }
+          if (!id(normal_ha_api_connected) || !id(normal_device_detail_online)) view.ready = false;
+          const std::string text = view.ready ? onx_timer::countdown(view.seconds_left) : "--:--";
+          lv_label_set_text(id(normal_timer_detail_countdown), text.c_str());
+          const char *status = !view.ready ? "Syncing" : detail->state == "paused" ? "Paused" :
+                               detail->state == "ringing" ? "Time is up" : detail->state == "idle" ? "Idle" :
+                               view.seconds_left <= 0 ? "Time is up" : "Running";
+          lv_label_set_text(id(normal_timer_detail_status), status);
+          lv_arc_set_value(id(normal_timer_detail_arc), view.ready ? static_cast<int>(view.fraction * 1000) : 0);
+          const bool finished = view.ready && (detail->state == "ringing" || (detail->state == "active" && view.seconds_left <= 0));
+          const auto color = detail->state == "paused" ? 0xFFBC66 : finished ? 0xFF855E : 0x62B0FF;
+          lv_obj_set_style_arc_color(id(normal_timer_detail_arc), lv_color_hex(color), LV_PART_INDICATOR);
+          lv_obj_set_style_text_opa(id(normal_timer_detail_countdown),
+              finished ? static_cast<lv_opa_t>(160 + 95 * (0.5 + 0.5 * sin(millis() / 250.0))) : LV_OPA_COVER, 0);

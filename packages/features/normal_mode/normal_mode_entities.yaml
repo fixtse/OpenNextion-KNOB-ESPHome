@@ -1347,240 +1347,240 @@ image:
     id: emojione_monotone_digit_two_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_unknown.svg"
+  - file: "../../../assets/weather/weather_unknown.svg"
     id: standby_weather_icon_unknown_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_clear-night.svg"
+  - file: "../../../assets/weather/weather_clear-night.svg"
     id: standby_weather_icon_clear_night_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_cloudy.svg"
+  - file: "../../../assets/weather/weather_cloudy.svg"
     id: standby_weather_icon_cloudy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_exceptional.svg"
+  - file: "../../../assets/weather/weather_exceptional.svg"
     id: standby_weather_icon_exceptional_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_fog.svg"
+  - file: "../../../assets/weather/weather_fog.svg"
     id: standby_weather_icon_fog_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_hail.svg"
+  - file: "../../../assets/weather/weather_hail.svg"
     id: standby_weather_icon_hail_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_lightning.svg"
+  - file: "../../../assets/weather/weather_lightning.svg"
     id: standby_weather_icon_lightning_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_lightning-rainy.svg"
+  - file: "../../../assets/weather/weather_lightning-rainy.svg"
     id: standby_weather_icon_lightning_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_partlycloudy.svg"
+  - file: "../../../assets/weather/weather_partlycloudy.svg"
     id: standby_weather_icon_partlycloudy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_pouring.svg"
+  - file: "../../../assets/weather/weather_pouring.svg"
     id: standby_weather_icon_pouring_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_rainy.svg"
+  - file: "../../../assets/weather/weather_rainy.svg"
     id: standby_weather_icon_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_snowy.svg"
+  - file: "../../../assets/weather/weather_snowy.svg"
     id: standby_weather_icon_snowy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_snowy-rainy.svg"
+  - file: "../../../assets/weather/weather_snowy-rainy.svg"
     id: standby_weather_icon_snowy_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_sunny.svg"
+  - file: "../../../assets/weather/weather_sunny.svg"
     id: standby_weather_icon_sunny_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_windy.svg"
+  - file: "../../../assets/weather/weather_windy.svg"
     id: standby_weather_icon_windy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather/weather_windy-variant.svg"
+  - file: "../../../assets/weather/weather_windy-variant.svg"
     id: standby_weather_icon_windy_variant_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather_icon_t.svg"
+  - file: "../../../assets/weather_icon_t.svg"
     id: standby_weather_temp_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/weather_icon_h.svg"
+  - file: "../../../assets/weather_icon_h.svg"
     id: standby_weather_humidity_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/plug_off.svg"
+  - file: "../../../assets/plug_off.svg"
     id: normal_device_icon_plug_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_plug.svg"
+  - file: "../../../assets/device_list_plug.svg"
     id: normal_device_icon_plug_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_plug_on.svg"
+  - file: "../../../assets/device_list_plug_on.svg"
     id: normal_device_icon_plug_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/plug_det_off.svg"
+  - file: "../../../assets/plug_det_off.svg"
     id: normal_device_detail_plug_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_light.svg"
+  - file: "../../../assets/device_list_light.svg"
     id: normal_device_icon_light_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_light_on.svg"
+  - file: "../../../assets/device_list_light_on.svg"
     id: normal_device_icon_light_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_curtain.svg"
+  - file: "../../../assets/device_list_curtain.svg"
     id: normal_device_icon_curtain_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_curtain_open.svg"
+  - file: "../../../assets/device_list_curtain_open.svg"
     id: normal_device_icon_curtain_open_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_curtain_closed.svg"
+  - file: "../../../assets/device_list_curtain_closed.svg"
     id: normal_device_icon_curtain_closed_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/settings.svg"
+  - file: "../../../assets/settings.svg"
     id: normal_device_icon_settings_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/ic_round-arrow-back-ios.svg"
+  - file: "../../../assets/ic_round-arrow-back-ios.svg"
     id: normal_settings_arrow_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/ic_round_arrow_left.svg"
+  - file: "../../../assets/ic_round_arrow_left.svg"
     id: normal_user_manual_arrow_left_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/ic_round_arrow_right.svg"
+  - file: "../../../assets/ic_round_arrow_right.svg"
     id: normal_user_manual_arrow_right_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/UserManual_qrcode_1.png"
+  - file: "../../../assets/UserManual_qrcode_1.png"
     id: normal_user_manual_qrcode_wiki_img
     type: RGB565
-  - file: "./assets/UserManual_qrcode_2.png"
+  - file: "../../../assets/UserManual_qrcode_2.png"
     id: normal_user_manual_qrcode_device_github_img
     type: RGB565
-  - file: "./assets/UserManual_qrcode_3.png"
+  - file: "../../../assets/UserManual_qrcode_3.png"
     id: normal_user_manual_qrcode_firmware_github_img
     type: RGB565
-  - file: "./assets/wifi_icon.svg"
+  - file: "../../../assets/wifi_icon.svg"
     id: normal_settings_wifi_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/wifi_lock.svg"
+  - file: "../../../assets/wifi_lock.svg"
     id: normal_settings_wifi_lock_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/plug_det_on.svg"
+  - file: "../../../assets/plug_det_on.svg"
     id: normal_device_detail_plug_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_switch.svg"
+  - file: "../../../assets/device_list_switch.svg"
     id: normal_device_icon_switch_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/device_list_switch_on.svg"
+  - file: "../../../assets/device_list_switch_on.svg"
     id: normal_device_icon_switch_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/automation.svg"
+  - file: "../../../assets/automation.svg"
     id: normal_device_automation_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/automation_detail.svg"
+  - file: "../../../assets/automation_detail.svg"
     id: normal_device_automation_detail_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/automation_detail_press.svg"
+  - file: "../../../assets/automation_detail_press.svg"
     id: normal_device_automation_detail_press_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/switch_det_on.svg"
+  - file: "../../../assets/switch_det_on.svg"
     id: normal_device_detail_switch_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/switch_det_off.svg"
+  - file: "../../../assets/switch_det_off.svg"
     id: normal_device_detail_switch_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_det_on.svg"
+  - file: "../../../assets/light_det_on.svg"
     id: normal_device_detail_light_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_det_off.svg"
+  - file: "../../../assets/light_det_off.svg"
     id: normal_device_detail_light_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_cct_gradient.svg"
+  - file: "../../../assets/light_cct_gradient.svg"
     id: normal_light_cct_gradient_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_rgb_gradient.svg"
+  - file: "../../../assets/light_rgb_gradient.svg"
     id: normal_light_rgb_gradient_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_mode_icon_bright.svg"
+  - file: "../../../assets/light_mode_icon_bright.svg"
     id: normal_light_mode_icon_bright_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_mode_icon_cct.svg"
+  - file: "../../../assets/light_mode_icon_cct.svg"
     id: normal_light_mode_icon_cct_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/light_mode_icon_color.svg"
+  - file: "../../../assets/light_mode_icon_color.svg"
     id: normal_light_mode_icon_color_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_0%.svg"
+  - file: "../../../assets/curtain_0%.svg"
     id: normal_device_detail_curtain_0_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_100%.svg"
+  - file: "../../../assets/curtain_100%.svg"
     id: normal_device_detail_curtain_100_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_x%.svg"
+  - file: "../../../assets/curtain_x%.svg"
     id: normal_device_detail_curtain_x_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_opening.svg"
+  - file: "../../../assets/curtain_opening.svg"
     id: normal_device_detail_curtain_opening_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_pause.svg"
+  - file: "../../../assets/curtain_pause.svg"
     id: normal_device_detail_curtain_pause_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_closing.svg"
+  - file: "../../../assets/curtain_closing.svg"
     id: normal_device_detail_curtain_closing_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_no_opening.svg"
+  - file: "../../../assets/curtain_no_opening.svg"
     id: normal_device_detail_curtain_no_opening_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_no_pause.svg"
+  - file: "../../../assets/curtain_no_pause.svg"
     id: normal_device_detail_curtain_no_pause_img
     type: RGB565
     transparency: alpha_channel
-  - file: "./assets/curtain_no_closing.svg"
+  - file: "../../../assets/curtain_no_closing.svg"
     id: normal_device_detail_curtain_no_closing_img
     type: RGB565
     transparency: alpha_channel

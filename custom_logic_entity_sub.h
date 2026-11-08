@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <ArduinoJson.h>
+#include "onx_timer_state.h"
 #include "esphome.h"
 #include "esphome/components/api/api_server.h"
 #include "esphome/components/select/select.h"
@@ -331,6 +332,48 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
   return format_english_relative_time(years, "year");
 }
 
+// Runtime values are keyed by entity ID so compact slot reordering cannot mix feedback.
+struct EntityDetailState {
+  std::string entity_id, state, unit, current, target, low, high, modes, humidity;
+  std::string timer_duration, timer_remaining, timer_finishes_at, timer_name;
+  bool voice_timer{false};
+  double voice_duration{NAN}, voice_remaining{NAN};
+  uint32_t timer_received_ms{0};
+  float minimum{NAN}, maximum{NAN}, step{NAN};
+};
+static std::array<EntityDetailState, custom_logic::CONFIGURABLE_DEVICE_SLOT_COUNT> entity_details{};
+
+inline float detail_number(const std::string &value) {
+  char *end = nullptr;
+  const float result = strtof(value.c_str(), &end);
+  return end != value.c_str() && *end == '\0' && std::isfinite(result) ? result : NAN;
+}
+
+inline EntityDetailState *entity_detail(const std::string &entity_id) {
+  for (auto &detail : entity_details)
+    if (detail.entity_id == entity_id) return &detail;
+  return nullptr;
+}
+
+inline bool is_timer_detail(const std::string &entity_id) {
+  const auto *detail = entity_detail(entity_id);
+  return has_prefix(entity_id, "timer.") || (detail != nullptr && detail->voice_timer);
+}
+
+inline std::string next_climate_mode(const std::string &entity_id) {
+  auto *detail = entity_detail(entity_id);
+  if (detail == nullptr) return "";
+  StaticJsonDocument<512> doc;
+  if (deserializeJson(doc, detail->modes) != DeserializationError::Ok || !doc.is<JsonArray>()) return "";
+  JsonArray modes = doc.as<JsonArray>();
+  if (modes.size() == 0) return "";
+  for (size_t i = 0; i < modes.size(); ++i) {
+    if (detail->state == modes[i].as<std::string>())
+      return modes[(i + 1) % modes.size()].as<std::string>();
+  }
+  return modes[0].as<std::string>();
+}
+
 class DeviceSlotStateUpdater {
  public:
   DeviceSlotStateUpdater(size_t slot, std::string entity_id) : slot_(slot), entity_id_(std::move(entity_id)) {}
@@ -360,6 +403,54 @@ class DeviceSlotStateUpdater {
       if (!online) {
         return;
       }
+    }
+    if (has_prefix(this->entity_id_, "sensor.") || has_prefix(this->entity_id_, "binary_sensor.") ||
+        has_prefix(this->entity_id_, "climate.") || has_prefix(this->entity_id_, "script.") ||
+        has_prefix(this->entity_id_, "weather.") || has_prefix(this->entity_id_, "timer.")) {
+      if (ui_slot == static_cast<size_t>(-1)) return;
+      auto &detail = entity_details[this->slot_];
+      if (detail.entity_id != this->entity_id_) {
+        detail = EntityDetailState{};
+        detail.entity_id = this->entity_id_;
+      }
+      if (field == "state") {
+        detail.state = value;
+        detail.voice_timer = false;
+        if (has_prefix(this->entity_id_, "sensor.") && value.size() <= 255) {
+          StaticJsonDocument<768> doc;
+          if (deserializeJson(doc, value) == DeserializationError::Ok &&
+              doc["schema"] == "onx.timer.v1" && doc["duration"].is<double>() &&
+              doc["remaining"].is<double>()) {
+            const std::string state = doc["state"].as<std::string>();
+            const double duration = doc["duration"].as<double>();
+            const double remaining = doc["remaining"].as<double>();
+            if ((state == "active" || state == "paused" || state == "idle" || state == "ringing") &&
+                std::isfinite(duration) && std::isfinite(remaining) && duration >= 0 && remaining >= 0) {
+              detail.voice_timer = true;
+              detail.state = state;
+              detail.voice_duration = duration;
+              detail.voice_remaining = remaining;
+              detail.timer_name = doc["name"].as<std::string>();
+              detail.timer_received_ms = millis();
+            }
+          }
+        }
+      }
+      else if (field == "duration") detail.timer_duration = value;
+      else if (field == "remaining") detail.timer_remaining = value;
+      else if (field == "finishes_at") detail.timer_finishes_at = value;
+      else if (field == "unit_of_measurement") detail.unit = value;
+      else if (field == "current_temperature") detail.current = value;
+      else if (field == "temperature") detail.target = value;
+      else if (field == "temperature_unit") detail.unit = value;
+      else if (field == "humidity") detail.humidity = value;
+      else if (field == "target_temp_low") detail.low = value;
+      else if (field == "target_temp_high") detail.high = value;
+      else if (field == "hvac_modes") detail.modes = value;
+      else if (field == "min_temp") detail.minimum = detail_number(value);
+      else if (field == "max_temp") detail.maximum = detail_number(value);
+      else if (field == "target_temp_step") detail.step = detail_number(value);
+      return;
     }
     if (field == "state") {
       this->apply_power_or_cover_state_(value);
@@ -823,7 +914,19 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
 
   subscribe_field(api_server, slot, entity_id, "state", "");
 
-  if (has_prefix(entity_id, "light.")) {
+  if (has_prefix(entity_id, "sensor.") || has_prefix(entity_id, "binary_sensor.")) {
+    subscribe_field(api_server, slot, entity_id, "unit_of_measurement", "unit_of_measurement");
+  } else if (has_prefix(entity_id, "timer.")) {
+    for (const char *attribute : {"duration", "remaining", "finishes_at"})
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "weather.")) {
+    for (const char *attribute : weather_attributes())
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "climate.")) {
+    for (const char *attribute : {"current_temperature", "temperature", "target_temp_low", "target_temp_high",
+                                  "hvac_modes", "min_temp", "max_temp", "target_temp_step"})
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "light.")) {
     for (const char *attribute : light_attributes()) {
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
     }

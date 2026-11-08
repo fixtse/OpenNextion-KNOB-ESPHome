@@ -20,71 +20,71 @@ light:
 
 # Font paths are relative to the main ESPHome config directory.
 font:
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_12
     size: 12
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_14
     size: 14
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_16
     size: 16
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_18
     size: 18
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_22
     size: 22
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_24
     size: 24
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_60
     size: 60
     bpp: 8
-  - file: "fonts/MiSans-Bold.ttf"
+  - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_64
     size: 64
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_14
     size: 14
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_15
     size: 15
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_12
     size: 12
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_16
     size: 16
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_18
     size: 18
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_20
     size: 20
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_64
     size: 64
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_24
     size: 24
     bpp: 8
-  - file: "fonts/MiSans-Medium.ttf"
+  - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_32
     size: 32
     bpp: 8

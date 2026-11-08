@@ -596,7 +596,10 @@ binary_sensor:
                              device_type == "light" || device_type == "curtain" ||
                              device_type == "cover" || device_type == "chazuo" || device_type == "liang" ||
                              device_type == "dimming_light" || device_type == "dimmable_light" ||
-                             device_type == "dimming" || device_type == "automation";
+                             device_type == "dimming" || device_type == "automation" ||
+                             device_type == "sensor" || device_type == "binary_sensor" ||
+                             device_type == "climate" || device_type == "script" ||
+                             device_type == "weather" || device_type == "timer";
                   then:
                     - script.execute: enter_normal_switch_detail
                     - lambda: |-
@@ -788,6 +791,9 @@ sensor:
             if (millis() < id(standby_input_suppressed_until_ms)) {
               id(normal_knob_event_pass) = false;
             }
+        - script.execute:
+            id: adjust_normal_climate_temperature
+            direction: 1
         - if:
             condition:
               lambda: |-
@@ -1211,6 +1217,9 @@ sensor:
             if (millis() < id(standby_input_suppressed_until_ms)) {
               id(normal_knob_event_pass) = false;
             }
+        - script.execute:
+            id: adjust_normal_climate_temperature
+            direction: -1
         - if:
             condition:
               lambda: |-

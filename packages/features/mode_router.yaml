@@ -3,7 +3,7 @@
 external_components:
   - source:
       type: local
-      path: my_components
+      path: ../../my_components
     components:
       - ili9xxx
       - onx_app_state

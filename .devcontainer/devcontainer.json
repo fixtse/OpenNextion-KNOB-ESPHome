@@ -1,0 +1,6 @@
+{
+  "name": "ONX ESPHome 2026.10.0",
+  "image": "ghcr.io/esphome/esphome:2026.10.0",
+  "overrideCommand": true,
+  "remoteUser": "root"
+}

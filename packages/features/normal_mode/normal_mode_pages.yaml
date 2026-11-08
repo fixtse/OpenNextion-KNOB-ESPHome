@@ -1317,6 +1317,48 @@ lvgl:
             pad_all: 0
             scrollable: false
             widgets:
+              - arc:
+                  id: normal_timer_detail_arc
+                  x: 0
+                  y: 20
+                  align: top_mid
+                  width: 194
+                  height: 194
+                  adjustable: false
+                  min_value: 0
+                  max_value: 1000
+                  value: 0
+                  start_angle: 0
+                  end_angle: 300
+                  rotation: 120
+                  arc_width: 9
+                  arc_color: 0x414850
+                  indicator:
+                    arc_color: 0x62B0FF
+                    arc_width: 9
+                  hidden: true
+              - label:
+                  id: normal_timer_detail_countdown
+                  x: 0
+                  y: 83
+                  align: top_mid
+                  width: 180
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: "--:--"
+                  hidden: true
+              - label:
+                  id: normal_timer_detail_status
+                  x: 0
+                  y: 133
+                  align: top_mid
+                  width: 160
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xD2D2D2
+                  text: "Syncing"
+                  hidden: true
               - image:
                   id: normal_automation_detail_icon
                   x: 0
