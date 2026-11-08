@@ -261,7 +261,8 @@ std::string OnxUi::get_normal_ip_line() const {
     if (wifi::global_wifi_component->is_connected()) {
       auto ips = wifi::global_wifi_component->get_ip_addresses();
       if (!ips.empty()) {
-        return ips[0].str();
+        char address[network::IP_ADDRESS_BUFFER_SIZE] = {0};
+        return ips[0].str_to(address);
       }
     }
   }
