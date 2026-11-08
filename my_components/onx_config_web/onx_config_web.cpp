@@ -27,6 +27,16 @@ bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
   auto *response = request->beginResponse(code, "application/json", body);
   response->addHeader("Cache-Control", "no-store");
+  // ESPHome 2026.10's IDF wrapper defaults unsupported status codes to 500.
+  // Preserve our asynchronous protocol and meaningful client error responses.
+  switch (code) {
+    case 202: httpd_resp_set_status(*request, "202 Accepted"); break;
+    case 403: httpd_resp_set_status(*request, "403 Forbidden"); break;
+    case 405: httpd_resp_set_status(*request, "405 Method Not Allowed"); break;
+    case 413: httpd_resp_set_status(*request, "413 Content Too Large"); break;
+    case 429: httpd_resp_set_status(*request, "429 Too Many Requests"); break;
+    default: break;
+  }
   request->send(response);
 }
 void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
