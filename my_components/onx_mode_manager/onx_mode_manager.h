@@ -28,12 +28,7 @@ class OnxModeManager : public Component {
  protected:
   void evaluate_boot_mode_();
   void evaluate_runtime_mode_();
-  void apply_wifi_for_mode_(onx_app_state::OnxRuntimeMode mode);
-  void disable_provisioning_mode_();
-  void enable_provisioning_mode_();
-  bool has_saved_normal_wifi_() const;
-  void schedule_normal_wifi_connect_(const std::string &ssid, const std::string &password, bool use_explicit_credentials);
-  const char *get_reset_reason_name_() const;
+  void update_provisioning_state_();
   void select_mode_(onx_app_state::OnxRuntimeMode mode, const std::string &reason);
 
   onx_app_state::OnxAppState *app_state_{nullptr};
@@ -43,10 +38,7 @@ class OnxModeManager : public Component {
   uint8_t runtime_log_level_{ESPHOME_LOG_LEVEL_INFO};
   std::string normal_wifi_ssid_;
   std::string normal_wifi_password_;
-  std::string applied_wifi_ssid_;
-  std::string applied_wifi_password_;
   bool provisioning_mode_enabled_{false};
-  bool normal_wifi_connect_scheduled_{false};
 };
 
 }  // namespace esphome::onx_mode_manager

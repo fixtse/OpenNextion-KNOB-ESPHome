@@ -42,3 +42,16 @@ interval:
             - "id(heap_fragmentation).state"
             - "id(psram_free).state / 1024.0f"
             - "id(main_loop_time).state"
+
+button:
+  - platform: restart
+    id: restart_device
+    name: "Restart device"
+    disabled_by_default: false
+    entity_category: config
+  - platform: factory_reset
+    id: reset_device
+    name: "Reset device"
+    disabled_by_default: false
+    icon: mdi:restore
+    entity_category: config

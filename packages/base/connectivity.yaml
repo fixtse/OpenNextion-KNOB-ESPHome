@@ -23,7 +23,8 @@ update:
     entity_category: diagnostic
 
 wifi:
-  # Normal Wi-Fi is applied by onx_mode_manager after runtime state is initialized.
+  # Native Wi-Fi restores and persists provisioned credentials. The mode manager
+  # prepares only the AP name and optional compiled credentials before setup.
   ap:
     ssid: "ONX2424G013"
     password: "${ap_password}"

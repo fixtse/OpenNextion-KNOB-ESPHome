@@ -1,0 +1,50 @@
+name: Wi-Fi persistence regression
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'my_components/onx_mode_manager/**'
+      - 'my_components/onx_app_state/**'
+      - 'tests/wifi_stubs/**'
+      - 'tests/test_wifi_lifecycle.cpp'
+      - '.github/workflows/wifi-lifecycle.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test production mode manager across simulated power cycles
+        run: |
+          c++ -std=c++17 -Itests/wifi_stubs tests/test_wifi_lifecycle.cpp \
+            my_components/onx_mode_manager/onx_mode_manager.cpp \
+            my_components/onx_app_state/onx_app_state.cpp -o /tmp/test_wifi_lifecycle
+          /tmp/test_wifi_lifecycle
+      - name: Resume validation thread
+        if: ${{ always() }}
+        env:
+          CALLBACK_URL: ${{ secrets.T3_BUILD_CALLBACK_URL }}
+          OUTCOME: ${{ job.status }}
+          REVISION: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        shell: python
+        run: |
+          import json, os, urllib.request
+          url = os.environ['CALLBACK_URL']
+          if not url:
+              raise SystemExit('Completion callback is not configured')
+          payload = dict(task='onx-wifi-regression', status=os.environ['OUTCOME'],
+                         revision=os.environ['REVISION'], repository=os.environ['REPOSITORY'],
+                         run_id=os.environ['RUN_ID'],
+                         log=f"https://github.com/{os.environ['REPOSITORY']}/actions/runs/{os.environ['RUN_ID']}")
+          request = urllib.request.Request(url, data=json.dumps(payload).encode(),
+              headers={'User-Agent':'onx-wifi-regression/1.0', 'Content-Type':'application/json'})
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  print('Completion callback HTTP', response.status)
+          except Exception as error:
+              print(type(error).__name__, 'HTTP', getattr(error, 'code', 'unknown'))
+              raise SystemExit(1)

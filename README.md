@@ -233,3 +233,10 @@ Actions persist on the device and are bound to the selected entity and slot, so
 reordering compact display slots or changing an entity cannot run another
 entity's action. The existing HA dropdowns remain compatible, but the webpage
 provides search and paired action selection. The page never returns the HA token.
+
+Wi-Fi credentials are restored and saved by ESPHome's native Wi-Fi component;
+normal startup and reconnects do not restart it or switch its preference key.
+Under the Home Assistant device's configuration controls, **Restart device**
+reboots while keeping settings. **Reset device** performs a factory reset,
+clearing the knob's saved Wi-Fi, Home Assistant configuration, and press actions
+and returning it to provisioning. Use Restart for an ordinary reboot.
