@@ -85,3 +85,8 @@ HTTP diagnostics also report the most recent Wi-Fi RSSI (sampled every 60 second
 Wi-Fi disconnect count since boot, and the last artwork download/decode error.
 A connected Wi-Fi flag alone is not a measurement of signal quality or internet
 reachability. Artwork error messages omit URLs and access parameters.
+
+The network memory gate requires 48 KB total internal free RAM and a 20 KB
+largest block, allowing the observed 28 KB block to start a worker. A low-memory
+deferral is reported as `waiting_for_memory` for icons and artwork. These are
+allocation headroom checks, not a guarantee against every memory failure.

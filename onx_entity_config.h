@@ -254,7 +254,7 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
     previous["entity"]=onx_runtime::previous.entity;
     previous["uptime_ms"]=onx_runtime::previous.at_ms;
     previous["internal_heap_free"]=onx_runtime::previous.free_heap;
-    root["artwork_status"]=onx_media::downloading?"downloading":!onx_media::ready_url.empty()?"ready":"not_loaded";
+    root["artwork_status"]=onx_media::downloading?"downloading":!onx_media::ready_url.empty()?"ready":onx_media::artwork_wait_reason.empty()?"not_loaded":onx_media::artwork_wait_reason.c_str();
 #ifdef USE_ESP32
     root["internal_heap_free"]=heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     root["internal_heap_minimum"]=heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);

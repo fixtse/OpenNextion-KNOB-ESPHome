@@ -118,7 +118,7 @@ inline TransportFeedback transport;
 inline std::string requested_url, ready_url;
 inline uint32_t requested_ms{0};
 inline bool downloading{false}, artwork_refresh_pending{false};
-inline std::string candidate_url;
+inline std::string candidate_url, artwork_wait_reason;
 inline uint32_t candidate_ms{0}, last_artwork_end_ms{0};
 inline std::string artwork_url(const std::string &origin, const std::string &picture) {
   if (picture.empty() || picture == "None" || picture == "unknown" || picture == "unavailable") return "";

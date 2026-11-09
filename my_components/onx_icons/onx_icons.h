@@ -12,6 +12,7 @@ class IconDownloader : public Component {
  public:
   void loop() override;
   bool busy() const { return busy_; }
+  static bool memory_ready();
   void set_artwork_busy(bool value) { artwork_busy_ = value; }
   void prefetch(const std::string &icon) { if (cache_.find(icon) == cache_.end()) request_(icon); }
   void retry() { failures_.clear(); errors_.clear(); }

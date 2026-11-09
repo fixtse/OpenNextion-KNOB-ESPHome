@@ -135,13 +135,26 @@ void IconDownloader::download_task_(void *arg) {
   work.reset();
   vTaskDelete(nullptr);
 }
+bool IconDownloader::memory_ready() {
+#ifdef USE_ESP32
+  // The worker needs a 16 KB stack, not a single 32 KB allocation. Real boards
+  // can have ample total free heap while their largest block is only 28 KB.
+  return heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) >= 48 * 1024 &&
+         heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) >= 20 * 1024;
+#else
+  return true;
+#endif
+}
 std::string IconDownloader::status(const std::string &icon) const {
   if (!::onx_icon_state::valid_icon(icon)) return "missing_icon_metadata";
   if (cache_.find(icon) != cache_.end()) return "ready";
   if (failures_.find(icon) != failures_.end()) return "retry_wait";
   if (wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return "waiting_for_wifi";
   if (std::time(nullptr) < 1577836800) return "waiting_for_clock";
-  return busy_ ? "download_busy" : "awaiting_display";
+  if (busy_) return "download_busy";
+  if (artwork_busy_) return "waiting_for_artwork";
+  if (!memory_ready()) return "waiting_for_memory";
+  return "awaiting_display";
 }
 void IconDownloader::request_(const std::string &icon) {
   if (busy_ || artwork_busy_ || !::onx_icon_state::valid_icon(icon) || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return;
@@ -150,11 +163,7 @@ void IconDownloader::request_(const std::string &icon) {
   if (std::time(nullptr) < 1577836800) return;
   auto failed = failures_.find(icon);
   if (failed != failures_.end() && !failed->second.due(millis())) return;
-#ifdef USE_ESP32
-  // TLS plus a worker stack must not consume the last API/Wi-Fi allocation block.
-  if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 65536 ||
-      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 32768) return;
-#endif
+  if (!memory_ready()) return;
   auto *work = new (std::nothrow) Work{this, icon};
   if (!work) return;
   busy_ = true;
