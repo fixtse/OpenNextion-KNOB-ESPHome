@@ -78,3 +78,16 @@ Short presses on the player view still play/pause or run its idle action. Holdin
 and turning there still skips tracks. In the playlist menu, turning while holding
 is ignored and suppresses the release action. Disconnecting, leaving the player,
 or entering standby cancels the menu; reconnecting never launches an entry.
+
+## Press feedback
+
+Executable entity presses show a shared 1.5-second on-screen notification.
+Queued native controls show **Action requested**, changing to **Action sent**
+after the API request is transmitted. This covers climate/fan controls,
+select confirmations, scenes/buttons, and media play/pause. Script/automation
+bindings, playlist entries, light/switch toggles, sensor press events, and cover
+commands also show **Action sent** at dispatch. Local GPIO toggles show **Done**.
+This acknowledges dispatch, not successful Home Assistant execution or playback.
+Existing pending-state and timeout messages remain available in the detail view.
+Navigation, unavailable actions, and press bindings set to **No action** do not
+show execution feedback. Leaving the entity or entering standby clears it.

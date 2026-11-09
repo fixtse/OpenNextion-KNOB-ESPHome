@@ -429,6 +429,7 @@ inline void request_control(const std::string &entity, const std::string &servic
     if (it == control_commands.end()) { control_commands.emplace_back(); it = control_commands.end() - 1; }
   }
   it->request(entity, service, std::move(values), millis());
+  if (onx_action_feedback::press_active) onx_action_feedback::requested(entity, service, millis());
 }
 inline std::string next_option(const std::string &raw, const std::string &current, int direction = 1) {
   const auto list = onx_control::options(raw);

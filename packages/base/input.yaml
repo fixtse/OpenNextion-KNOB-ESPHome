@@ -286,6 +286,7 @@ binary_sensor:
                                               if (detail_index < 0) detail_index = 0;
                                               if (detail_index > 9) detail_index = 9;
                                               return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                                      - script.execute: show_normal_action_sent
                                     else:
                                       - homeassistant.service:
                                           service: cover.set_cover_position
@@ -316,6 +317,7 @@ binary_sensor:
                                                 return 0;
                                               }
                                               return preset_position;
+                                      - script.execute: show_normal_action_sent
                           - lambda: |-
                               id(key_long_press_handled) = true;
                               id(ui_presenter)->notify_user_activity();

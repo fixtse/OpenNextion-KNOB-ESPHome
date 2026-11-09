@@ -30,6 +30,28 @@ lvgl:
           align: TOP_MID
           src: standby_homeassistant_offline_img
           hidden: true
+      - obj:
+          id: normal_action_feedback
+          align: bottom_mid
+          y: -36
+          width: 168
+          height: 34
+          radius: 17
+          bg_color: 0x102A25
+          bg_opa: 90%
+          border_width: 1
+          border_color: 0x62D49B
+          pad_all: 0
+          clickable: false
+          scrollable: false
+          hidden: true
+          widgets:
+            - label:
+                id: normal_action_feedback_text
+                align: center
+                text: "Action sent"
+                text_font: fonts_MiSans_Medium_18
+                text_color: 0xFFFFFF
   pages:
     - id: device_empty
       bg_color: 0x000000

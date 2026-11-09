@@ -8,6 +8,31 @@
 #include <vector>
 #include <utility>
 
+namespace onx_action_feedback {
+inline bool press_active=false, visible=false, native_pending=false;
+inline std::string entity, pending_service;
+inline const char *message="";
+inline uint32_t shown_ms=0;
+struct PressScope {
+  bool previous{press_active};
+  PressScope() { press_active=true; }
+  ~PressScope() { press_active=previous; }
+};
+inline void show(const std::string &selected,const char *text,uint32_t now) {
+  entity=selected;message=text;shown_ms=now;visible=true;
+}
+inline void requested(const std::string &selected,const std::string &service,uint32_t now) {
+  show(selected,"Action requested",now);pending_service=service;native_pending=true;
+}
+inline void sent(const std::string &selected,uint32_t now,const char *text="Action sent") {
+  show(selected,text,now);native_pending=false;pending_service.clear();
+}
+inline void clear() { visible=false;native_pending=false;entity.clear();pending_service.clear(); }
+inline bool active(const std::string &selected,uint32_t now) {
+  return visible && entity==selected && now-shown_ms<1500;
+}
+}
+
 namespace onx_control {
 // HA Native API attributes are Python repr strings, not necessarily JSON.
 // Lists can contain StrEnum repr values, e.g. <HVACMode.HEAT: 'heat'>.

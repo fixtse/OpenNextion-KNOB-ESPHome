@@ -141,6 +141,7 @@ inline void press(const std::string &id) {
   select_control_entity(id);
   const auto *d = entity_detail(id);
   if (!d || !d->available) return;
+  onx_action_feedback::PressScope press_feedback;
   const auto key = setting(*d);
   if (!control_preview.empty()) {
     const auto list = onx_control::options(choices(*d, key));
@@ -196,6 +197,9 @@ inline void tick(esphome::api::APIServer *api, const std::string &selected, bool
       item.key = esphome::StringRef(value.parameter); item.value = esphome::StringRef(value.requested); call.data.push_back(item);
     }
     api->send_homeassistant_action(call);
+    if (onx_action_feedback::native_pending && onx_action_feedback::entity == selected &&
+        onx_action_feedback::pending_service == command.service)
+      onx_action_feedback::sent(selected, now);
     ESP_LOGI("onx_controls", "HA action sent: service=%s entity=%s", command.service.c_str(), selected.c_str());
     command.mark_sent(now);
     // Stateless actions have no predictable target state to acknowledge.
