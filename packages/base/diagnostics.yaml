@@ -4,7 +4,8 @@ debug:
 sensor:
   - platform: wifi_signal
     id: wifi_rssi
-    internal: true
+    name: "Wi-Fi Signal"
+    entity_category: diagnostic
     update_interval: 60s
 
   - platform: uptime
