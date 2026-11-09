@@ -13,7 +13,7 @@ check() {
     return 1
   fi
 }
-for name in control_state media_state timer_state config_rules; do
+for name in control_state media_state icon_state icon_raster timer_state config_rules; do
   if check c++ -std=c++17 "tests/test_${name}.cpp" -o "$output_dir/$name"; then
     check "$output_dir/$name"
   fi

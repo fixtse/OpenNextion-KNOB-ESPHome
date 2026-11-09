@@ -237,6 +237,14 @@ script:
               }
             }
 
+            if (!settings_entry) {
+              for (auto *icon : {w.icon_switch_on, w.icon_plug, w.icon_plug_on, w.icon_light,
+                                w.icon_light_on, w.icon_curtain, w.icon_settings}) set_hidden(icon, true);
+              set_hidden(w.icon_switch, false);
+              id(apply_normal_entity_icon).execute(w.icon_switch,
+                  id(ui_presenter)->get_normal_device_entity_id(entry_index), device_type,
+                  id(app_storage)->get_normal_ui_device_state(entry_index));
+            }
             lv_label_set_text(w.title, device_title.c_str());
             if (settings_entry) {
               set_hidden(id(normal_device_index_text), true);
@@ -465,8 +473,21 @@ script:
           set_hidden(id(normal_switch_detail_offline_overlay), !show_connection_overlay);
           const char *offline_text = !id(normal_wifi_connected)
                                          ? "WiFi disconnected"
-                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : "Device Offline");
+                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : custom_logic_entity_sub::entity_offline_text(device_entity_id));
           lv_label_set_text(id(normal_switch_detail_offline_text), offline_text);
+
+      - lambda: |-
+          if (!id(normal_device_detail_active) || (id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SWITCH && id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_PLUG)) return;
+          lv_obj_add_flag(id(normal_device_detail_switch_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_detail_switch_off), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_detail_plug_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_detail_plug_off), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_detail_light_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_detail_light_off), LV_OBJ_FLAG_HIDDEN);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          id(apply_normal_entity_icon).execute(id(normal_switch_entity_icon),
+              id(ui_presenter)->get_normal_device_entity_id(slot),
+              id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
 
   - id: refresh_normal_automation_detail_page
     mode: restart
@@ -565,32 +586,30 @@ script:
             }
           }
           lv_label_set_text(id(normal_automation_detail_action), last_trigger_text.c_str());
-          lv_img_set_src(id(normal_automation_detail_icon),
-                         id(normal_automation_press_feedback_active)
-                             ? id(normal_device_automation_detail_press_img)
-                             : id(normal_device_automation_detail_img));
-
-          if (entity_id.rfind("weather.", 0) == 0) {
-            const auto *detail = custom_logic_entity_sub::entity_detail(entity_id);
-            const std::string state = detail == nullptr ? "" : detail->state;
-            const void *icon = id(standby_weather_icon_unknown_img);
-            if (state == "clear-night") icon = id(standby_weather_icon_clear_night_img);
-            if (state == "cloudy") icon = id(standby_weather_icon_cloudy_img);
-            if (state == "exceptional") icon = id(standby_weather_icon_exceptional_img);
-            if (state == "fog") icon = id(standby_weather_icon_fog_img);
-            if (state == "hail") icon = id(standby_weather_icon_hail_img);
-            if (state == "lightning") icon = id(standby_weather_icon_lightning_img);
-            if (state == "lightning-rainy") icon = id(standby_weather_icon_lightning_rainy_img);
-            if (state == "partlycloudy") icon = id(standby_weather_icon_partlycloudy_img);
-            if (state == "pouring") icon = id(standby_weather_icon_pouring_img);
-            if (state == "rainy") icon = id(standby_weather_icon_rainy_img);
-            if (state == "snowy") icon = id(standby_weather_icon_snowy_img);
-            if (state == "snowy-rainy") icon = id(standby_weather_icon_snowy_rainy_img);
-            if (state == "sunny") icon = id(standby_weather_icon_sunny_img);
-            if (state == "windy") icon = id(standby_weather_icon_windy_img);
-            if (state == "windy-variant") icon = id(standby_weather_icon_windy_variant_img);
-            lv_img_set_src(id(normal_automation_detail_icon), icon);
+          id(apply_normal_entity_icon).execute(id(normal_automation_detail_icon), entity_id,
+              id(ui_presenter)->get_normal_device_type(detail_index), false);
+          if (entity_id.rfind("media_player.", 0) == 0) {
+            lv_image_set_scale(id(normal_automation_detail_icon), 256);
+            const auto *media = custom_logic_entity_sub::entity_detail(entity_id);
+            if (media != nullptr && onx_controls::setting(*media) == "volume_level" &&
+                lv_obj_has_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN))
+              lv_obj_clear_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
           }
+          if (!timer_detail && entity_id.rfind("media_player.", 0) != 0) {
+            lv_obj_clear_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
+            if (onx_controls::handles(entity_id)) {
+              lv_image_set_scale(id(normal_automation_detail_icon), 128);
+              lv_obj_set_y(id(normal_automation_detail_icon), -10);
+              lv_obj_set_y(id(normal_automation_detail_action), 60);
+              lv_obj_set_style_text_font(id(normal_automation_detail_action), id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
+            } else {
+              lv_image_set_scale(id(normal_automation_detail_icon), 256);
+              lv_obj_set_y(id(normal_automation_detail_icon), 40);
+              lv_obj_set_style_text_font(id(normal_automation_detail_action), id(fonts_MiSans_Medium_18)->get_lv_font(), 0);
+            }
+          }
+          id(refresh_normal_media_progress).execute();
+
 
           const bool is_online = (id(normal_device_online_mask) & (1 << detail_index)) != 0;
           id(normal_device_detail_online) = is_online;
@@ -607,7 +626,7 @@ script:
                                                 ? "Home Assistant\ndisconnected"
                                                 : (custom_logic_entity_sub::entity_detail(entity_id) == nullptr ||
                                                    !custom_logic_entity_sub::entity_detail(entity_id)->received
-                                                       ? "Waiting for initial data" : "Entity unavailable"));
+                                                       ? "Waiting for initial data\nPress to retry" : "Entity unavailable\nPress to retry"));
           lv_label_set_text(id(normal_automation_detail_offline_text), offline_text);
 
   - id: refresh_normal_light_detail_page
@@ -798,7 +817,7 @@ script:
           set_hidden(id(normal_light_detail_offline_overlay), !show_connection_overlay);
           const char *offline_text = !id(normal_wifi_connected)
                                          ? "WiFi disconnected"
-                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : "Device Offline");
+                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : custom_logic_entity_sub::entity_offline_text(device_entity_id));
           lv_label_set_text(id(normal_light_detail_offline_text), offline_text);
 
           set_hidden(id(normal_light_cct_gradient), !show_cct_bar);
@@ -818,6 +837,19 @@ script:
             id(normal_light_rgb_value_pct) = value_pct;
             lv_arc_set_value(id(normal_light_rgb_value_arc), value_pct);
           }
+
+      - lambda: |-
+          if (!id(normal_device_detail_active) || (id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_LIGHT)) return;
+          lv_obj_add_flag(id(normal_light_device_detail_switch_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_light_device_detail_switch_off), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_light_device_detail_plug_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_light_device_detail_plug_off), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_light_device_detail_light_on), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_light_device_detail_light_off), LV_OBJ_FLAG_HIDDEN);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          id(apply_normal_entity_icon).execute(id(normal_light_entity_icon),
+              id(ui_presenter)->get_normal_device_entity_id(slot),
+              id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
 
   - id: update_normal_detail_exit_ready_flags
     mode: restart
@@ -1004,8 +1036,18 @@ script:
           set_hidden(id(normal_curtain_detail_offline_overlay), !show_connection_overlay);
           const char *offline_text = !id(normal_wifi_connected)
                                          ? "WiFi disconnected"
-                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : "Device Offline");
+                                         : (!id(normal_ha_api_connected) ? "Home Assistant\ndisconnected" : custom_logic_entity_sub::entity_offline_text(device_entity_id));
           lv_label_set_text(id(normal_curtain_detail_offline_text), offline_text);
+
+      - lambda: |-
+          if (!id(normal_device_detail_active) || (id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_CURTAIN)) return;
+          lv_obj_add_flag(id(normal_curtain_detail_0_img), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_curtain_detail_100_img), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_curtain_detail_x_img), LV_OBJ_FLAG_HIDDEN);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          id(apply_normal_entity_icon).execute(id(normal_curtain_entity_icon),
+              id(ui_presenter)->get_normal_device_entity_id(slot),
+              id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
 
   - id: refresh_normal_settings_detail_page
     mode: restart
@@ -2311,6 +2353,68 @@ script:
                 service: script.turn_on
                 data:
                   entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);
+
+  - id: retry_normal_entity_state
+    then:
+      - lambda: |-
+          if (!id(normal_ha_api_connected) || !id(normal_device_detail_active)) return;
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          custom_logic_entity_sub::queue_entity_refresh(entity, true);
+          id(ui_presenter)->notify_user_activity();
+
+  - id: apply_normal_entity_icon
+    parameters:
+      widget: lv_obj_t*
+      entity: string
+      type: string
+      active: bool
+    then:
+      - lambda: |-
+          esphome::image::Image *fallback = id(fallback_toggle_switch_img);
+          const auto name = onx_icon_state::fallback(entity, type);
+          if (name == "power-plug") fallback = id(fallback_power_plug_img);
+          if (name == "lightbulb") fallback = id(fallback_lightbulb_img);
+          if (name == "window-shutter") fallback = id(fallback_window_shutter_img);
+          if (name == "thermostat") fallback = id(fallback_thermostat_img);
+          if (name == "fan") fallback = id(fallback_fan_img);
+          if (name == "music-note") fallback = id(fallback_music_note_img);
+          if (name == "gauge") fallback = id(fallback_gauge_img);
+          if (name == "checkbox-marked-circle-outline") fallback = id(fallback_checkbox_marked_circle_outline_img);
+          if (name == "counter") fallback = id(fallback_counter_img);
+          if (name == "format-list-bulleted") fallback = id(fallback_format_list_bulleted_img);
+          if (name == "palette") fallback = id(fallback_palette_img);
+          if (name == "gesture-tap-button") fallback = id(fallback_gesture_tap_button_img);
+          if (name == "script-text") fallback = id(fallback_script_text_img);
+          if (name == "robot") fallback = id(fallback_robot_img);
+          if (name == "weather-partly-cloudy") fallback = id(fallback_weather_partly_cloudy_img);
+          if (name == "timer-outline") fallback = id(fallback_timer_outline_img);
+          if (name == "toggle-switch") fallback = id(fallback_toggle_switch_img);
+          id(entity_icon_downloader)->bind(widget, onx_icon_state::selected_icon(entity), fallback, active);
+
+  - id: refresh_normal_media_progress
+    then:
+      - lambda: |-
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          auto *detail = custom_logic_entity_sub::entity_detail(entity);
+          const bool visible = id(normal_device_detail_active) && !id(screen_off_state) &&
+                               id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() &&
+                               entity.rfind("media_player.", 0) == 0 && detail != nullptr;
+          if (!visible) { lv_obj_add_flag(id(normal_media_progress_arc), LV_OBJ_FLAG_HIDDEN); return; }
+          const auto now = id(ha_time).now();
+          // ESPHome wall time is whole seconds; retain the fractional part with millis()
+          // so a 100ms refresh never turns into a one-second stepping animation.
+          static time_t clock_second = 0;
+          static uint32_t clock_changed_ms = 0;
+          if (clock_second != now.timestamp) { clock_second = now.timestamp; clock_changed_ms = millis(); }
+          const double epoch = now.is_valid() ? static_cast<double>(now.timestamp) +
+                               (millis() - clock_changed_ms) / 1000.0 : NAN;
+          const auto view = detail->progress.view(millis(), epoch,
+              id(normal_ha_api_connected) && id(normal_device_detail_online) && detail->available);
+          if (!view.visible) { lv_obj_add_flag(id(normal_media_progress_arc), LV_OBJ_FLAG_HIDDEN); return; }
+          lv_obj_clear_flag(id(normal_media_progress_arc), LV_OBJ_FLAG_HIDDEN);
+          lv_arc_set_value(id(normal_media_progress_arc), view.permille);
+          lv_obj_set_style_arc_color(id(normal_media_progress_arc),
+              lv_color_hex(detail->state == "paused" ? 0xFFBC66 : 0x62B0FF), LV_PART_INDICATOR);
 
   - id: refresh_normal_media_cover
     then:

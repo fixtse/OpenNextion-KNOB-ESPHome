@@ -12,6 +12,10 @@
 #include <ArduinoJson.h>
 #include "onx_timer_state.h"
 #include "onx_control_state.h"
+#include "onx_icon_state.h"
+#include "onx_media_state.h"
+#include "onx_recovery_state.h"
+#include <set>
 #include "esphome.h"
 #include "esphome/components/api/api_server.h"
 #include "esphome/components/select/select.h"
@@ -340,7 +344,8 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 // Runtime values are keyed by entity ID so compact slot reordering cannot mix feedback.
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
-  std::string volume, media_title, media_artist, picture;
+  std::string volume, media_title, media_artist, picture, media_content_id;
+  onx_media::Progress progress;
   std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode;
   std::string percentage, oscillating, direction, sources, source, muted;
   uint32_t features{0}, received_ms{0};
@@ -363,6 +368,12 @@ inline EntityDetailState *entity_detail(const std::string &entity_id) {
   for (auto &detail : entity_details)
     if (detail.entity_id == entity_id) return &detail;
   return nullptr;
+}
+
+inline const char *entity_offline_text(const std::string &entity_id) {
+  const auto *detail = entity_detail(entity_id);
+  return detail == nullptr || !detail->received ? "Waiting for initial data\nPress to retry"
+                                               : "Entity unavailable\nPress to retry";
 }
 
 inline bool is_timer_detail(const std::string &entity_id) {
@@ -438,14 +449,23 @@ class DeviceSlotStateUpdater {
       return;
     }
     if (custom_logic::cached_device_entity_id(this->slot_) != this->entity_id_) return;
+    if (field == "icon") {
+      auto &icon = onx_icon_state::metadata[this->slot_];
+      icon.bind(this->entity_id_);
+      icon.runtime = onx_icon_state::valid_icon(value) ? value : "";
+      return;
+    }
     const size_t ui_slot = this->ui_slot_();
-    if (this->is_light_() && ui_slot != static_cast<size_t>(-1) &&
+    const bool missing_state = field == "state" && (value.empty() || value == "unknown" ||
+                                value == "unavailable" || value == "None" || value == "null");
+    if (!missing_state && this->is_light_() && ui_slot != static_cast<size_t>(-1) &&
         this->defer_nonmatching_light_feedback_(ui_slot, field, value)) {
       return;
     }
     if (field == "state") {
       const bool stateless = has_prefix(this->entity_id_, "scene.") || has_prefix(this->entity_id_, "button.") || has_prefix(this->entity_id_, "input_button.");
-      const bool online = !value.empty() && (value != "unknown" || stateless) && value != "unavailable";
+      const bool online = !value.empty() && (value != "unknown" || stateless) && value != "unavailable" &&
+                          value != "None" && value != "none" && value != "null";
       if (ui_slot == static_cast<size_t>(-1)) {
         // ESP_LOGI(TAG, "%s state ignored; no compact UI slot for entity=%s", this->slot_label_().c_str(),
         //          this->entity_id_.c_str());
@@ -470,6 +490,7 @@ class DeviceSlotStateUpdater {
         detail.entity_id = this->entity_id_;
       }
       if (field == "state") {
+        if (has_prefix(this->entity_id_, "media_player.")) detail.progress.set_state(value, millis());
         detail.state = value;
         detail.voice_timer = false;
         if (has_prefix(this->entity_id_, "sensor.") && value.size() <= 255) {
@@ -496,6 +517,21 @@ class DeviceSlotStateUpdater {
       else if (field == "remaining") detail.timer_remaining = value;
       else if (field == "finishes_at") detail.timer_finishes_at = value;
       else if (field == "unit_of_measurement") detail.unit = value;
+      else if (field == "media_duration") detail.progress.set_duration(detail_number(value));
+      else if (field == "media_position") detail.progress.set_position(detail_number(value), millis());
+      else if (field == "media_position_updated_at") {
+        time_t stamp = 0;
+        double epoch = NAN;
+        if (parse_ha_datetime_epoch(value, &stamp)) {
+          epoch = static_cast<double>(stamp);
+          const size_t dot = value.find('.', 19);
+          if (dot != std::string::npos) epoch += strtod(value.c_str() + dot, nullptr);
+        }
+        detail.progress.set_updated_at(epoch);
+      }
+      else if (field == "media_content_id") {
+        if (detail.media_content_id != value) { detail.progress.new_track(); detail.media_content_id = value; }
+      }
       else if (field == "volume_level") detail.volume = value;
       else if (field == "media_title") detail.media_title = value;
       else if (field == "media_artist") detail.media_artist = value;
@@ -982,6 +1018,9 @@ inline void subscribe_field(esphome::api::APIServer *api_server, size_t slot, co
     ESP_LOGI(TAG, "%s has no valid HA entity subscription", custom_logic::device_slot_label(slot).c_str());
     return;
   }
+  static std::array<std::set<std::string>, custom_logic::CONFIGURABLE_DEVICE_SLOT_COUNT> registered;
+  const std::string key = entity_id + "\n" + attribute;
+  if (slot >= registered.size() || !registered[slot].insert(key).second) return;
   api_server->subscribe_home_assistant_state(
       entity_id, esphome::optional<std::string>(attribute),
       [slot, entity_id, field](esphome::StringRef value) {
@@ -1000,6 +1039,7 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
   }
 
   subscribe_field(api_server, slot, entity_id, "state", "");
+  subscribe_field(api_server, slot, entity_id, "icon", "icon");
 
   if (has_prefix(entity_id, "sensor.") || has_prefix(entity_id, "binary_sensor.")) {
     subscribe_field(api_server, slot, entity_id, "unit_of_measurement", "unit_of_measurement");
@@ -1010,7 +1050,7 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
     for (const char *attribute : weather_attributes())
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "media_player.")) {
-    for (const char *attribute : {"volume_level", "media_title", "media_artist", "entity_picture", "supported_features", "source_list", "source", "is_volume_muted"})
+    for (const char *attribute : {"media_content_id", "media_duration", "media_position", "media_position_updated_at", "volume_level", "media_title", "media_artist", "entity_picture", "supported_features", "source_list", "source", "is_volume_muted"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "climate.")) {
     for (const char *attribute : {"current_temperature", "temperature", "target_temp_low", "target_temp_high",
@@ -1041,6 +1081,68 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
   }
 
   ESP_LOGI(TAG, "%s subscribed HA entity: %s", custom_logic::device_slot_label(slot).c_str(), entity_id.c_str());
+}
+
+// Recovery reads use existing callbacks and one-shot Native API requests. They do not
+// add subscriptions, reconnect Wi-Fi, replay actions, or grow the subscription table.
+inline std::array<onx_recovery::Retry, 10> recovery_policy;
+inline std::vector<std::string> recovery_queue;
+inline std::string recovering_entity;
+inline size_t recovery_cursor{0};
+inline uint32_t recovery_started_ms{0}, recovery_manual_ms{0};
+inline bool recovery_manual_once{false};
+inline bool queue_entity_refresh(const std::string &entity, bool manual) {
+  const uint32_t now = millis();
+  if (!is_valid_entity_id(entity)) return false;
+  if (manual && recovery_manual_once && now - recovery_manual_ms < 2000) return false;
+  if (recovering_entity == entity || std::find(recovery_queue.begin(), recovery_queue.end(), entity) != recovery_queue.end()) return false;
+  if (recovery_queue.size() >= 11) return false;
+  if (manual) { recovery_manual_ms = now; recovery_manual_once = true; cancel_controls(); }
+  recovery_queue.push_back(entity);
+  return true;
+}
+inline void recover_entity_states(esphome::api::APIServer *api, bool connected) {
+#ifdef USE_API_HOMEASSISTANT_STATES
+  const uint32_t now = millis();
+  if (!api || !connected) {
+    recovery_queue.clear(); recovering_entity.clear(); recovery_cursor = 0;
+    for (auto &retry : recovery_policy) { retry.since = now; retry.delay = 10000; }
+    return;
+  }
+  for (size_t slot = 0; slot < recovery_policy.size(); ++slot) {
+    const auto entity = custom_logic::cached_device_entity_id(slot);
+    const auto *detail = entity_detail(entity);
+    const bool ready = detail != nullptr && detail->received && detail->available;
+    if (is_valid_entity_id(entity) && recovery_policy[slot].due(entity, ready, now)) {
+      queue_entity_refresh(entity, false);
+      recovery_policy[slot].attempted(now);
+    }
+  }
+  if (recovering_entity.empty()) {
+    if (recovery_queue.empty()) return;
+    recovering_entity = std::move(recovery_queue.front()); recovery_queue.erase(recovery_queue.begin());
+    recovery_cursor = 0; recovery_started_ms = now;
+  }
+  bool still_selected = custom_logic::cached_standby_weather_entity_id == recovering_entity;
+  for (size_t slot = 0; slot < recovery_policy.size(); ++slot)
+    still_selected |= custom_logic::cached_device_entity_id(slot) == recovering_entity;
+  if (!still_selected || now - recovery_started_ms > 15000) { recovering_entity.clear(); return; }
+  const auto &subscriptions = api->get_state_subs();
+  while (recovery_cursor < subscriptions.size()) {
+    const auto &sub = subscriptions[recovery_cursor];
+    if (sub.entity_id == nullptr || recovering_entity != sub.entity_id) { ++recovery_cursor; continue; }
+    esphome::api::SubscribeHomeAssistantStateResponse request;
+    request.entity_id = esphome::StringRef(sub.entity_id);
+    request.attribute = esphome::StringRef(sub.attribute == nullptr ? "" : sub.attribute);
+    request.once = true;
+    bool sent = false;
+    for (const auto &client : api->active_clients())
+      if (client != nullptr && client->is_connection_setup()) sent |= client->send_message(request);
+    if (sent) ++recovery_cursor;
+    return; // At most one field per 100ms; retry the cursor on transport backpressure.
+  }
+  recovering_entity.clear();
+#endif
 }
 
 inline void subscribe_standby_weather_field(esphome::api::APIServer *api_server, const std::string &entity_id,

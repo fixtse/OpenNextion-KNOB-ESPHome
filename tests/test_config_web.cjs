@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
   const html = fs.readFileSync('my_components/onx_config_web/config_page.h','utf8').split('R"ONXHTML(')[1].split(')ONXHTML";')[0];
   const entities = [
    {entity:'sensor.living_room_temperature',name:'Living room temperature',area:'Living room'},
-   {entity:'fan.office',name:'Office fan',area:'Office'},
+   {entity:'fan.office',name:'Office fan',area:'Office',icon:'mdi:ceiling-fan',iconOverride:'1'},
    {entity:'select.office_mode',name:'Office mode',area:'Office'},
    {entity:'binary_sensor.front_door',name:'Front door',area:'Hallway'},
    {entity:'script.comfort',name:'Comfort scene',area:'Living room'},
@@ -77,10 +77,17 @@ const { chromium } = require('playwright');
   await page.getByRole('button',{name:'Office fan'}).click();
   assert.equal(await page.locator('#choose-action').isDisabled(),true);
   assert.match(await page.locator('#rotate-hint').textContent(),/speed/);
+  await page.locator('#save').click();
+  await page.getByRole('status').filter({hasText:'1 slot saved.'}).waitFor();
+  assert.equal(saved.at(-1).icon,'mdi:ceiling-fan');assert.equal(saved.at(-1).icon_override,'1');
   await page.locator('#choose-entity').click();
   await page.locator('#search').fill('Office mode');
   await page.getByRole('button',{name:'Office mode'}).click();
   assert.match(await page.locator('#press-hint').textContent(),/Confirm option/);
+  await page.getByRole('button',{name:'Home Assistant',exact:true}).click();
+  await page.locator('#retry-states').click();
+  await page.getByRole('status').filter({hasText:'Entity state refresh queued'}).waitFor();
+  await page.getByRole('button',{name:'Display & actions',exact:true}).click();
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
   assert.equal(overflow,false,'Mobile page must not overflow horizontally');

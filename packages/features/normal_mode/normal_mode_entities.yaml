@@ -1663,6 +1663,109 @@ image:
     type: RGB565
     transparency: alpha_channel
 
+  - platform: file
+    file: "../../../assets/entity_icons/power-plug.svg"
+    id: fallback_power_plug_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/lightbulb.svg"
+    id: fallback_lightbulb_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/window-shutter.svg"
+    id: fallback_window_shutter_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/thermostat.svg"
+    id: fallback_thermostat_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/fan.svg"
+    id: fallback_fan_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/music-note.svg"
+    id: fallback_music_note_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/gauge.svg"
+    id: fallback_gauge_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/checkbox-marked-circle-outline.svg"
+    id: fallback_checkbox_marked_circle_outline_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/counter.svg"
+    id: fallback_counter_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/format-list-bulleted.svg"
+    id: fallback_format_list_bulleted_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/palette.svg"
+    id: fallback_palette_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/gesture-tap-button.svg"
+    id: fallback_gesture_tap_button_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/script-text.svg"
+    id: fallback_script_text_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/robot.svg"
+    id: fallback_robot_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/weather-partly-cloudy.svg"
+    id: fallback_weather_partly_cloudy_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/timer-outline.svg"
+    id: fallback_timer_outline_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/entity_icons/toggle-switch.svg"
+    id: fallback_toggle_switch_img
+    resize: 80x80
+    type: RGB565
+    transparency: alpha_channel
+
   - platform: online_image
     id: media_cover_image
     url: http://homeassistant.local:8123/

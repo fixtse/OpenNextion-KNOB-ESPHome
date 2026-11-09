@@ -14,7 +14,7 @@ start a routine, or check what matters—all from a round display and a single k
 | Lights | Switch power, dim brightness, adjust color, and fine-tune color temperature. |
 | Climate | Set temperature, change HVAC mode, adjust range endpoints, and choose supported presets, fan, swing, and humidity settings. |
 | Fans | Adjust speed, toggle power, and choose supported presets, oscillation, or direction. |
-| Media | Adjust volume, skip tracks, select a source, and mute supported players. |
+| Media | Adjust volume, skip tracks, select a source, mute supported players, and follow playback on a circular progress ring. |
 | Switches & covers | Control switches, plugs, and cover position. |
 | Helpers & routines | Adjust numbers, confirm select options, activate scenes, press buttons, and run scripts or automations. |
 | At a glance | View sensors, weather, and timer countdowns with an animated progress ring. |
@@ -25,10 +25,11 @@ Available settings adapt to the capabilities of each Home Assistant entity.
 
 - **Ten configurable slots.** Search by name, entity, or room; reorder and duplicate your controls.
 - **Simple rotary input.** Turn to adjust, press to act, and hold to return. Hold and turn to choose secondary settings where available.
+- **Your Home Assistant icons.** Download the MDI icons chosen for your entities, with built-in defaults when a download is unavailable.
 - **Clear feedback.** See requested values immediately, confirmation from Home Assistant, and connection or timeout messages.
 - **Built-in configuration page.** Set up from your phone or computer, with themes, unsaved-change recovery, and configuration backup and restore.
 - **A display that fits your day.** Choose brightness, knob sensitivity, standby weather, and a sleep schedule.
-- **Easy upkeep.** Wi-Fi provisioning, automatic reconnection, and wireless firmware updates.
+- **Easy upkeep.** Wi-Fi provisioning, automatic state recovery, manual retry without restarting, and wireless firmware updates.
 
 ## Get started
 

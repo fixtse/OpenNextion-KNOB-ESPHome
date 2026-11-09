@@ -1172,6 +1172,12 @@ lvgl:
             scrollable: false
             widgets:
               - image:
+                  id: normal_switch_entity_icon
+                  align: top_mid
+                  y: 40
+                  src: fallback_toggle_switch_img
+                  scale: 1.0
+              - image:
                   id: normal_device_detail_switch_off
                   x: 0
                   y: 40
@@ -1318,6 +1324,26 @@ lvgl:
             scrollable: false
             widgets:
               - arc:
+                  id: normal_media_progress_arc
+                  align: center
+                  width: 238
+                  height: 238
+                  adjustable: false
+                  clickable: false
+                  min_value: 0
+                  max_value: 1000
+                  value: 0
+                  start_angle: 0
+                  end_angle: 360
+                  rotation: 270
+                  arc_width: 4
+                  arc_color: 0x414850
+                  arc_rounded: true
+                  indicator:
+                    arc_width: 4
+                    arc_color: 0x62B0FF
+                  hidden: true
+              - arc:
                   id: normal_timer_detail_arc
                   x: 0
                   y: 20
@@ -1460,6 +1486,12 @@ lvgl:
             pad_all: 0
             scrollable: false
             widgets:
+              - image:
+                  id: normal_light_entity_icon
+                  align: top_mid
+                  y: 40
+                  src: fallback_toggle_switch_img
+                  scale: 1.0
               - image:
                   id: normal_light_device_detail_switch_off
                   x: 0
@@ -1735,6 +1767,12 @@ lvgl:
             pad_all: 0
             scrollable: false
             widgets:
+              - image:
+                  id: normal_curtain_entity_icon
+                  align: top_mid
+                  y: 40
+                  src: fallback_toggle_switch_img
+                  scale: 1.0
               - arc:
                   id: normal_curtain_detail_arc
                   x: 0

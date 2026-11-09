@@ -84,13 +84,14 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   query.op = request->arg("op"); query.entity = request->arg("entity"); query.action = request->arg("action");
   query.name = request->arg("name"); query.area = request->arg("area");
   query.action_name = request->arg("action_name"); query.type = request->arg("type");
+  query.icon = request->arg("icon"); query.icon_override = request->arg("icon_override");
   query.search = request->arg("q"); query.domain = request->arg("domain");
   query.brightness = request->arg("brightness"); query.standby = request->arg("standby");
   query.sensitivity = request->arg("sensitivity"); query.sleep_enabled = request->arg("sleep_enabled");
   query.sleep_start = request->arg("sleep_start"); query.sleep_end = request->arg("sleep_end");
   query.sleep_timeout = request->arg("sleep_timeout");
   unsigned slot = 0, offset = 0;
-  if (query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
+  if (query.icon.size() > 80 || query.icon_override.size() > 1 || query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
       query.search.size() > 128 || query.domain.size() > 32 ||
       query.brightness.size() > 3 || query.standby.size() > 3 || query.sensitivity.size() > 1 ||
       query.sleep_enabled.size() > 1 || query.sleep_start.size() > 5 || query.sleep_end.size() > 5 || query.sleep_timeout.size() > 4 ||

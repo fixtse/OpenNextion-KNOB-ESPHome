@@ -17,7 +17,9 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
     if(m.some(v=>['rgb','rgbw','rgbww','xy','hs'].includes(v)))types.push('RGB Light');
    }else if(s.entity_id.startsWith('cover.')){types.push('Cover (Preset Off)');if((Number(a.supported_features)||0)&4)types.push('Cover (Preset On)');}
    const type=types.at(-1)||'';
-   return {entity:s.entity_id,name:a.friendly_name||r.en||r.name||s.entity_id,area:rooms.get(r.ai||r.area_id||deviceRooms.get(r.di||r.device_id))||'',type,types:types.length?types:undefined};
+   const registryIcon=r.ic||r.icon||'';
+   const icon=/^mdi:[a-z0-9-]{1,76}$/.test(registryIcon)?registryIcon:/^mdi:[a-z0-9-]{1,76}$/.test(a.icon||'')?a.icon:'';
+   return {entity:s.entity_id,icon,iconOverride:icon&&icon===registryIcon?'1':'0',name:a.friendly_name||r.en||r.name||s.entity_id,area:rooms.get(r.ai||r.area_id||deviceRooms.get(r.di||r.device_id))||'',type,types:types.length?types:undefined};
   }).concat(local()).sort((a,b)=>(a.area+' '+a.name+' '+a.entity).localeCompare(b.area+' '+b.name+' '+b.entity));
  }
  function search(items,q,domain,offset=0){

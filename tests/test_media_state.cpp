@@ -22,4 +22,27 @@ int main() {
   requested_url=origin+"/api/media_player_proxy/player"; assert(artwork_needs_auth());
   requested_url="https://external.example/album.png"; assert(!artwork_needs_auth());
   requested_url=origin+".evil.example/cover"; assert(!artwork_needs_auth());
+  Progress p;
+  p.set_state("playing", 1000); p.set_duration(200); p.set_position(20, 1000); p.set_updated_at(1000);
+  auto view = p.view(2000, 1005.5, true);
+  assert(view.visible && std::fabs(view.seconds - 25.5f) < .001f && view.permille == 128);
+  p.set_state("paused", 2100); view = p.view(9000, 1012.5, true);
+  assert(view.visible && std::fabs(view.seconds - 25.6f) < .001f);
+  p.set_state("playing", 9000); view = p.view(10000, 1013.5, true);
+  assert(std::fabs(view.seconds - 26.6f) < .001f);
+  p.set_position(80, 10000); p.set_updated_at(1013.5); // Seek feedback replaces interpolation.
+  view = p.view(10500, 1014, true); assert(std::fabs(view.seconds - 80.5f) < .001f);
+  assert(!p.view(11000, 1015, false).visible);
+  p.new_track(); assert(!p.view(11000, 1015, true).visible);
+  p.set_position(0, 11000); p.set_updated_at(1015);
+  view = p.view(11100, 1015.1, true); assert(view.visible && view.seconds < .11f);
+  p.new_track(); p.set_updated_at(1016); // Same zero position need not be resent for a new track.
+  assert(p.view(12000, 1016.1, true).visible);
+  p.set_duration(0); assert(!p.view(12000, 1016.2, true).visible); // Live/unknown-duration streams.
+  p.set_duration(NAN); assert(!p.view(12000, 1016.2, true).visible);
+  p.set_duration(10); p.set_position(999, 13000);
+  assert(p.view(13000, NAN, true).permille == 1000);
+  p.set_position(0, UINT32_MAX - 500); p.updated_epoch = NAN;
+  assert(std::fabs(p.view(499, NAN, true).seconds - 1) < .01f);
+  p.set_state("idle", 500); assert(!p.view(500, NAN, true).visible);
 }

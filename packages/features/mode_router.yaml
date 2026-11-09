@@ -11,6 +11,7 @@ external_components:
       - onx_mode_manager
       - onx_ui
       - onx_config_web
+      - onx_icons
 
 # Shared runtime state for all future modes.
 onx_app_state:
@@ -36,10 +37,25 @@ onx_ui:
   storage_id: app_storage
 
 
+onx_icons:
+  id: entity_icon_downloader
+
 onx_config_web:
   id: entity_config_web
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "retry") {
+      static bool retried = false;
+      static uint32_t last_retry = 0;
+      if (retried && millis() - last_retry < 2000) return onx_entity_config::error("Wait a moment before retrying");
+      retried = true; last_retry = millis();
+      custom_logic_entity_sub::cancel_controls();
+      for (size_t slot = 0; slot < 10; ++slot)
+        custom_logic_entity_sub::queue_entity_refresh(custom_logic::cached_device_entity_id(slot), false);
+      custom_logic_entity_sub::queue_entity_refresh(custom_logic::cached_standby_weather_entity_id, false);
+      custom_logic::disconnect_all_clients_for_refresh(id(api_server));
+      return std::string("{\"ok\":true}");
+    }
     if (query.op == "settings_state") {
       return esphome::json::build_json([&](JsonObject root) {
         root["brightness"] = std::to_string(std::clamp(id(normal_brightness_value), 10, 100));
@@ -101,6 +117,9 @@ onx_config_web:
           !custom_logic::is_supported_normal_device_entity_id(query.entity.c_str()))) ||
         !onx_config::valid_action(query.action) || (query.entity.empty() && !query.action.empty()))
       return onx_entity_config::error("Select a supported entity and an automation or script action");
+    if ((!query.icon.empty() && !onx_icon_state::valid_icon(query.icon)) ||
+        (query.icon_override != "" && query.icon_override != "0" && query.icon_override != "1"))
+      return onx_entity_config::error("Choose a valid MDI icon");
     const auto domain = custom_logic::ha_domain_from_entity_id(query.entity);
     if (onx_controls::handles(query.entity) && !query.action.empty())
       return onx_entity_config::error("This entity uses native press controls; choose Default");
@@ -115,6 +134,8 @@ onx_config_web:
     if (!onx_entity_config::save_action(query.slot, query.entity, query.action))
       return onx_entity_config::error("Entity saved, but press action could not be saved; retry");
     if (!onx_entity_config::save_selected_metadata(query)) return onx_entity_config::error("Could not save selected entity details");
+    if (!onx_entity_config::save_icon(query.slot, query.entity, query.icon, query.icon_override == "1"))
+      return onx_entity_config::error("Could not save selected entity icon");
     auto &config = custom_logic::device_inferred_config(query.slot);
     config.title = query.name.empty() ? query.entity : query.name;
     if (!query.type.empty()) {

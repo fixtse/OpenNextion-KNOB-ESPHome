@@ -10,6 +10,7 @@ esphome:
     priority: -100
     then:
       - lambda: |-
+          onx_entity_config::load_icons();
           set_normal_ui_storage_for_custom_logic(id(app_storage));
           restore_device1_config_for_select(id(device1_config), id(api_server));
           restore_device2_config_for_select(id(device2_config), id(api_server));

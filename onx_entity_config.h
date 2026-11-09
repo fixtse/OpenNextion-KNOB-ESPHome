@@ -1,6 +1,7 @@
 #pragma once
 #include "custom_logic.h"
 #include "onx_config_rules.h"
+#include "onx_icon_state.h"
 #include "esphome/components/onx_config_web/onx_config_web.h"
 
 namespace onx_entity_config {
@@ -55,8 +56,44 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
 inline std::string error(const char *message) {
   return esphome::json::build_json([&](JsonObject root) { root["error"] = message; });
 }
+struct StoredIcon {
+  uint32_t magic{0x4F4E5849};
+  char entity[129]{}, icon[81]{};
+  bool registry_override{false};
+};
+inline bool icons_loaded{false};
+inline esphome::ESPPreferenceObject icon_preferences[10];
+inline void load_icons() {
+  if (icons_loaded || esphome::global_preferences == nullptr) return;
+  for (size_t i = 0; i < 10; ++i) {
+    icon_preferences[i] = esphome::global_preferences->make_preference<StoredIcon>(
+        esphome::fnv1_hash("onx.entity_icon.v1." + std::to_string(i)));
+    StoredIcon stored;
+    if (icon_preferences[i].load(&stored) && stored.magic == 0x4F4E5849) {
+      stored.entity[128] = 0; stored.icon[80] = 0;
+      if (onx_config::valid_entity(stored.entity) && (stored.icon[0] == 0 || onx_icon_state::valid_icon(stored.icon))) {
+        auto &meta = onx_icon_state::metadata[i];
+        meta.bind(stored.entity); meta.configured = stored.icon; meta.registry_override = stored.registry_override;
+      }
+    }
+  }
+  icons_loaded = true;
+}
+inline bool save_icon(size_t slot, const std::string &entity, const std::string &icon, bool override) {
+  load_icons();
+  if (!icons_loaded || slot >= 10 || (!icon.empty() && !onx_icon_state::valid_icon(icon))) return false;
+  StoredIcon stored;
+  custom_logic::copy_string_to_fixed_buffer(entity, stored.entity);
+  custom_logic::copy_string_to_fixed_buffer(icon, stored.icon);
+  stored.registry_override = override;
+  if (!icon_preferences[slot].save(&stored) || !esphome::global_preferences->sync()) return false;
+  auto &meta = onx_icon_state::metadata[slot];
+  meta.bind(entity); meta.configured = icon; meta.registry_override = override;
+  return true;
+}
 inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false) {
   custom_logic::load_ha_entities_if_needed();
+  load_icons();
   return esphome::json::build_json([&](JsonObject root) {
     root["wifi_connected"] = wifi_connected;
     root["ha_connected"] = ha_connected;
@@ -80,6 +117,10 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       custom_logic::load_device_config_if_needed(i);
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
+      const auto &icon = onx_icon_state::metadata[i];
+      const bool same_icon_entity = icon.entity == custom_logic::cached_device_entity_id(i);
+      slot["icon"] = same_icon_entity ? icon.configured : "";
+      slot["iconOverride"] = same_icon_entity && icon.registry_override ? "1" : "0";
       slot["name"] = custom_logic::ha_entity_title_from_registry_cache(custom_logic::cached_device_entity_id(i));
       for (size_t j = 0; j < custom_logic::cached_ha_entities().count; ++j) {
         const auto &entry = custom_logic::cached_ha_entities().entities[j];
