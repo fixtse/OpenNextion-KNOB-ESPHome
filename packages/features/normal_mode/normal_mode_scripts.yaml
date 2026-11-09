@@ -2399,7 +2399,8 @@ script:
               id(screen_off_state) || id(ui_presenter)->is_standby_active()) return;
           if (desired == onx_media::requested_url && millis() - onx_media::requested_ms < 30000) return;
           // Hide the old descriptor before the downloader replaces its backing buffer.
-          lv_img_cache_invalidate_src(id(media_cover_image)->get_lv_image_dsc());
+          lv_image_cache_drop(id(media_cover_image)->get_lv_image_dsc());
+          lv_image_header_cache_drop(id(media_cover_image)->get_lv_image_dsc());
           onx_media::ready_url.clear();
           onx_media::requested_url = desired;
           onx_media::ha_origin = origin;

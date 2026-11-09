@@ -364,7 +364,7 @@ inline bool is_timer_detail(const std::string &entity_id) {
 inline std::string next_climate_mode(const std::string &entity_id) {
   auto *detail = entity_detail(entity_id);
   if (detail == nullptr) return "";
-  StaticJsonDocument<512> doc;
+  JsonDocument doc = custom_logic::make_psram_json_document();
   if (deserializeJson(doc, detail->modes) != DeserializationError::Ok || !doc.is<JsonArray>()) return "";
   JsonArray modes = doc.as<JsonArray>();
   if (modes.size() == 0) return "";
@@ -418,7 +418,7 @@ class DeviceSlotStateUpdater {
         detail.state = value;
         detail.voice_timer = false;
         if (has_prefix(this->entity_id_, "sensor.") && value.size() <= 255) {
-          StaticJsonDocument<768> doc;
+          JsonDocument doc = custom_logic::make_psram_json_document();
           if (deserializeJson(doc, value) == DeserializationError::Ok &&
               doc["schema"] == "onx.timer.v1" && doc["duration"].is<double>() &&
               doc["remaining"].is<double>()) {
@@ -635,7 +635,7 @@ class DeviceSlotStateUpdater {
       return true;
     }
     if (field == "hs_color") {
-      StaticJsonDocument<128> doc;
+      JsonDocument doc = custom_logic::make_psram_json_document();
       int rgb_tick = -1;
       if (deserializeJson(doc, value) == DeserializationError::Ok && doc.is<JsonArray>()) {
         JsonArray hs = doc.as<JsonArray>();
@@ -769,7 +769,7 @@ class DeviceSlotStateUpdater {
   }
 
   void apply_hs_color_(const std::string &value) {
-    StaticJsonDocument<128> doc;
+    JsonDocument doc = custom_logic::make_psram_json_document();
     if (deserializeJson(doc, value) != DeserializationError::Ok || !doc.is<JsonArray>()) {
       return;
     }
@@ -832,7 +832,7 @@ class DeviceSlotStateUpdater {
   }
 
   void apply_supported_color_modes_(const std::string &value) {
-    StaticJsonDocument<256> doc;
+    JsonDocument doc = custom_logic::make_psram_json_document();
     if (deserializeJson(doc, value) != DeserializationError::Ok || !doc.is<JsonArray>()) {
       return;
     }
