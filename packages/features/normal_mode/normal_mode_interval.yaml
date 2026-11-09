@@ -1,8 +1,6 @@
 interval:
   - interval: 1s
     then:
-      - lambda: |-
-          maintain_ha_websocket(id(ha_host).state, id(normal_wifi_connected), nullptr);
       # A Native API client becomes identifiable as HA only after it subscribes
       # to states, which happens after on_client_connected. Keep this derived
       # state authoritative and self-healing.

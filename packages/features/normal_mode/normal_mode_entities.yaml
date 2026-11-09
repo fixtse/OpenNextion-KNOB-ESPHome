@@ -168,23 +168,15 @@ button:
   - platform: template
     name: "8. Refresh Entity List"
     id: fetch_entities_btn
+    internal: true
     entity_category: config
     on_press:
       - lambda: |-
-          if (id(ha_host).state.empty()) {
-            id(ha_host).publish_state("homeassistant.local");
-          }
-          request_ha_entity_list_over_websocket(id(ha_host).state,
-                                                id(device1_config), id(device2_config),
-                                                id(device3_config), id(device4_config), id(device5_config),
-                                                id(device6_config), id(device7_config), id(device8_config),
-                                                id(device9_config), id(device10_config),
-                                                id(standby_weather_config),
-                                                id(api_server));
-          id(ha_token_status).update();
+          ESP_LOGI("config", "Entity discovery is managed by the browser, not the device");
   - platform: template
     name: "20. Save Entity Config"
     id: save_entity_config_btn
+    internal: true
     entity_category: config
     on_press:
       - lambda: |-
@@ -529,12 +521,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device1_type
+    internal: true
     name: 21. Device1 Config
     optimistic: false
     restore_value: true
@@ -557,12 +550,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device2_type
+    internal: true
     name: 22. Device2 Config
     optimistic: false
     restore_value: true
@@ -585,12 +579,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device3_type
+    internal: true
     name: 23. Device3 Config
     optimistic: false
     restore_value: true
@@ -613,12 +608,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device4_type
+    internal: true
     name: 24. Device4 Config
     optimistic: false
     restore_value: true
@@ -641,12 +637,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device5_type
+    internal: true
     name: 25. Device5 Config
     optimistic: false
     restore_value: true
@@ -669,12 +666,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device6_type
+    internal: true
     name: 26. Device6 Config
     optimistic: false
     restore_value: true
@@ -697,12 +695,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device7_type
+    internal: true
     name: 27. Device7 Config
     optimistic: false
     restore_value: true
@@ -725,12 +724,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device8_type
+    internal: true
     name: 28. Device8 Config
     optimistic: false
     restore_value: true
@@ -753,12 +753,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device9_type
+    internal: true
     name: 29. Device9 Config
     optimistic: false
     restore_value: true
@@ -781,12 +782,13 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:format-list-bulleted
   - platform: template
     id: device10_type
+    internal: true
     name: 30. Device10 Config
     optimistic: false
     restore_value: true
@@ -809,7 +811,7 @@ select:
     initial_option: none
     optimistic: true
     restore_value: false
-    internal: false
+    internal: true
     disabled_by_default: false
     entity_category: config
     icon: mdi:weather-partly-cloudy

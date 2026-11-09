@@ -55,10 +55,16 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
 inline std::string error(const char *message) {
   return esphome::json::build_json([&](JsonObject root) { root["error"] = message; });
 }
-inline std::string state() {
+inline std::string state(const std::string &host = "") {
   custom_logic::load_ha_entities_if_needed();
   return esphome::json::build_json([&](JsonObject root) {
     root["count"] = custom_logic::cached_ha_entities().count;
+    std::string url = custom_logic::build_ha_http_state_url(host, "sensor.placeholder");
+    const auto path = url.find("/api/states/");
+    if (path != std::string::npos) url.resize(path);
+    root["ha_url"] = url;
+    custom_logic::load_standby_weather_config_if_needed();
+    root["weather"] = custom_logic::cached_standby_weather_entity_id;
     root["capacity"] = custom_logic::MAX_HA_ENTITY_COUNT;
 #ifdef ESPHOME_PROJECT_VERSION
     root["firmware"] = ESPHOME_PROJECT_VERSION;
@@ -73,49 +79,44 @@ inline std::string state() {
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
       slot["name"] = custom_logic::ha_entity_title_from_registry_cache(custom_logic::cached_device_entity_id(i));
+      for (size_t j = 0; j < custom_logic::cached_ha_entities().count; ++j) {
+        const auto &entry = custom_logic::cached_ha_entities().entities[j];
+        if (custom_logic::cached_device_entity_id(i) == entry.entity_id) slot["area"] = entry.area_name;
+      }
       slot["action"] = action_for_slot(i);
+      slot["type"] = custom_logic::cached_device_custom_type(i);
+      slot["typeOption"] = custom_logic::ha_domain_from_entity_id(custom_logic::cached_device_entity_id(i)) == "light" ? custom_logic::light_type_option_from_custom_mask(custom_logic::cached_device_custom_light_capability_mask(i)) : custom_logic::ha_domain_from_entity_id(custom_logic::cached_device_entity_id(i)) == "cover" ? (custom_logic::cached_device_custom_light_capability_mask(i) == 0 ? "Cover (Preset Off)" : "Cover (Preset On)") : custom_logic::cached_device_custom_type(i) == "plug" ? "Plug" : "";
       slot["actionName"] = custom_logic::ha_entity_title_from_registry_cache(action_for_slot(i));
     }
   });
 }
-inline std::string lower(std::string value) {
-  for (char &ch : value) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-  return value;
-}
-inline std::string search(const esphome::onx_config_web::Query &query) {
+inline bool save_selected_metadata(const esphome::onx_config_web::Query &query) {
   custom_logic::load_ha_entities_if_needed();
-  const auto &entities = custom_logic::cached_ha_entities();
-  const auto needle = lower(query.search);
-  return esphome::json::build_json([&](JsonObject root) {
-    JsonArray items = root["items"].to<JsonArray>();
-    unsigned found = 0, returned = 0;
-    for (size_t i = 0; i < entities.count; ++i) {
-      const auto &item = entities.entities[i];
-      const std::string entity = item.entity_id;
-      const std::string domain = custom_logic::ha_domain_from_entity_id(entity);
-      const bool action = domain == "automation" || domain == "script";
-      if (query.domain == "actions" && !action) continue;
-      if (!query.domain.empty() && query.domain != "actions" && query.domain != domain) continue;
-      if (!custom_logic::is_supported_normal_device_entity_id(entity.c_str())) continue;
-      const auto haystack = lower(entity + " " + item.friendly_name + " " + item.area_name);
-      if (!needle.empty() && haystack.find(needle) == std::string::npos) continue;
-      if (found++ < query.offset || returned >= 30) continue;
-      auto result = items.add<JsonObject>();
-      result["entity"] = entity; result["name"] = item.friendly_name; result["area"] = item.area_name;
-      ++returned;
+  auto next = custom_logic::make_ram_allocated<custom_logic::StoredHaEntities>();
+  if (!next) return false;
+  next->magic = custom_logic::HA_ENTITIES_MAGIC;
+  const auto &old = custom_logic::cached_ha_entities();
+  auto add = [&](const std::string &entity) {
+    if (!onx_config::valid_entity(entity)) return;
+    for (size_t i = 0; i < next->count; ++i) if (entity == next->entities[i].entity_id) return;
+    if (next->count >= custom_logic::MAX_HA_ENTITY_COUNT) return;
+    auto &item = next->entities[next->count++];
+    for (size_t i = 0; i < old.count; ++i) if (entity == old.entities[i].entity_id) item = old.entities[i];
+    custom_logic::copy_string_to_fixed_buffer(entity, item.entity_id);
+    if (entity == query.entity) {
+      custom_logic::copy_string_to_fixed_buffer(query.name, item.friendly_name);
+      custom_logic::copy_string_to_fixed_buffer(query.area, item.area_name);
     }
-    if (query.domain.empty() || query.domain == "switch") {
-      for (const char *preset : custom_logic::LOCAL_HMI_GPIO_SWITCH_PRESET_OPTIONS) {
-        if (!needle.empty() && lower(preset).find(needle) == std::string::npos) continue;
-        if (found++ < query.offset || returned >= 30) continue;
-        auto result = items.add<JsonObject>();
-        result["entity"] = preset; result["name"] = custom_logic::local_hmi_gpio_switch_display_name_from_entity_id(preset); result["area"] = "On this knob";
-        ++returned;
-      }
-    }
-    root["total"] = found;
-    root["next"] = query.offset + returned < found ? static_cast<int>(query.offset + returned) : -1;
-  });
+    if (entity == query.action) custom_logic::copy_string_to_fixed_buffer(query.action_name, item.friendly_name);
+  };
+  for (size_t i = 0; i < 10; ++i) {
+    custom_logic::load_device_config_if_needed(i);
+    add(custom_logic::cached_device_entity_id(i));
+    add(action_for_slot(i));
+  }
+  custom_logic::load_standby_weather_config_if_needed();
+  add(custom_logic::cached_standby_weather_entity_id);
+  return custom_logic::save_ha_entities(*next);
 }
 }  // namespace onx_entity_config
 

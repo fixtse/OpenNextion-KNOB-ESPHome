@@ -8,7 +8,11 @@ on:
       - 'tests/wifi_stubs/**'
       - 'tests/test_wifi_lifecycle.cpp'
       - 'custom_logic.h'
-      - 'tests/test_entity_discovery.py'
+      - 'my_components/onx_config_web/**'
+      - 'tests/test_browser_catalogue.cjs'
+      - 'tests/test_selected_metadata.py'
+      - 'tests/test_config_web.cjs'
+      - 'onx_entity_config.h'
       - 'tests/test_control_templates.py'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
@@ -31,13 +35,11 @@ jobs:
             my_components/onx_mode_manager/onx_mode_manager.cpp \
             my_components/onx_app_state/onx_app_state.cpp -o /tmp/test_wifi_lifecycle
           /tmp/test_wifi_lifecycle
-      - name: Test production entity discovery beyond 200 entries and YAML-only entities
-        run: |
-          curl --fail --location --silent --show-error \
-            https://github.com/bblanchon/ArduinoJson/archive/refs/tags/v7.4.3.tar.gz \
-            -o /tmp/arduinojson.tar.gz
-          tar -xzf /tmp/arduinojson.tar.gz -C /tmp
-          python3 tests/test_entity_discovery.py /tmp/ArduinoJson-7.4.3/src
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test browser-only Home Assistant discovery and authentication
+        run: node tests/test_browser_catalogue.cjs
       - name: Test climate templates, volume limits and artwork URL handling
         run: |
           python3 -m venv /tmp/onx-control-tests
@@ -50,6 +52,11 @@ jobs:
           c++ -std=c++17 -pthread tests/test_registry_queue.cpp -o /tmp/test_registry_queue
           /tmp/test_registry_queue
           python3 tests/test_registry_persistence.py
+          python3 tests/test_selected_metadata.py
+          c++ -std=c++20 -pthread -Itests/http_stubs tests/test_config_http.cpp my_components/onx_config_web/onx_config_web.cpp -o /tmp/test_config_http
+          /tmp/test_config_http
+      - name: Test web picker saves, actions and mobile layout
+        run: bash scripts/test_config_web.sh
       - name: Resume validation thread
         if: ${{ always() }}
         env:

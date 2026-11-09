@@ -18,18 +18,19 @@ const { chromium } = require('playwright');
   await page.route('http://knob.test/**',async route=>{
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/'||url.pathname==='/knob'){await route.fulfill({contentType:'text/html',body:html});return}
+   if(url.pathname==='/knob/ha.js'){
+    const source=fs.readFileSync('my_components/onx_config_web/ha_browser.h','utf8').split('R"ONXJS(')[1].split(')ONXJS"')[0];
+    const mock=`OnxHA.Client=class {constructor(){this.items=${JSON.stringify(entities)};this.ready=true}read(){return {base:'http://ha.test:8123'}}async finishLogin(){}async load(){return this.items}disconnect(){this.items=[];this.ready=false}};`;
+    await route.fulfill({contentType:'text/javascript',body:source+'\n'+mock});return;
+   }
    if(url.pathname==='/knob/api'){
     const values=new URLSearchParams(request.postData());
     let result;
-    if(values.get('op')==='state')result={count:entities.length,slots};
-    else if(values.get('op')==='search'){
-     const domain=values.get('domain'),q=values.get('q').toLowerCase();
-     const items=entities.filter(e=>(!domain||(domain==='actions'?/^(script|automation)\./.test(e.entity):e.entity.startsWith(domain+'.')))&&JSON.stringify(e).toLowerCase().includes(q));
-     result={items,total:items.length,next:-1};
-    }else if(values.get('op')==='save'){
+    if(values.get('op')==='state')result={count:0,slots,weather:'',ha_url:'http://ha.test:8123'};
+    else if(values.get('op')==='save'){
      if(failSave)result={error:'Could not save the press action; retry'};
      else {saved.push(Object.fromEntries(values));slots[Number(values.get('slot'))]={entity:values.get('entity'),action:values.get('action')};result={ok:true}}
-    }else result={ok:true};
+    }else if(values.get('op')==='refresh'||values.get('op')==='search')throw Error('Catalogue must stay in browser');else result={ok:true};
     results.set(++ticket,result);await route.fulfill({status:202,json:{ticket}});return;
    }
    if(url.pathname==='/knob/result'){await route.fulfill({json:results.get(Number(url.searchParams.get('ticket')))});return}

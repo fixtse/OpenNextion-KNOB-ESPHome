@@ -1,5 +1,6 @@
 #include "onx_config_web.h"
 #include "config_page.h"
+#include "ha_browser.h"
 #include "esphome/components/wifi/wifi_component.h"
 #include <array>
 #include <charconv>
@@ -42,6 +43,12 @@ void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::st
 void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
+  if (url == "/knob/ha.js" && request->method() == HTTP_GET) {
+    auto *response = request->beginResponse(200, "text/javascript; charset=utf-8", HA_BROWSER_JS);
+    response->addHeader("Cache-Control", "no-store");
+    request->send(response);
+    return;
+  }
   if ((url == "/" || url == "/knob" || url == "/knob/") && request->method() == HTTP_GET) {
     std::string page(CONFIG_PAGE);
     const auto token = page.find("__ONX_TOKEN__");
@@ -49,6 +56,7 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
     auto *response = request->beginResponse(200, "text/html; charset=utf-8", page);
     response->addHeader("Cache-Control", "no-store");
     response->addHeader("X-Content-Type-Options", "nosniff");
+    response->addHeader("Referrer-Policy", "no-referrer");
     request->send(response);
     return;
   }
@@ -69,13 +77,16 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
       (*origin != "http://" + *host && *origin != "https://" + *host)) {
     respond_(request, 403, "{\"error\":\"Reload this page to authorize configuration\"}"); return;
   }
-  if (request->contentLength() > 2048) { respond_(request, 413, "{\"error\":\"Request too large\"}"); return; }
+  if (request->contentLength() > 4096) { respond_(request, 413, "{\"error\":\"Request too large\"}"); return; }
   Query query;
   query.op = request->arg("op"); query.entity = request->arg("entity"); query.action = request->arg("action");
+  query.name = request->arg("name"); query.area = request->arg("area");
+  query.action_name = request->arg("action_name"); query.type = request->arg("type");
   query.search = request->arg("q"); query.domain = request->arg("domain");
   unsigned slot = 0, offset = 0;
   if (query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
       query.search.size() > 128 || query.domain.size() > 32 ||
+      query.name.size() > 192 || query.area.size() > 192 || query.action_name.size() > 192 || query.type.size() > 32 ||
       (request->hasArg("slot") && (!number(request->arg("slot"), slot) || slot >= 10)) ||
       (request->hasArg("offset") && (!number(request->arg("offset"), offset) || offset > 100000))) {
     respond_(request, 400, "{\"error\":\"Invalid configuration request\"}"); return;

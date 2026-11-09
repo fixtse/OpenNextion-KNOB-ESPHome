@@ -8,7 +8,7 @@
 
 namespace esphome::onx_config_web {
 struct Query {
-  std::string op, entity, action, search, domain;
+  std::string op, entity, action, search, domain, name, area, action_name, type;
   int slot{-1};
   unsigned offset{0};
   uint32_t ticket{0};

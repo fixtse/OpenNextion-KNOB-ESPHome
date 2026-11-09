@@ -29,7 +29,7 @@ namespace custom_logic {
 
 static const char *const TAG = "CustomLogic";
 static constexpr size_t MAX_HA_TOKEN_LENGTH = 255;
-static constexpr size_t MAX_HA_ENTITY_COUNT = 1024;
+static constexpr size_t MAX_HA_ENTITY_COUNT = 21;
 static constexpr size_t LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT = 4;
 static constexpr size_t MAX_HA_ENTITY_OPTION_COUNT =
     MAX_HA_ENTITY_COUNT + 1 + LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT;
@@ -127,7 +127,7 @@ static constexpr uint32_t DEVICE9_CONFIG_MAGIC = 0x4F4E5839;  // ONX9
 static constexpr uint32_t DEVICE10_CONFIG_MAGIC = 0x4F4E5841;  // ONXA
 static constexpr uint32_t STANDBY_WEATHER_CONFIG_MAGIC = 0x4F4E5857;  // ONXW
 static const uint32_t HA_TOKEN_PREF_KEY = esphome::fnv1_hash("ha-long-lived-token-v1");
-static const uint32_t HA_ENTITY_CHUNK_PREF_KEY_BASE = esphome::fnv1_hash("ha-entities-v4-chunk");
+static const uint32_t HA_ENTITY_CHUNK_PREF_KEY_BASE = esphome::fnv1_hash("ha-selected-entities-v5-chunk");
 static const uint32_t HA_AREAS_PREF_KEY = esphome::fnv1_hash("ha-areas-v1");
 static const uint32_t DEVICE1_CONFIG_PREF_KEY = esphome::fnv1_hash("device1-config-v1");
 static const uint32_t DEVICE2_CONFIG_PREF_KEY = esphome::fnv1_hash("device2-config-v1");
@@ -1126,7 +1126,32 @@ inline void load_ha_areas_if_needed() {
   cached_ha_areas = stored;
 }
 
+inline void retire_legacy_ha_catalogue() {
+#ifdef USE_ESP32
+  static bool retired = false;
+  if (retired) return;
+  nvs_handle_t handle;
+  if (nvs_open("esphome", NVS_READWRITE, &handle) != ESP_OK) return;
+  const uint32_t base = esphome::fnv1_hash("ha-entities-v4-chunk");
+  bool ok = true;
+  // Only obsolete catalogue keys: never touch Wi-Fi, slots or press bindings.
+  for (size_t i = 0; i < 52; ++i) {
+    char key[16];
+    snprintf(key, sizeof(key), "%u", static_cast<unsigned>(base + i));
+    const auto error = nvs_erase_key(handle, key);
+    ok = (error == ESP_OK || error == ESP_ERR_NVS_NOT_FOUND) && ok;
+  }
+  char key[16];
+  snprintf(key, sizeof(key), "%u", static_cast<unsigned>(HA_AREAS_PREF_KEY));
+  const auto error = nvs_erase_key(handle, key);
+  ok = (error == ESP_OK || error == ESP_ERR_NVS_NOT_FOUND) && ok;
+  retired = nvs_commit(handle) == ESP_OK && ok;
+  nvs_close(handle);
+#endif
+}
+
 inline void load_ha_entities_if_needed() {
+  retire_legacy_ha_catalogue();
   if (ha_entities_loaded) {
     return;
   }
