@@ -21,6 +21,10 @@ start a routine, or check what matters—all from a round display and a single k
 
 Available settings adapt to the capabilities of each Home Assistant entity.
 
+Display text supports accented Latin characters (for example, Beyoncé) and these monochrome emojis:
+
+❤ ☀ ☁ ☂ ☕ ❄ ⚡ ✅ ❌ ⭐ 🌙 🌞 🌧 🌡 🌈 🎵 🎶 🎧 🎤 🎸 🎹 🎷 🎺 🎻 🥁 📻 💿 📀 🔊 🔇 🔔 🔥 💡 🏠 😀 😊 😂 😍 😎 😢 😭 👍 👏 💙 💚 💛 💜 🎉
+
 ## Make it yours
 
 - **Ten configurable slots.** Search by name, entity, or room; reorder and duplicate your controls.
