@@ -1380,7 +1380,6 @@ image:
     format: AUTO
     type: RGB565
     resize: 100x100
-    buffer_size: 8192
     update_interval: never
     on_download_finished:
       then:

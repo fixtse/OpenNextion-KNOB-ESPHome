@@ -59,8 +59,8 @@ original network file; JPEG requires the complete compressed download and still
 has decode cost for the source dimensions. Artwork is postponed until its URL
 has settled, while icons are downloading, and when internal memory is low.
 Artwork uses a 2.5-second HTTP timeout and a 15-second overall deadline; failed
-URLs back off for a minute. Its initial receive buffer is 8 KB, but JPEG downloads
-can grow it to the compressed file size. Existing OTA request timeouts are kept.
+URLs back off for a minute. Compressed input stays in a bounded PSRAM buffer.
+Existing OTA request timeouts are kept.
 
 Download completion refreshes on the next interval, after downloader cleanup.
 Unavailable players cancel in-progress artwork and discard stale progress.
@@ -72,3 +72,11 @@ breadcrumb can preserve the last media action or artwork event across a crash or
 software reset. It is the last observed event, not a crash backtrace or proof of
 cause; power-on and brownout discard it. No continuous log or flash writes are
 required. Hardware crash reproduction remains unverified without a reset log.
+
+Artwork DNS, TCP/TLS, redirects, and body reads now run in a separate task. Slow
+servers no longer block knob input during network operations. Downloads are
+limited to 512 KB of PSRAM, three redirects, and a 15-second deadline, with
+2.5-second socket timeouts. Cancelled requests cannot display stale artwork.
+JPEG/PNG/BMP content is identified from its bytes. Final decoding remains on the
+main task, so very large source dimensions can still cause a shorter decode
+pause; the network limit does not promise a dimension-independent decode time.

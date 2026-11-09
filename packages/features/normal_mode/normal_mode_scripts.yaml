@@ -2660,7 +2660,7 @@ script:
               id(screen_off_state) || id(ui_presenter)->is_standby_active()) return;
           // Wait for a stable URL and keep concurrent TLS clients off the small
           // internal heap. Cosmetic artwork must not crowd out API/Wi-Fi buffers.
-          if (id(key_btn).state || millis() - onx_media::candidate_ms < 750 ||
+          if (id(media_cover_image)->is_busy() || id(key_btn).state || millis() - onx_media::candidate_ms < 750 ||
               millis() - onx_media::last_artwork_end_ms < 1000 || id(entity_icon_downloader)->busy()) return;
           if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 65536 ||
               heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 32768) return;
@@ -2675,13 +2675,9 @@ script:
           onx_media::downloading = true;
           id(media_cover_image)->set_url(desired);
           onx_runtime::record("artwork_start", entity);
-          // The HTTP connection copies its timeout at creation. Restore the OTA
-          // client's generous timeout immediately after the artwork open call.
-          const auto previous_timeout = id(onx_http_request)->get_timeout();
           id(entity_icon_downloader)->set_artwork_busy(true);
-          id(onx_http_request)->set_timeout(2500);
+          // The local OnlineImage implementation starts only a worker here.
           id(media_cover_image)->update();
-          id(onx_http_request)->set_timeout(previous_timeout);
 
   - id: emit_normal_media_track
     parameters:

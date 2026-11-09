@@ -5,6 +5,7 @@ external_components:
       type: local
       path: ../../my_components
     components:
+      - online_image
       - ili9xxx
       - onx_app_state
       - onx_storage
