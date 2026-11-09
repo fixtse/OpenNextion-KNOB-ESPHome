@@ -48,7 +48,7 @@ esphome:
           id(sleep_mode_start_time).publish_state(id(ui_presenter)->get_sleep_window_start_time());
           id(sleep_mode_end_time).publish_state(id(ui_presenter)->get_sleep_window_end_time());
           id(sleep_timeout_seconds).publish_state((float) id(ui_presenter)->get_sleep_timeout_ms() / 1000.0f);
-          id(ha_token).publish_state("");
+          custom_logic::erase_legacy_ha_token();
       # Force backlight off first to avoid boot-time flash before LVGL first frame.
       - output.set_level:
           id: lcd_backlight_pwm

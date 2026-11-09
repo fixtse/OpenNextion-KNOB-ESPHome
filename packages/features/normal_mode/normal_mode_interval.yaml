@@ -245,11 +245,11 @@ interval:
                      !wifi::global_wifi_component->get_sta().get_ssid().empty() &&
                      id(normal_ha_added) &&
                      id(normal_device_detail_active) &&
-                     id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL &&
+                     id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION &&
                      !id(ui_presenter)->is_standby_active();
           then:
-            - lvgl.page.show: normal_settings_user_manual_page
-            - script.execute: refresh_normal_settings_user_manual_page
+            - lvgl.page.show: normal_settings_connection_page
+            - script.execute: refresh_normal_settings_connection_page
       - if:
           condition:
             lambda: |-

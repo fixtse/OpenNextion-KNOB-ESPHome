@@ -38,6 +38,11 @@ wireless updates on an already configured device.
 5. Sign in to Home Assistant in the configuration page, search for your entities,
    and save up to ten control slots.
 
+No long-lived Home Assistant access token needs to be added to the knob. Browser
+sign-in stays in the browser; controls and state updates use the ESPHome integration.
+The device settings menu provides the configuration address and a connection retry,
+instead of the older QR-code pages.
+
 For regular updates, use the device’s firmware update control.
 [Published firmware](https://github.com/fixtse/esp-ota/releases) includes the OTA image.
 

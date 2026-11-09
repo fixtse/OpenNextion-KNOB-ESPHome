@@ -44,6 +44,13 @@ onx_config_web:
   id: entity_config_web
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "ha_host") {
+      if ((query.search.rfind("http://", 0) != 0 && query.search.rfind("https://", 0) != 0) ||
+          custom_logic::build_ha_http_state_url(query.search, "sensor.placeholder").empty())
+        return onx_entity_config::error("Enter a valid Home Assistant address");
+      id(ha_host).publish_state(query.search);
+      return std::string("{\"ok\":true}");
+    }
     if (query.op == "retry") {
       static bool retried = false;
       static uint32_t last_retry = 0;

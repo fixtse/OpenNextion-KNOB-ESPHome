@@ -385,50 +385,14 @@ binary_sensor:
         - if:
             condition:
               lambda: |-
-                return !id(screen_off_state) &&
-                       id(ui_presenter)->is_normal_mode_active() &&
-                       !id(ui_presenter)->is_standby_active() &&
-                       !id(key_long_press_handled) &&
+                return !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
+                       !id(ui_presenter)->is_standby_active() && !id(key_long_press_handled) &&
                        id(normal_device_detail_active) &&
-                       (id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL || id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE);
+                       id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
             then:
-              - if:
-                  condition:
-                    lambda: |-
-                      const uint32_t held_ms = millis() - id(key_press_started_ms);
-                      if (held_ms >= 688) {
-                        id(normal_detail_exit_settings_ready) = true;
-                        id(normal_detail_exit_switch_ready) = false;
-                        id(normal_detail_exit_light_ready) = false;
-                        return true;
-                      }
-                      id(normal_detail_exit_settings_ready) = false;
-                      return false;
-                  then:
-                    - script.execute: can_exit_normal_detail
-                    - if:
-                        condition:
-                          lambda: |-
-                            return id(normal_detail_exit_allowed);
-                        then:
-                          - script.execute: exit_normal_switch_detail
-                          - lambda: |-
-                              id(detail_long_press_exit_fired) = true;
-                              id(key_long_press_handled) = true;
-                              id(ui_presenter)->notify_user_activity();
-                        else:
-                          - lambda: |-
-                              ESP_LOGW("input", "settings user manual exit denied");
-                  else:
-                    - if:
-                        condition:
-                          lambda: |-
-                            return id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE;
-                        then:
-                          - script.execute: exit_normal_settings_user_manual_qrcode
-                        else:
-                          - script.execute: exit_normal_settings_user_manual
               - lambda: |-
+                  custom_logic_entity_sub::cancel_controls();
+                  custom_logic::disconnect_all_clients_for_refresh(id(api_server));
                   id(key_long_press_handled) = true;
                   id(ui_presenter)->notify_user_activity();
         - if:
@@ -537,7 +501,7 @@ binary_sensor:
                       }
                       id(normal_detail_exit_settings_ready) = false;
                       const int selected = id(normal_settings_selected_index);
-                      return selected >= 0 && selected <= 4;
+                      return selected >= 0 && selected <= 3;
                   then:
                     - if:
                         condition:
@@ -559,38 +523,14 @@ binary_sensor:
                                 - lambda: |-
                                     ESP_LOGW("input", "settings detail exit denied");
                         else:
-                          - if:
-                              condition:
-                                lambda: |-
-                                  return id(normal_settings_selected_index) == 0;
-                              then:
-                                - script.execute: enter_normal_settings_user_manual
-                              else:
-                                - if:
-                                    condition:
-                                      lambda: |-
-                                        return id(normal_settings_selected_index) == 1;
-                                    then:
-                                      - script.execute: enter_normal_settings_user_manual_qrcode
-                                    else:
-                                      - if:
-                                          condition:
-                                            lambda: |-
-                                              return id(normal_settings_selected_index) == 2;
-                                          then:
-                                            - script.execute: enter_normal_settings_wifi_detail
-                                          else:
-                                            - if:
-                                                condition:
-                                                  lambda: |-
-                                                    return id(normal_settings_selected_index) == 3;
-                                                then:
-                                                  - script.execute: enter_normal_settings_brightness_detail
-                                                else:
-                                                  - script.execute: enter_normal_settings_knob_detail
-                  else:
-                    - lambda: |-
-                        ESP_LOGI("input", "settings detail short press ignored");
+                          - lambda: |-
+                              switch (id(normal_settings_selected_index)) {
+                                case 0: id(enter_normal_settings_connection).execute(); break;
+                                case 1: id(enter_normal_settings_wifi_detail).execute(); break;
+                                case 2: id(enter_normal_settings_brightness_detail).execute(); break;
+                                case 3: id(enter_normal_settings_knob_detail).execute(); break;
+                              }
+
               - lambda: |-
                   id(key_long_press_handled) = true;
                   id(ui_presenter)->notify_user_activity();
@@ -764,8 +704,7 @@ interval:
                         id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI ||
                         id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS ||
                         id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB ||
-                        id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL ||
-                        id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE ||
+                        id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION ||
                         id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) &&
                      !(id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_CURTAIN && id(normal_device_detail_curtain_adjust_active)) &&
                      (millis() - id(key_press_started_ms) < 10000);
@@ -886,7 +825,7 @@ sensor:
                        id(normal_device_detail_active) && id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS;
             then:
               - lambda: |-
-                  if (id(normal_settings_selected_index) < 4) {
+                  if (id(normal_settings_selected_index) < 3) {
                     id(normal_settings_selected_index)++;
                   }
                   ESP_LOGI("input", "settings detail select: %d", id(normal_settings_selected_index));
@@ -1180,21 +1119,6 @@ sensor:
                   }
                   id(normal_knob_pending_value) = pending;
               - script.execute: refresh_normal_settings_knob_detail_page
-              - lambda: |-
-                  id(ui_presenter)->notify_user_activity();
-        - if:
-            condition:
-              lambda: |-
-                return id(normal_knob_event_pass) &&
-                       !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() && !id(standby_wakeup_pending) &&
-                       id(normal_device_detail_active) && id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL;
-            then:
-              - lambda: |-
-                  if (id(normal_user_manual_qrcode_index) < 2) {
-                    id(normal_user_manual_qrcode_index)++;
-                  }
-                  ESP_LOGI("input", "user manual qrcode select: %d", id(normal_user_manual_qrcode_index));
-              - script.execute: refresh_normal_settings_user_manual_page
               - lambda: |-
                   id(ui_presenter)->notify_user_activity();
         - if:
@@ -1604,21 +1528,6 @@ sensor:
                   }
                   id(normal_knob_pending_value) = pending;
               - script.execute: refresh_normal_settings_knob_detail_page
-              - lambda: |-
-                  id(ui_presenter)->notify_user_activity();
-        - if:
-            condition:
-              lambda: |-
-                return id(normal_knob_event_pass) &&
-                       !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() && !id(standby_wakeup_pending) &&
-                       id(normal_device_detail_active) && id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL;
-            then:
-              - lambda: |-
-                  if (id(normal_user_manual_qrcode_index) > 0) {
-                    id(normal_user_manual_qrcode_index)--;
-                  }
-                  ESP_LOGI("input", "user manual qrcode select: %d", id(normal_user_manual_qrcode_index));
-              - script.execute: refresh_normal_settings_user_manual_page
               - lambda: |-
                   id(ui_presenter)->notify_user_activity();
         - if:

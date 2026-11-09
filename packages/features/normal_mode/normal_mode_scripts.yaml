@@ -327,7 +327,7 @@ script:
           if (total == 0 && selected == 0) {
             target = id(normal_ha_added) ? id(device_empty)->obj : id(normal_add_hmi_page)->obj;
           } else if (total == 0 && !id(normal_ha_added) && selected == 1) {
-            target = id(normal_add_hmi_hello_page)->obj;
+            target = id(normal_setup_help_page)->obj;
           } else if (selected < total) {
             switch (selected) {
               case 0: target = id(device_0)->obj; break;
@@ -873,7 +873,7 @@ script:
             id(normal_detail_exit_switch_ready) = false;
             id(normal_detail_exit_light_ready) = held_ms >= 688;
             id(normal_detail_exit_settings_ready) = false;
-          } else if (kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE) {
+          } else if (kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB || kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION) {
             id(normal_detail_exit_switch_ready) = false;
             id(normal_detail_exit_light_ready) = false;
             id(normal_detail_exit_settings_ready) = held_ms >= 688;
@@ -908,8 +908,7 @@ script:
             case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI:
             case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS:
             case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB:
-            case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL:
-            case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE:
+            case NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION:
               id(normal_detail_exit_allowed) = id(normal_detail_exit_settings_ready);
               break;
             default:
@@ -1071,8 +1070,8 @@ script:
           if (selected < 0) {
             selected = 0;
           }
-          if (selected > 4) {
-            selected = 4;
+          if (selected > 3) {
+            selected = 3;
           }
           id(normal_settings_selected_index) = selected;
 
@@ -1251,60 +1250,21 @@ script:
 
           lv_roller_set_selected(roller, selected, LV_ANIM_OFF);
 
-  - id: refresh_normal_settings_user_manual_page
-    mode: restart
+  - id: refresh_normal_settings_connection_page
     then:
       - lambda: |-
-          if (!id(ui_presenter)->is_normal_mode_active() ||
-              id(ui_presenter)->is_standby_active() ||
-              !id(normal_device_detail_active) ||
-              id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL) {
-            return;
+          if (!id(normal_device_detail_active) || id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION) return;
+          lv_label_set_text(id(normal_settings_connection_status),
+              id(normal_ha_api_connected) ? "Connected to Home Assistant" : "Waiting for Home Assistant");
+          std::string url = "Open the device's Visit link";
+          if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) {
+            for (const auto &ip : wifi::global_wifi_component->get_ip_addresses()) {
+              if (!ip.is_set()) continue;
+              char address[network::IP_ADDRESS_BUFFER_SIZE] = {0};
+              ip.str_to(address); url = std::string("Configure in browser:\nhttp://") + address + "/"; break;
+            }
           }
-
-          lv_obj_add_flag(id(normal_device_wifi_online_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
-
-          int index = id(normal_user_manual_qrcode_index);
-          if (index < 0) {
-            index = 0;
-          }
-          if (index > 2) {
-            index = 2;
-          }
-          id(normal_user_manual_qrcode_index) = index;
-
-          lv_obj_set_style_bg_color(id(normal_settings_user_manual_page)->obj, lv_color_hex(0x000000), 0);
-          lv_obj_set_style_bg_color(id(normal_settings_user_manual_shell), lv_color_hex(0x262626), 0);
-          lv_obj_set_style_border_width(id(normal_settings_user_manual_shell), 0, 0);
-          lv_obj_set_style_bg_color(id(normal_settings_user_manual_ok_btn), lv_color_hex(0x0091FF), LV_PART_MAIN);
-          lv_obj_set_style_border_width(id(normal_settings_user_manual_ok_btn), 0, LV_PART_MAIN);
-          lv_obj_set_style_shadow_width(id(normal_settings_user_manual_ok_btn), 0, LV_PART_MAIN);
-
-          if (index == 0) {
-            lv_label_set_text(id(normal_settings_user_manual_subtitle), "wiki");
-            lv_img_set_src(id(normal_settings_user_manual_qrcode), id(normal_user_manual_qrcode_wiki_img));
-          } else if (index == 1) {
-            lv_label_set_text(id(normal_settings_user_manual_subtitle), "Device github");
-            lv_img_set_src(id(normal_settings_user_manual_qrcode), id(normal_user_manual_qrcode_device_github_img));
-          } else {
-            lv_label_set_text(id(normal_settings_user_manual_subtitle), "Firmware github");
-            lv_img_set_src(id(normal_settings_user_manual_qrcode), id(normal_user_manual_qrcode_firmware_github_img));
-          }
-
-          if (index == 0) {
-            lv_obj_add_flag(id(normal_settings_user_manual_arrow_left), LV_OBJ_FLAG_HIDDEN);
-          } else {
-            lv_obj_clear_flag(id(normal_settings_user_manual_arrow_left), LV_OBJ_FLAG_HIDDEN);
-          }
-          if (index == 2) {
-            lv_obj_add_flag(id(normal_settings_user_manual_arrow_right), LV_OBJ_FLAG_HIDDEN);
-          } else {
-            lv_obj_clear_flag(id(normal_settings_user_manual_arrow_right), LV_OBJ_FLAG_HIDDEN);
-          }
+          lv_label_set_text(id(normal_settings_connection_url), url.c_str());
 
   - id: apply_normal_settings_knob_detail
     mode: restart
@@ -1611,7 +1571,7 @@ script:
           lv_scr_load(id(normal_settings_knob_page)->obj);
       - script.execute: refresh_normal_settings_knob_detail_page
 
-  - id: enter_normal_settings_user_manual
+  - id: enter_normal_settings_connection
     mode: restart
     then:
       - lambda: |-
@@ -1622,38 +1582,16 @@ script:
             return;
           }
           id(normal_device_detail_active) = true;
-          id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL;
+          id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
-          id(normal_user_manual_qrcode_index) = 0;
-          ESP_LOGI("normal_mode", "settings user manual opened");
+          ESP_LOGI("normal_mode", "settings connection opened");
           id(normal_detail_exit_switch_ready) = false;
           id(normal_detail_exit_light_ready) = false;
           id(normal_detail_exit_settings_ready) = false;
           id(normal_detail_exit_allowed) = false;
-          lv_scr_load(id(normal_settings_user_manual_page)->obj);
-      - script.execute: refresh_normal_settings_user_manual_page
-
-  - id: enter_normal_settings_user_manual_qrcode
-    mode: restart
-    then:
-      - lambda: |-
-          if (!id(ui_presenter)->is_normal_mode_active() ||
-              id(ui_presenter)->is_standby_active() ||
-              !id(normal_device_detail_active) ||
-              id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS) {
-            return;
-          }
-          id(normal_device_detail_active) = true;
-          id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE;
-          id(normal_page_index) = 1;
-          id(key_long_press_handled) = true;
-          ESP_LOGI("normal_mode", "settings user manual QR code opened");
-          id(normal_detail_exit_switch_ready) = false;
-          id(normal_detail_exit_light_ready) = false;
-          id(normal_detail_exit_settings_ready) = false;
-          id(normal_detail_exit_allowed) = false;
-          lv_scr_load(id(normal_settings_user_manual_qrcode_page)->obj);
+          lv_scr_load(id(normal_settings_connection_page)->obj);
+      - script.execute: refresh_normal_settings_connection_page
 
   - id: exit_normal_settings_wifi_detail
     mode: restart
@@ -1712,36 +1650,17 @@ script:
       - script.execute:
           id: refresh_normal_settings_detail_page
 
-  - id: exit_normal_settings_user_manual
+  - id: exit_normal_settings_connection
     mode: restart
     then:
       - lambda: |-
-          if (!id(normal_device_detail_active) || id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL) {
+          if (!id(normal_device_detail_active) || id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION) {
             return;
           }
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
-          ESP_LOGI("normal_mode", "settings user manual closed");
-          id(normal_detail_exit_switch_ready) = false;
-          id(normal_detail_exit_light_ready) = false;
-          id(normal_detail_exit_settings_ready) = false;
-          id(normal_detail_exit_allowed) = false;
-          lv_scr_load(id(normal_settings_page)->obj);
-      - script.execute:
-          id: refresh_normal_settings_detail_page
-
-  - id: exit_normal_settings_user_manual_qrcode
-    mode: restart
-    then:
-      - lambda: |-
-          if (!id(normal_device_detail_active) || id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE) {
-            return;
-          }
-          id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS;
-          id(normal_page_index) = 1;
-          id(key_long_press_handled) = true;
-          ESP_LOGI("normal_mode", "settings user manual QR code closed");
+          ESP_LOGI("normal_mode", "settings connection closed");
           id(normal_detail_exit_switch_ready) = false;
           id(normal_detail_exit_light_ready) = false;
           id(normal_detail_exit_settings_ready) = false;
@@ -2455,7 +2374,6 @@ script:
           lv_image_header_cache_drop(id(media_cover_image)->get_lv_image_dsc());
           onx_media::ready_url.clear();
           onx_media::requested_url = desired;
-          onx_media::ha_origin = origin;
           onx_media::requested_ms = millis();
           onx_media::downloading = true;
           id(media_cover_image)->set_url(desired);

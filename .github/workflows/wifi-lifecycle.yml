@@ -16,6 +16,7 @@ on:
       - 'tests/test_control_state.cpp'
       - 'tests/test_entity_controls.py'
       - 'tests/test_entity_recovery.py'
+      - 'tests/test_legacy_cleanup.py'
       - 'custom_logic_entity_sub.h'
       - 'packages/base/input.yaml'
       - 'onx_control_state.h'
@@ -57,6 +58,7 @@ jobs:
           /tmp/test_control_state
           python3 tests/test_entity_controls.py
           python3 tests/test_entity_recovery.py
+          python3 tests/test_legacy_cleanup.py
           c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state
           /tmp/test_media_state
           c++ -std=c++17 tests/test_icon_state.cpp -o /tmp/test_icon_state

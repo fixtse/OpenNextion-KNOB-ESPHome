@@ -18,10 +18,6 @@ int main() {
   assert(artwork_url(origin,"https://art.example/album.png")=="https://art.example/album.png");
   for (const auto &missing : {"", "None", "unknown", "unavailable", "//other.example/cover", "file:///etc/passwd"})
     assert(artwork_url(origin,missing).empty());
-  ha_origin=origin;
-  requested_url=origin+"/api/media_player_proxy/player"; assert(artwork_needs_auth());
-  requested_url="https://external.example/album.png"; assert(!artwork_needs_auth());
-  requested_url=origin+".evil.example/cover"; assert(!artwork_needs_auth());
   Progress p;
   p.set_state("playing", 1000); p.set_duration(200); p.set_position(20, 1000); p.set_updated_at(1000);
   auto view = p.view(2000, 1005.5, true);

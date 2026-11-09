@@ -17,7 +17,8 @@ Failed downloads retry after five minutes. Built-in icons for lights, fans,
 climate, media, covers, sensors, helpers, scenes, buttons, scripts, automations,
 weather, timers, and switches remain available offline. Unsupported icon namespaces
 also use the entity-type fallback. Media album artwork takes priority on the
-primary media view.
+primary media view. It loads directly from HA's supplied artwork URL, including
+its artwork access parameter where provided; no device-stored bearer token is used.
 
 The media detail page has a full circular progress ring at the screen edge. It
 uses Home Assistant's `media_position`, `media_position_updated_at`, and
@@ -39,3 +40,8 @@ and select **Retry knob entity states**. The webpage action renews the Native AP
 connection so Home Assistant restores all subscriptions. Neither method restarts
 the device or changes Wi-Fi credentials. An entity that still does not exist in
 Home Assistant remains unavailable until it is created.
+
+Upgrading from older firmware removes its token entry, token-status sensor,
+“How to use” sensor, and QR-code menus, and deletes the old saved device token.
+Home Assistant may retain old unavailable entity-registry entries after removal
+from firmware; those entries can be deleted from the device's entity list.

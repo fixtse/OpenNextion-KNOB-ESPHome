@@ -28,7 +28,6 @@
 namespace custom_logic {
 
 static const char *const TAG = "CustomLogic";
-static constexpr size_t MAX_HA_TOKEN_LENGTH = 255;
 static constexpr size_t MAX_HA_ENTITY_COUNT = 21;
 static constexpr size_t LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT = 4;
 static constexpr size_t MAX_HA_ENTITY_OPTION_COUNT =
@@ -46,8 +45,8 @@ enum NormalDeviceDetailKind : int {
   NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS = 8,
   NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB = 9,
   NORMAL_DEVICE_DETAIL_KIND_AUTOMATION = 10,
-  NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL = 11,
-  NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE = 12,
+  NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION = 11,
+
 };
 static constexpr uint8_t NORMAL_LIGHT_FEEDBACK_BRIGHTNESS = 0x01;
 static constexpr uint8_t NORMAL_LIGHT_FEEDBACK_COLOR_TEMPERATURE = 0x02;
@@ -111,7 +110,6 @@ template<typename T> inline RamAllocatedPtr<T> make_ram_allocated() {
   new (ptr) T();
   return RamAllocatedPtr<T>(ptr);
 }
-static constexpr uint32_t HA_TOKEN_MAGIC = 0x4F4E5854;  // ONXT
 static constexpr uint32_t HA_ENTITIES_MAGIC = 0x4F4E5849;  // ONXI
 static constexpr uint32_t HA_ENTITY_CHUNK_MAGIC = 0x4F4E5843;  // ONXC
 static constexpr uint32_t HA_AREAS_MAGIC = 0x4F4E5841;  // ONXA
@@ -126,7 +124,7 @@ static constexpr uint32_t DEVICE8_CONFIG_MAGIC = 0x4F4E5838;  // ONX8
 static constexpr uint32_t DEVICE9_CONFIG_MAGIC = 0x4F4E5839;  // ONX9
 static constexpr uint32_t DEVICE10_CONFIG_MAGIC = 0x4F4E5841;  // ONXA
 static constexpr uint32_t STANDBY_WEATHER_CONFIG_MAGIC = 0x4F4E5857;  // ONXW
-static const uint32_t HA_TOKEN_PREF_KEY = esphome::fnv1_hash("ha-long-lived-token-v1");
+static const uint32_t LEGACY_HA_TOKEN_PREF_KEY = esphome::fnv1_hash("ha-long-lived-token-v1");
 static const uint32_t HA_ENTITY_CHUNK_PREF_KEY_BASE = esphome::fnv1_hash("ha-selected-entities-v5-chunk");
 static const uint32_t HA_AREAS_PREF_KEY = esphome::fnv1_hash("ha-areas-v1");
 static const uint32_t DEVICE1_CONFIG_PREF_KEY = esphome::fnv1_hash("device1-config-v1");
@@ -157,10 +155,6 @@ static const std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT> DEVICE_TYPE_RE
     834557022UL,  1476224880UL, 3411481934UL, 4219871412UL, 3942567008UL,
 };
 
-struct StoredHaToken {
-  uint32_t magic;
-  char token[MAX_HA_TOKEN_LENGTH + 1];
-};
 
 struct StoredHaEntity {
   char entity_id[MAX_HA_ENTITY_ID_LENGTH + 1];
@@ -213,14 +207,7 @@ struct StoredDeviceLightRuntimeConfig {
   uint16_t color_temperature_max_kelvin;
 };
 
-enum class HaTokenStatus : uint8_t {
-  NOT_CONFIGURED = 0,
-  CONFIGURED = 1,
-  INVALID = 2,
-  VALID = 3,
-};
 
-static esphome::ESPPreferenceObject ha_token_pref;
 static std::array<esphome::ESPPreferenceObject, HA_ENTITY_PREF_CHUNK_COUNT> ha_entity_chunk_prefs;
 static esphome::ESPPreferenceObject ha_areas_pref;
 static esphome::ESPPreferenceObject device1_config_pref;
@@ -244,7 +231,6 @@ static esphome::ESPPreferenceObject device7_light_runtime_pref;
 static esphome::ESPPreferenceObject device8_light_runtime_pref;
 static esphome::ESPPreferenceObject device9_light_runtime_pref;
 static esphome::ESPPreferenceObject device10_light_runtime_pref;
-static bool ha_token_pref_ready = false;
 static bool ha_entity_chunk_prefs_ready = false;
 static bool ha_areas_pref_ready = false;
 static bool device1_config_pref_ready = false;
@@ -268,7 +254,6 @@ static bool device7_light_runtime_pref_ready = false;
 static bool device8_light_runtime_pref_ready = false;
 static bool device9_light_runtime_pref_ready = false;
 static bool device10_light_runtime_pref_ready = false;
-static bool ha_token_loaded = false;
 static bool ha_entities_loaded = false;
 static bool ha_areas_loaded = false;
 static bool device1_config_loaded = false;
@@ -283,7 +268,6 @@ static bool device9_config_loaded = false;
 static bool device10_config_loaded = false;
 static bool standby_weather_config_loaded = false;
 static bool ha_entities_changed_since_last_parse_flag = false;
-static std::string cached_ha_token;
 static std::string cached_device1_entity_id;
 static std::string cached_device1_custom_type;
 static uint32_t cached_device1_custom_light_capability_mask = 1;
@@ -315,10 +299,8 @@ static std::string cached_device10_entity_id;
 static std::string cached_device10_custom_type;
 static uint32_t cached_device10_custom_light_capability_mask = 1;
 static std::string cached_standby_weather_entity_id;
-static HaTokenStatus cached_ha_token_status = HaTokenStatus::NOT_CONFIGURED;
 static RamAllocatedPtr<StoredHaEntities> cached_ha_entities_storage;
 static StoredHaAreas cached_ha_areas{};
-static std::string cached_ha_auth_header;
 static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> device_config_options;
 static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> staged_device_config_options;
 static RamAllocatedPtr<HaEntityOptionArray> standby_weather_config_option_strings_storage;
@@ -647,17 +629,6 @@ inline void disconnect_all_clients_for_refresh(esphome::api::APIServer *api_serv
   ESP_LOGI(TAG, "HA API client refresh queued: client_count=%u", static_cast<unsigned>(client_count));
 }
 
-inline void ensure_ha_token_pref_ready() {
-  if (ha_token_pref_ready) {
-    return;
-  }
-  if (esphome::global_preferences == nullptr) {
-    ESP_LOGW(TAG, "preferences backend is unavailable; HA token will stay in RAM only");
-    return;
-  }
-  ha_token_pref = esphome::global_preferences->make_preference<StoredHaToken>(HA_TOKEN_PREF_KEY, true);
-  ha_token_pref_ready = true;
-}
 
 inline void ensure_ha_entity_chunk_prefs_ready() {
   if (ha_entity_chunk_prefs_ready) {
@@ -1308,124 +1279,30 @@ inline std::string get_provisioning_ap_ssid_string() {
   return cached_provisioning_ap_ssid;
 }
 
-inline std::string normalize_ha_token(const std::string &value) {
-  std::string token = trim_copy(value);
-  static const char *const bearer_prefix = "Bearer ";
-  if (token.rfind(bearer_prefix, 0) == 0) {
-    token = trim_copy(token.substr(strlen(bearer_prefix)));
-  }
-  return token;
-}
 
-inline const char *ha_token_status_to_text(HaTokenStatus status) {
-  switch (status) {
-    case HaTokenStatus::NOT_CONFIGURED:
-      return "Not configured";
-    case HaTokenStatus::CONFIGURED:
-      return "Configured";
-    case HaTokenStatus::INVALID:
-      return "Invalid";
-    case HaTokenStatus::VALID:
-      return "Valid";
-  }
-  return "Not configured";
+
+// Migration only: delete the credential saved by older firmware without loading it.
+inline void erase_legacy_ha_token() {
+#ifdef USE_ESP32
+  nvs_handle_t handle;
+  if (nvs_open("esphome", NVS_READWRITE, &handle) != ESP_OK) return;
+  char key[16];
+  snprintf(key, sizeof(key), "%u", static_cast<unsigned>(LEGACY_HA_TOKEN_PREF_KEY));
+  const auto result = nvs_erase_key(handle, key);
+  if (result == ESP_OK) nvs_commit(handle);
+  nvs_close(handle);
+#endif
 }
 
 inline bool is_valid_ha_host_char(char ch) {
   return std::isalnum(static_cast<unsigned char>(ch)) || ch == '.' || ch == '-' || ch == '_' || ch == ':';
 }
 
-inline void set_ha_token_status(HaTokenStatus status) {
-  cached_ha_token_status = status;
-}
 
-inline void load_ha_token_if_needed() {
-  if (ha_token_loaded) {
-    return;
-  }
-  ESP_LOGI(TAG, "HA token load begin");
-  ha_token_loaded = true;
-  cached_ha_token.clear();
-  cached_ha_token_status = HaTokenStatus::NOT_CONFIGURED;
-  ensure_ha_token_pref_ready();
-  if (!ha_token_pref_ready) {
-    ESP_LOGW(TAG, "HA token load failed: preference handle is not ready");
-    return;
-  }
-  StoredHaToken stored{};
-  const bool loaded = ha_token_pref.load(&stored);
-  if (!loaded) {
-    ESP_LOGI(TAG, "HA token load complete: no stored value");
-    return;
-  }
-  if (stored.magic != HA_TOKEN_MAGIC) {
-    ESP_LOGW(TAG, "HA token load rejected: magic mismatch");
-    return;
-  }
-  stored.token[MAX_HA_TOKEN_LENGTH] = '\0';
-  cached_ha_token = stored.token;
-  if (!cached_ha_token.empty()) {
-    cached_ha_token_status = HaTokenStatus::CONFIGURED;
-  }
-  ESP_LOGI(TAG, "HA token load complete: configured=%s token_length=%u",
-           cached_ha_token.empty() ? "NO" : "YES", static_cast<unsigned>(cached_ha_token.size()));
-}
 
-inline bool save_ha_token(const std::string &raw_token) {
-  std::string token = normalize_ha_token(raw_token);
-  const bool truncated = token.size() > MAX_HA_TOKEN_LENGTH;
-  StoredHaToken stored{};
-  stored.magic = HA_TOKEN_MAGIC;
-  copy_string_to_fixed_buffer(token, stored.token);
-  cached_ha_token = stored.token;
-  ha_token_loaded = true;
-  cached_ha_token_status = cached_ha_token.empty() ? HaTokenStatus::NOT_CONFIGURED : HaTokenStatus::CONFIGURED;
-  ha_ws_config_revision++;
 
-  ensure_ha_token_pref_ready();
-  if (!ha_token_pref_ready) {
-    ESP_LOGW(TAG,
-             "HA token save failed: preference handle is not ready raw_length=%u normalized_length=%u "
-             "cached_length=%u truncated=%s revision=%u",
-             static_cast<unsigned>(raw_token.size()), static_cast<unsigned>(token.size()),
-             static_cast<unsigned>(cached_ha_token.size()), truncated ? "YES" : "NO",
-             static_cast<unsigned>(ha_ws_config_revision));
-    return false;
-  }
-  const bool saved = ha_token_pref.save(&stored);
-  bool synced = false;
-  if (saved && esphome::global_preferences != nullptr) {
-    synced = esphome::global_preferences->sync();
-  }
-  ESP_LOGI(TAG,
-           "HA token save complete: configured=%s raw_length=%u normalized_length=%u cached_length=%u "
-           "truncated=%s preference_save=%s preference_sync=%s revision=%u",
-           cached_ha_token.empty() ? "NO" : "YES", static_cast<unsigned>(raw_token.size()),
-           static_cast<unsigned>(token.size()), static_cast<unsigned>(cached_ha_token.size()),
-           truncated ? "YES" : "NO", saved ? "OK" : "FAILED", synced ? "OK" : "SKIPPED_OR_FAILED",
-           static_cast<unsigned>(ha_ws_config_revision));
-  return saved;
-}
 
-inline bool has_saved_ha_token() {
-  load_ha_token_if_needed();
-  return !cached_ha_token.empty();
-}
 
-inline const char *get_ha_authorization_header() {
-  load_ha_token_if_needed();
-  cached_ha_auth_header.clear();
-  if (!cached_ha_token.empty()) {
-    cached_ha_auth_header = "Bearer ";
-    cached_ha_auth_header += cached_ha_token;
-  }
-  return cached_ha_auth_header.c_str();
-}
-
-inline const char *get_ha_token_status_text() {
-  load_ha_token_if_needed();
-  return ha_token_status_to_text(cached_ha_token_status);
-}
 
 inline std::string build_ha_websocket_url(const std::string &raw_host) {
   std::string host = trim_copy(raw_host);
@@ -3120,37 +2997,7 @@ inline bool ha_ws_send_initial_ping() {
 }
 
 inline bool ha_ws_send_auth_frame(const char *reason) {
-  if (ha_ws_client == nullptr) {
-    ESP_LOGW(TAG, "HA websocket auth send skipped: client is null reason=%s",
-             reason != nullptr ? reason : "unknown");
-    return false;
-  }
-  load_ha_token_if_needed();
-  if (cached_ha_token.empty()) {
-    ESP_LOGW(TAG, "HA websocket auth send skipped: token is empty reason=%s",
-             reason != nullptr ? reason : "unknown");
-    return false;
-  }
-  std::string auth = "{\"type\":\"auth\",\"access_token\":\"";
-  auth += cached_ha_token;
-  auth += "\"}";
-  const uint32_t send_started_ms = millis();
-  const int sent = esp_websocket_client_send_text(ha_ws_client, auth.c_str(), auth.size(), pdMS_TO_TICKS(1000));
-  ESP_LOGI(TAG,
-           "HA websocket auth send complete: attempt=%u reason=%s result_bytes=%d expected_bytes=%u "
-           "elapsed_ms=%u transport_connected=%s since_connected_ms=%u",
-           static_cast<unsigned>(ha_ws_registry_fetch_attempt),
-           reason != nullptr ? reason : "unknown", sent, static_cast<unsigned>(auth.size()),
-           static_cast<unsigned>(millis() - send_started_ms),
-           ha_ws_client != nullptr && esp_websocket_client_is_connected(ha_ws_client) ? "YES" : "NO",
-           static_cast<unsigned>(millis() - ha_ws_transport_connected_ms));
-  if (sent < 0 || static_cast<size_t>(sent) != auth.size()) {
-    ESP_LOGW(TAG, "failed to send complete HA websocket auth: result_bytes=%d expected_bytes=%u", sent,
-             static_cast<unsigned>(auth.size()));
-    return false;
-  }
-  ha_ws_auth_sent = true;
-  return true;
+  return false;  // Legacy device-side discovery is disabled; the browser owns authentication.
 }
 
 inline void ha_ws_handle_text_payload(const char *data, int len) {
@@ -3164,12 +3011,11 @@ inline void ha_ws_handle_text_payload(const char *data, int len) {
   if (ha_ws_payload_contains(data, len, "\"type\":\"auth_required\"") ||
       ha_ws_payload_contains(data, len, "\"type\": \"auth_required\"")) {
     ha_ws_auth_required_ms = millis();
-    load_ha_token_if_needed();
+
     ESP_LOGI(TAG,
-             "HA websocket auth_required received: attempt=%u payload_bytes=%u token_length=%u "
+             "HA websocket auth_required received: attempt=%u payload_bytes=%u "
              "transport_connected=%s",
              static_cast<unsigned>(ha_ws_registry_fetch_attempt), static_cast<unsigned>(len),
-             static_cast<unsigned>(cached_ha_token.size()),
              ha_ws_client != nullptr && esp_websocket_client_is_connected(ha_ws_client) ? "YES" : "NO");
     if (ha_ws_auth_sent) {
       ESP_LOGI(TAG, "HA websocket auth_required received after auth was already sent; skip duplicate auth");
@@ -3185,7 +3031,7 @@ inline void ha_ws_handle_text_payload(const char *data, int len) {
     ha_ws_authenticated = true;
     ha_ws_auth_invalid = false;
     ha_ws_backoff_ms = 2000;
-    set_ha_token_status(HaTokenStatus::VALID);
+
     ESP_LOGI(TAG,
              "HA websocket authenticated: attempt=%u payload_bytes=%u since_auth_required_ms=%u",
              static_cast<unsigned>(ha_ws_registry_fetch_attempt), static_cast<unsigned>(len),
@@ -3202,7 +3048,7 @@ inline void ha_ws_handle_text_payload(const char *data, int len) {
     ha_ws_authenticated = false;
     ha_ws_auth_invalid = true;
     ha_ws_stop_requested = true;
-    set_ha_token_status(HaTokenStatus::INVALID);
+
     ESP_LOGW(TAG,
              "HA websocket authentication failed: attempt=%u payload_bytes=%u since_fetch_ms=%u "
              "since_auth_required_ms=%u",
@@ -3451,66 +3297,8 @@ inline bool start_ha_websocket_client(const std::string &uri) {
 }
 
 inline bool maintain_ha_websocket(const std::string &host, bool wifi_connected, bool *connected_out) {
-  if (ha_ws_rx_failed.exchange(false)) ha_ws_finish_registry_fetch("receive queue overflow or oversized payload");
-  PsramString payload;
-  while (ha_ws_registry_fetch_active && ha_ws_payloads.take(payload)) {
-    ha_ws_handle_text_payload(payload.data(), payload.size());
-    PsramString empty;
-    payload.swap(empty);
-  }
-  process_pending_api_client_refresh();
-
-  const bool previous_connected = ha_ws_reported_connected;
-  const uint32_t now_ms = millis();
-
-  if (!ha_ws_registry_fetch_active) {
-    if (ha_ws_client != nullptr || ha_ws_stop_requested || ha_ws_disconnected_seen) {
-      ha_ws_destroy_client();
-    }
-    ha_ws_set_connected(false, connected_out);
-    return previous_connected != ha_ws_reported_connected;
-  }
-
-  if (!wifi_connected) {
-    ha_ws_finish_registry_fetch("wifi disconnected");
-    ha_ws_destroy_client();
-    ha_ws_set_connected(false, connected_out);
-    return previous_connected != ha_ws_reported_connected;
-  }
-
-  if (now_ms - ha_ws_registry_fetch_started_ms > 30000UL) {
-    ESP_LOGW(TAG, "HA websocket registry fetch timed out");
-    ha_ws_finish_registry_fetch("timeout");
-    ha_ws_destroy_client();
-    ha_ws_set_connected(false, connected_out);
-    return previous_connected != ha_ws_reported_connected;
-  }
-
-  if (ha_ws_stop_requested || ha_ws_disconnected_seen) {
-    ha_ws_destroy_client();
-    ha_ws_set_connected(false, connected_out);
-    if (ha_ws_registry_fetch_active) {
-      ha_ws_finish_registry_fetch(ha_ws_auth_invalid ? "auth invalid" : "websocket disconnected");
-    }
-    return previous_connected != ha_ws_reported_connected;
-  }
-
-  if (ha_ws_authenticated) {
-    if (ha_ws_entity_list_send_pending && ha_ws_area_list_request_id == 0 && ha_ws_entity_list_request_id == 0) {
-      ha_ws_entity_list_send_pending = false;
-      if (!ha_ws_send_entity_list_request()) {
-        ha_ws_finish_registry_fetch("entity request send failed");
-        ha_ws_destroy_client();
-        ha_ws_set_connected(false, connected_out);
-        return previous_connected != ha_ws_reported_connected;
-      }
-    }
-    ha_ws_set_connected(true, connected_out);
-    return previous_connected != ha_ws_reported_connected;
-  }
-
-  ha_ws_set_connected(false, connected_out);
-  return previous_connected != ha_ws_reported_connected;
+  if (connected_out != nullptr) *connected_out = false;
+  return false;
 }
 
 inline bool request_ha_entity_list_over_websocket(const std::string &host,
@@ -3526,65 +3314,7 @@ inline bool request_ha_entity_list_over_websocket(const std::string &host,
                                                   esphome::select::Select *device10_select,
                                                   esphome::select::Select *standby_weather_select,
                                                   esphome::api::APIServer *api_server) {
-  ESP_LOGI(TAG, "HA websocket registry fetch requested: host=%s active=%s",
-           host.c_str(), ha_ws_registry_fetch_active ? "YES" : "NO");
-  log_ha_registry_memory("registry fetch request");
-  if (ha_ws_registry_fetch_active) {
-    ESP_LOGI(TAG, "HA websocket registry fetch is already active; ignore duplicate request");
-    return true;
-  }
-
-  ha_ws_device1_entity_select = device1_select;
-  ha_ws_device2_entity_select = device2_select;
-  ha_ws_device3_entity_select = device3_select;
-  ha_ws_device4_entity_select = device4_select;
-  ha_ws_device5_entity_select = device5_select;
-  ha_ws_device6_entity_select = device6_select;
-  ha_ws_device7_entity_select = device7_select;
-  ha_ws_device8_entity_select = device8_select;
-  ha_ws_device9_entity_select = device9_select;
-  ha_ws_device10_entity_select = device10_select;
-  ha_ws_standby_weather_entity_select = standby_weather_select;
-  ha_ws_entity_api_server = api_server;
-  load_ha_token_if_needed();
-  if (cached_ha_token.empty()) {
-    set_ha_token_status(HaTokenStatus::NOT_CONFIGURED);
-    ESP_LOGW(TAG, "HA token is not configured; skip websocket entity fetch");
-    return false;
-  }
-  std::string uri = build_ha_websocket_url(host);
-  if (uri.empty()) {
-    ESP_LOGW(TAG, "HA websocket registry fetch skipped because host is invalid");
-    return false;
-  }
-
-  ha_ws_destroy_client();
-  ha_ws_registry_fetch_active = true;
-  ha_ws_registry_fetch_started_ms = millis();
-  ha_ws_transport_connected_ms = ha_ws_registry_fetch_started_ms;
-  ha_ws_auth_required_ms = ha_ws_registry_fetch_started_ms;
-  ha_ws_registry_fetch_attempt++;
-  ha_ws_entity_list_pending = true;
-  ha_ws_fetching_states = false;
-  ha_ws_entity_list_send_pending = false;
-  ha_ws_area_list_request_id = 0;
-  ha_ws_entity_list_request_id = 0;
-  ha_ws_auth_sent = false;
-  ha_ws_initial_ping_sent = false;
-  ha_ws_auth_invalid = false;
-  ha_ws_disconnected_seen = false;
-  ha_ws_stop_requested = false;
-  ha_ws_backoff_ms = 2000;
-  ha_ws_set_connected(false, nullptr);
-
-  if (!start_ha_websocket_client(uri)) {
-    ha_ws_finish_registry_fetch("websocket start failed");
-    ha_ws_destroy_client();
-    return false;
-  }
-  ESP_LOGI(TAG, "HA websocket registry fetch started");
-  log_ha_registry_memory("registry fetch started");
-  return true;
+  return false;  // Legacy device-side discovery is disabled; the browser owns authentication.
 }
 
 inline bool request_ha_entity_list_over_websocket(const std::string &host,
@@ -3998,7 +3728,7 @@ inline bool erase_custom_logic_normal_mode_nvs_keys() {
     }
   };
 
-  erase_key(HA_TOKEN_PREF_KEY, "HA token");
+  erase_key(LEGACY_HA_TOKEN_PREF_KEY, "HA token");
   for (size_t i = 0; i < HA_ENTITY_PREF_CHUNK_COUNT; i++) {
     erase_key(HA_ENTITY_CHUNK_PREF_KEY_BASE + i, "HA entity chunk");
   }
@@ -4025,10 +3755,10 @@ inline bool erase_custom_logic_normal_mode_nvs_keys() { return true; }
 #endif
 
 inline void clear_custom_logic_normal_mode_ram_state() {
-  cached_ha_token.clear();
-  cached_ha_auth_header.clear();
-  cached_ha_token_status = HaTokenStatus::NOT_CONFIGURED;
-  ha_token_loaded = true;
+
+
+
+
 
   memset(&cached_ha_entities(), 0, sizeof(StoredHaEntities));
   cached_ha_entities().magic = HA_ENTITIES_MAGIC;
@@ -4751,8 +4481,8 @@ using custom_logic::NORMAL_DEVICE_DETAIL_KIND_PLUG;
 using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS;
 using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS;
 using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB;
-using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL;
-using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_USER_MANUAL_QR_CODE;
+using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
+
 using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI;
 using custom_logic::NORMAL_DEVICE_DETAIL_KIND_SWITCH;
 
@@ -4869,13 +4599,7 @@ void set_normal_ui_storage_for_custom_logic(esphome::onx_storage::OnxStorage *st
   custom_logic::set_normal_ui_storage(storage);
 }
 
-void save_ha_token_value(const std::string &token) {
-  custom_logic::save_ha_token(token);
-}
 
-bool has_saved_ha_token() {
-  return custom_logic::has_saved_ha_token();
-}
 
 std::string extract_entity_id_from_device1_option(const std::string &option) {
   return custom_logic::extract_entity_id_from_device1_option(option);
@@ -4897,13 +4621,7 @@ std::string build_ha_http_state_url(const std::string &raw_host, const std::stri
   return custom_logic::build_ha_http_state_url(raw_host, entity_id);
 }
 
-const char *get_ha_token_status_text() {
-  return custom_logic::get_ha_token_status_text();
-}
 
-const char *get_ha_authorization_header() {
-  return custom_logic::get_ha_authorization_header();
-}
 
 bool maintain_ha_websocket(const std::string &host, bool wifi_connected, bool *connected_out) {
   return custom_logic::maintain_ha_websocket(host, wifi_connected, connected_out);

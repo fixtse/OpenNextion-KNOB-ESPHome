@@ -27,6 +27,7 @@ Available settings adapt to the capabilities of each Home Assistant entity.
 - **Simple rotary input.** Turn to adjust, press to act, and hold to return. Hold and turn to choose secondary settings where available.
 - **Your Home Assistant icons.** Download the MDI icons chosen for your entities, with built-in defaults when a download is unavailable.
 - **Clear feedback.** See requested values immediately, confirmation from Home Assistant, and connection or timeout messages.
+- **No device token to manage.** Home Assistant controls use the ESPHome integration; sign in through your browser to choose entities.
 - **Built-in configuration page.** Set up from your phone or computer, with themes, unsaved-change recovery, and configuration backup and restore.
 - **A display that fits your day.** Choose brightness, knob sensitivity, standby weather, and a sleep schedule.
 - **Easy upkeep.** Wi-Fi provisioning, automatic state recovery, manual retry without restarting, and wireless firmware updates.

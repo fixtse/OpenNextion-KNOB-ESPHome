@@ -30,7 +30,6 @@ packages:
 preferences:
   flash_write_interval: 5s
 
-# Enable AUTHCODE storage in eFuse via compile flag
 esphome:
   includes:
     - onx_config_rules.h

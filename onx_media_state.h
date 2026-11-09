@@ -82,7 +82,7 @@ struct ClickDetector {
   void cancel() { pending = false; }
 };
 inline ClickDetector clicks;
-inline std::string requested_url, ready_url, ha_origin;
+inline std::string requested_url, ready_url;
 inline uint32_t requested_ms{0};
 inline bool downloading{false};
 inline std::string artwork_url(const std::string &origin, const std::string &picture) {
@@ -91,7 +91,5 @@ inline std::string artwork_url(const std::string &origin, const std::string &pic
   if (picture[0] == '/' && picture.rfind("//", 0) != 0 && !origin.empty()) return origin + picture;
   return "";
 }
-inline bool artwork_needs_auth() {
-  return !ha_origin.empty() && requested_url.rfind(ha_origin + "/", 0) == 0;
-}
+
 }

@@ -86,18 +86,14 @@ lvgl:
                   text_font: fonts_MiSans_Bold_14
                   text_color: 0x4AC81A
                   text: "Controlled devices not added"
-              - image:
-                  src: guide_img_b
-                  width: 73
-                  height: 73
-                  align: TOP_MID
-                  y: 128
               - label:
-                  y: 205
+                  y: 123
                   align: top_mid
-                  text_font: fonts_MiSans_Bold_12
-                  text_color: 0xD5D5D5
-                  text: "User Manual"
+                  width: 205
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xD2D2D2
+                  text: "Open the device's Visit link\nto choose your controls"
 
     - id: device_0
       bg_color: 0x000000
@@ -1979,8 +1975,7 @@ lvgl:
                   mode: NORMAL
                   visible_row_count: 3
                   options:
-                    - Information
-                    - User Manual
+                    - Home Assistant
                     - Wireless network
                     - Display
                     - KNOB
@@ -2260,133 +2255,40 @@ lvgl:
                           }
                           id(normal_knob_pending_value) = pending;
                           id(ui_presenter)->notify_user_activity();
-    - id: normal_settings_user_manual_page
-      bg_color: 0x000000
+    - id: normal_settings_connection_page
+      bg_color: 0x272727
       border_width: 0
-      outline_width: 0
-      radius: 0
       pad_all: 0
-      scrollable: false
       widgets:
-        - obj:
-            id: normal_settings_user_manual_shell
-            x: 0
-            y: 0
-            width: 240
-            height: 240
-            radius: 120
-            bg_color: 0x262626
-            border_width: 0
-            pad_all: 0
-            scrollable: false
-            widgets:
-              - label:
-                  id: normal_settings_user_manual_title
-                  x: 0
-                  y: 14
-                  align: top_mid
-                  text_font: fonts_MiSans_Medium_16
-                  text_color: 0xFFFFFF
-                  text: "Information"
-              - label:
-                  id: normal_settings_user_manual_subtitle
-                  x: 0
-                  y: 45
-                  align: top_mid
-                  text_font: fonts_MiSans_Bold_12
-                  text_color: 0xFFFFFF
-                  text: "wiki"
-              - image:
-                  id: normal_settings_user_manual_qrcode
-                  x: 0
-                  y: 0
-                  width: 100
-                  height: 100
-                  align: center
-                  src: normal_user_manual_qrcode_wiki_img
-              - button:
-                  id: normal_settings_user_manual_ok_btn
-                  x: 0
-                  y: 186
-                  width: 76
-                  height: 27
-                  align: top_mid
-                  bg_color: 0x0091FF
-                  radius: 6
-                  border_width: 0
-                  shadow_width: 0
-                  widgets:
-                    - label:
-                        align: center
-                        text_font: fonts_MiSans_Medium_12
-                        text_color: 0xFFFFFF
-                        text: "OK"
-              - image:
-                  id: normal_settings_user_manual_arrow_left
-                  x: -104
-                  y: 0
-                  align: center
-                  width: 21
-                  height: 21
-                  src: normal_user_manual_arrow_left_img
-              - image:
-                  id: normal_settings_user_manual_arrow_right
-                  x: 104
-                  y: 0
-                  align: center
-                  width: 21
-                  height: 21
-                  src: normal_user_manual_arrow_right_img
-    - id: normal_settings_user_manual_qrcode_page
-      bg_color: 0x000000
-      border_width: 0
-      outline_width: 0
-      radius: 0
-      pad_all: 0
-      scrollable: false
-      widgets:
-        - obj:
-            id: normal_settings_user_manual_qrcode_shell
-            x: 0
-            y: 0
-            width: 240
-            height: 240
-            radius: 120
-            bg_color: 0x262626
-            border_width: 0
-            pad_all: 0
-            scrollable: false
-            widgets:
-              - label:
-                  x: 0
-                  y: 14
-                  align: top_mid
-                  text_font: fonts_MiSans_Medium_16
-                  text_color: 0xFFFFFF
-                  text: "User Manual"
-              - image:
-                  id: normal_settings_user_manual_qrcode_display
-                  x: 0
-                  y: 0
-                  align: center
-                  src: guide_img_a
-              - button:
-                  id: normal_settings_user_manual_qrcode_ok_btn
-                  x: 0
-                  y: 186
-                  width: 76
-                  height: 27
-                  align: top_mid
-                  bg_color: 0x0091FF
-                  radius: 6
-                  border_width: 0
-                  shadow_width: 0
-                  widgets:
-                    - label:
-                        align: center
-                        text_font: fonts_MiSans_Medium_12
-                        text_color: 0xFFFFFF
-                        text: "OK"
+        - label:
+            y: 20
+            align: top_mid
+            text_font: fonts_MiSans_Medium_18
+            text: "Home Assistant"
+            text_color: 0xFFFFFF
+        - label:
+            id: normal_settings_connection_status
+            y: 60
+            align: top_mid
+            text_font: fonts_MiSans_Medium_16
+            text: "Waiting for connection"
+            text_color: 0xFFFFFF
+        - label:
+            id: normal_settings_connection_url
+            y: 94
+            width: 208
+            align: top_mid
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_16
+            text: "Open the device's Visit link"
+            text_color: 0xD2D2D2
+        - label:
+            y: 157
+            align: top_mid
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_14
+            text: "Press: retry connection\nHold: return"
+            text_color: 0xD2D2D2
     - id: normal_halight_conf_page
       bg_color: 0xFFFFFF
       border_width: 0
@@ -2893,22 +2795,24 @@ lvgl:
                   y: 2
                   text_font: fonts_MiSans_Medium_12
                   text_color: 0xD8D8D8
-    - id: normal_add_hmi_hello_page
+    - id: normal_setup_help_page
       bg_color: 0x272727
       border_width: 0
-      outline_width: 0
-      radius: 0
       pad_all: 0
-      scrollable: false
       widgets:
-        - image:
-            src: guide_img_a
-            width: 113
-            height: 113
-            align: CENTER
         - label:
-            y: 73
-            align: CENTER
-            text_font: fonts_MiSans_Bold_12
-            text_color: 0xD5D5D5
-            text: "User Manual"
+            y: 43
+            align: top_mid
+            width: 210
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_18
+            text_color: 0xFFFFFF
+            text: "Add the ESPHome device\nin Home Assistant"
+        - label:
+            y: 118
+            align: top_mid
+            width: 210
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_16
+            text_color: 0xD2D2D2
+            text: "Open Visit to choose\nyour controls.\nNo device token needed."
