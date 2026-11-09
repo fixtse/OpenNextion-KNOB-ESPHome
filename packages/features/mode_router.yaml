@@ -76,7 +76,7 @@ onx_config_web:
             slot["progress"] = progress.visible ? progress.permille : -1;
             slot["playing"] = detail->state == "playing";
             slot["ring_color"] = onx_display_settings::current.media_color;
-            slot["artwork"] = onx_media::artwork_url(id(ha_host).state, detail->picture);
+            slot["artwork"] = onx_media::has_playback(detail->state) ? onx_media::artwork_url(id(ha_host).state, detail->picture) : "";
           }
         }
       });
@@ -203,7 +203,7 @@ onx_config_web:
         (query.icon_override != "" && query.icon_override != "0" && query.icon_override != "1"))
       return onx_entity_config::error("Choose a valid MDI icon");
     const auto domain = custom_logic::ha_domain_from_entity_id(query.entity);
-    if (onx_controls::handles(query.entity) && !query.action.empty())
+    if (onx_controls::handles(query.entity) && query.entity.rfind("media_player.", 0) != 0 && !query.action.empty())
       return onx_entity_config::error("This entity uses native press controls; choose Default");
     if (!query.type.empty()) {
       const bool allowed = (domain == "switch" && (query.type == "Switch" || query.type == "Plug")) ||

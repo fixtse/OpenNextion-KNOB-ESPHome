@@ -11,7 +11,7 @@ does not grant permission to run actions.
 | Number / input number | Adjust on the advertised min/max/step grid | No additional action | — |
 | Select / input select | Preview an option | Apply preview | — |
 | Scene / button / input button | — | Activate | — |
-| Media player | Adjust volume, or preview source/mute | Next track and double-press previous-track on primary view; confirm a preview | Choose volume, source, or mute |
+| Media player | Adjust volume | Play/pause a loaded track; run the configured automation/script when idle | Next track clockwise; previous track counterclockwise |
 
 Secondary settings appear only when Home Assistant advertises the capability
 and its required attributes. Release the knob after choosing a setting, then

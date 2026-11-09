@@ -90,8 +90,8 @@ inline View build(const std::string &entity, const std::string &name) {
     v.layout = "media"; v.icon_x=0; v.icon_y=18; v.icon_size=80;
     const float volume = onx_control::number(onx_controls::effective(*d,"volume_level"));
     v.value = {"Volume: " + onx_media::volume_percent(volume),166,18,196};
-    v.context = {onx_media::display_text(d->media_title.empty()?d->state:d->media_title),122,16,196};
-    v.hint = {onx_media::display_text(feedback.empty()?d->media_artist:feedback),144,16,196,0xD2D2D2};
+    v.context = {onx_media::has_playback(d->state) ? onx_media::display_text(d->media_title.empty()?d->state:d->media_title) : "Nothing playing",122,16,196};
+    v.hint = {onx_media::display_text(feedback.empty()?(onx_media::has_playback(d->state)?d->media_artist:""):feedback),144,16,196,0xD2D2D2};
     v.badge.text.clear(); v.name.y=192; v.name.width=180;
   } else if (onx_controls::handles(entity)) {
     const auto key = selected_setting(*d);
@@ -128,7 +128,7 @@ inline View carousel(const std::string &entity, const std::string &name) {
     v.context.text = badge;
   } else if (domain == "media_player") {
     v.value.text = label(d->state);
-    v.context.text = onx_media::display_text(d->media_title);
+    v.context.text = onx_media::has_playback(d->state) ? onx_media::display_text(d->media_title) : "";
   } else if (domain == "automation") {
     v.value.text = d->state == "on" ? "Enabled" : d->state == "off" ? "Disabled" : label(d->state);
   } else if (domain == "script") {

@@ -14,7 +14,7 @@ start a routine, or check what matters—all from a round display and a single k
 | Lights | Switch power, dim brightness, adjust color, and fine-tune color temperature. |
 | Climate | Set temperature, change HVAC mode, adjust range endpoints, and choose supported presets, fan, swing, and humidity settings. |
 | Fans | Adjust speed, toggle power, and choose supported presets, oscillation, or direction. |
-| Media | Adjust volume, skip tracks, select a source, mute supported players, and follow playback on a circular progress ring. |
+| Media | Adjust volume, play/pause, skip tracks with press-and-turn, run an automation or script when idle, and follow playback on a circular progress ring. |
 | Switches & covers | Control switches, plugs, and cover position. |
 | Helpers & routines | Adjust numbers, confirm select options, activate scenes, press buttons, and run scripts or automations. |
 | At a glance | View sensors, weather, and timer countdowns with an animated progress ring. |

@@ -99,6 +99,10 @@ inline void rotate(const std::string &id, int direction) {
   select_control_entity(id);
   const auto *d = entity_detail(id);
   if (!d || !d->available) return;
+  if (has_prefix(id, "media_player.")) {
+    if (!(d->features & 4)) return;
+    control_setting = "volume_level"; control_preview.clear();
+  }
   const auto key = setting(*d), raw = choices(*d, key);
   if (!raw.empty()) {
     const auto value = next_option(raw, control_preview.empty() ? effective(*d, key) : control_preview, direction);
@@ -153,6 +157,12 @@ inline void press(const std::string &id) {
     ESP_LOGI("onx_controls", "HVAC mode requested: entity=%s from=%s to=%s",
              id.c_str(), effective(*d, "state").c_str(), mode.c_str());
     request(*d, "climate.set_hvac_mode", "state", "hvac_mode", mode);
+  } else if (has_prefix(id, "media_player.")) {
+    const auto state = effective(*d, "state");
+    if (!onx_media::has_playback(state)) return;
+    const bool pause = state == "playing" || state == "buffering";
+    if (!(d->features & (pause ? 1U : 16384U))) return;
+    request(*d, pause ? "media_player.media_pause" : "media_player.media_play", "state", "", pause ? "paused" : "playing");
   } else if (has_prefix(id, "fan.")) {
     const bool on = effective(*d, "state") == "on";
     // Fans predating TURN_ON/TURN_OFF flags still support these standard actions.

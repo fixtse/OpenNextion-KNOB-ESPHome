@@ -131,6 +131,17 @@ const { chromium } = require('playwright');
   assert.match(await page.locator('#device-preview').textContent(),/Volume: 50%/);
   assert.equal(await page.locator('#device-preview image').last().getAttribute('width'),'100');
   await page.screenshot({path:path.join(screenshots,'onx-media-preview.png'),fullPage:true});
+  assert.equal(await page.locator('#choose-action').isDisabled(),false);
+  assert.equal(await page.locator('#action-binding h3').textContent(),'When idle');
+  for(const [name,entity] of [['Welcome home','automation.welcome'],['Comfort scene','script.comfort']]){
+   await page.locator('#choose-action').click();
+   await page.locator('#results').getByRole('button',{name,exact:false}).click();
+   await page.locator('#save').click();
+   await page.getByRole('status').filter({hasText:'1 slot saved.'}).waitFor();
+   assert.equal(saved.at(-1).action,entity);
+  }
+  assert.match(await page.locator('#press-hint').textContent(),/Playing\/paused: play\/pause.*Comfort scene/);
+
   await page.getByRole('button',{name:'Device settings',exact:true}).click();
   assert.equal(await page.locator('#standby-scope').inputValue(),'main');
   await page.getByRole('button',{name:'Soft violet',exact:true}).click();

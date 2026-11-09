@@ -177,6 +177,15 @@ int main() {
   d.received = d.available = true; d.features = 4; d.volume = "0.60000004";
   assert(text(d.entity_id).find("60%") != std::string::npos);
   assert(onx_detail_view::build(d.entity_id,"Bedroom").value.text == "Volume: 60%");
+  d.state="playing";d.features=4|1|16384;press(d.entity_id);clock_ms+=100;tick(&api,d.entity_id,true);
+  assert(api.sent.back().service=="media_player.media_pause"&&api.sent.back().data.size()==1);
+  assert(effective(d,"state")=="paused");
+  for(auto &c:control_commands)c.feedback("state","paused");d.state="paused";
+  press(d.entity_id);clock_ms+=100;tick(&api,d.entity_id,true);
+  assert(api.sent.back().service=="media_player.media_play");
+  cancel_controls();d.state="idle";press(d.entity_id);assert(control_commands.empty());
+  auto idle_view=onx_detail_view::build(d.entity_id,"Bedroom");assert(idle_view.context.text=="Nothing playing"&&idle_view.hint.text.empty());
+  d.state="playing";d.features=4;press(d.entity_id);assert(control_commands.empty());
   cancel_controls(); d.entity_id = "button.test"; d.state = "unknown";
   press(d.entity_id); clock_ms += 100; tick(&api, d.entity_id, true);
   assert(api.sent.back().service == "button.press");

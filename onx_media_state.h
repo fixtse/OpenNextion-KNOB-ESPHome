@@ -77,25 +77,12 @@ struct Progress {
     return out;
   }
 };
-// A single click waits until the second-click window has elapsed.
-struct ClickDetector {
-  bool pending{false};
-  uint32_t released_ms{0};
-  std::string entity;
-  bool release(uint32_t now, const std::string &current) {
-    if (pending && entity == current && now - released_ms <= 350) {
-      pending = false;
-      return true;
-    }
-    pending = true;
-    released_ms = now;
-    entity = current;
-    return false;
-  }
-  bool due(uint32_t now) const { return pending && now - released_ms > 350; }
-  void cancel() { pending = false; }
-};
-inline ClickDetector clicks;
+inline bool has_playback(const std::string &state) {
+  return state == "playing" || state == "paused" || state == "buffering";
+}
+inline bool can_skip(const std::string &state, uint32_t features, bool previous) {
+  return has_playback(state) && (features & (previous ? 16U : 32U));
+}
 inline std::string requested_url, ready_url;
 inline uint32_t requested_ms{0};
 inline bool downloading{false};

@@ -7,16 +7,10 @@ int main() {
   assert(onx_media::volume_percent(-1) == "0%" && onx_media::volume_percent(2) == "100%");
   assert(onx_media::volume_percent(NAN) == "--");
   using namespace onx_media;
-  ClickDetector click;
-  assert(!click.release(1000, "media_player.room"));
-  assert(!click.due(1350)); assert(click.due(1351));
-  assert(click.release(1300, "media_player.room"));
-  assert(!click.pending); assert(!click.due(2000));
-  assert(!click.release(3000, "media_player.room"));
-  assert(!click.release(3200, "media_player.other"));
-  click.cancel(); assert(!click.due(4000));
-  assert(!click.release(0xffffff00u, "media_player.room"));
-  assert(click.due(0x100u)); // millisecond counter wraparound
+  for (const auto &state : {"playing","paused","buffering"}) assert(has_playback(state));
+  for (const auto &state : {"idle","off","on","unknown","unavailable"}) assert(!has_playback(state));
+  assert(can_skip("playing",32,false)&&!can_skip("playing",32,true));
+  assert(can_skip("paused",16,true)&&!can_skip("idle",48,false));
 
   const std::string origin="http://ha.local:8123";
   assert(artwork_url(origin,"/api/media_player_proxy/player?token=example") == origin+"/api/media_player_proxy/player?token=example");

@@ -117,3 +117,15 @@ so they move together during rotary navigation. Compact dots replace the numeric
 page counter. Names have a separate bottom margin, and scaled icon coordinates
 account for LVGL's center pivot. Sensor detail icons sit below the reading while
 the sensor heading remains centered.
+
+## Media player gestures
+
+Turn to adjust volume. While a track is playing, paused or buffering, a short
+press pauses/resumes playback. When idle/off, the short press runs the automation
+or script selected under **When idle** on the website; choose **No action** to
+disable it. A paused track resumes instead of running the idle action.
+
+Press and turn clockwise for the next track, counterclockwise for the previous
+track. Releasing after that gesture sends no additional action. Long press still
+returns to the main screen. Playback/track actions respect Home Assistant's
+advertised capabilities.
