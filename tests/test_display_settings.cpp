@@ -1,5 +1,6 @@
 #include "../onx_display_settings.h"
 #include <cassert>
+#include <utility>
 int main() {
   using namespace onx_display_settings;
   uint8_t format=255;
@@ -8,6 +9,14 @@ int main() {
   datetime.date_format=1;assert(format_iso_date("2026-12-31")=="12-31");
   datetime.date_format=2;assert(format_iso_date("2026-12-31")=="2026-12-31");
   assert(format_iso_date("unknown")=="unknown");
+  for(const auto &pair : {std::pair<const char *,const char *>{"dd-mmm","10 Nov"},
+                         {"mmm-dd","Nov 10"},{"yyyy-mmm-dd","2026-Nov-10"}}) {
+    assert(parse_date_format(pair.first,datetime.date_format));
+    assert(date_format_text(datetime.date_format)==pair.first);
+    assert(format_iso_date("2026-11-10T23:30:00Z")==pair.second);
+  }
+  assert(format_iso_date("2026-00-10")=="2026-00-10");
+  assert(format_iso_date("2026-13-10")=="2026-13-10");
   assert(!parse_date_format("bad",format));
   assert(parse_hour_format("12",format)&&format==1);
   datetime.hour_format=format;assert(std::string(time_pattern())=="%I:%M %p");

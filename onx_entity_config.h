@@ -33,7 +33,7 @@ inline void load_display_settings() {
     onx_display_settings::current = saved;
   datetime_preference = esphome::global_preferences->make_preference<onx_display_settings::DateTimeSettings>(esphome::fnv1_hash("onx.datetime.v2"));
   onx_display_settings::DateTimeSettings date_saved{};
-  if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 2 && date_saved.hour_format <= 1 && date_saved.show_ampm <= 1)
+  if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 5 && date_saved.hour_format <= 1 && date_saved.show_ampm <= 1)
     onx_display_settings::datetime = date_saved;
   else {
     struct LegacyDate {uint32_t magic;uint8_t date_format,hour_format;};

@@ -8,8 +8,9 @@ All browser assets are served by the knob; no frontend build or external CDN is 
 
 Choose entities by name, ID, domain, or room. Each slot can have a custom display
 name and an automation/script press action. Climate and media players retain their
-native press controls and reject custom overrides. Light and cover type choices
-use the browser's Home Assistant capability data when available. Manual entity IDs
+native controls; media players can run a configured action when idle. Entity
+control types are detected automatically; the advanced type selector is removed.
+Manual entity IDs
 remain available when the catalogue cannot be loaded.
 
 Move slots earlier or later, or duplicate one into an empty slot. A dot marks
@@ -153,9 +154,11 @@ Opening the entity refreshes forecasts cached for more than 15 minutes.
 
 ### Dates, clocks and weather icons
 
-In **Device settings**, choose **DD-MM**, **MM-DD**, or **YYYY-MM-DD**, and a
-**12 hour** (with AM/PM) or **24 hour** clock. Defaults are DD-MM and 24 hour.
-Forecast dates and the standby date/clock share these saved preferences; backups
+In **Device settings**, choose numeric dates or abbreviated-month dates such as
+**10 Nov**, **Nov 10**, or **2026-Nov-10**, and a **12 hour** (with optional AM/PM)
+or **24 hour** clock. Defaults are DD-MM and 24 hour. Standby dates, forecasts,
+primary date sensors and secondary `{date}` / `{datetime}` text follow the saved
+format. Backups
 include them, and older backups receive the defaults. The sleep schedule retains
 its existing times regardless of the display clock format.
 
@@ -181,7 +184,7 @@ Assistant or on the originating voice/speaker device.
 
 ### Secondary sensor information and graphs
 
-For a sensor slot, open **Advanced display type**. Use **Choose secondary entity**
+For a sensor slot, open the **Display** tab. Use **Choose secondary entity**
 or enter an entity ID, then edit **Secondary text**. It replaces the name under
 the main value and stays small beneath an opened graph. Text and numeric secondary
 entities support `{value}` and `{unit}`. Date/time entities also support `{relative}`,
@@ -203,3 +206,17 @@ be plotted as numeric graphs.
 In **Device settings**, **Show AM/PM with 12-hour time** is independently selectable.
 Older date/clock preferences migrate while keeping their selected formats. Sensor
 settings and the AM/PM preference are included in backups; older backups get defaults.
+
+### Slot tabs and playlist actions
+
+Slot settings use **Display**, **Press action**, and media-only **Playlists** tabs.
+The same searchable entity picker serves display entities, press bindings,
+secondary sensors and playlist actions. Playlist searches show scripts and
+automations. Choosing one supplies its display name automatically; you can
+customize that name without typing the script ID. Existing entries, their order,
+and backups remain compatible. Cancelling the picker adds no empty entry.
+
+Playlist rows have padded name/action fields and icon buttons for moving entries
+up/down or removing them. Every icon button has a tooltip and accessible label.
+The shared picker supports Escape to close, and tab navigation supports arrow
+keys, Home and End. Preview polling pauses while choosing an entity.

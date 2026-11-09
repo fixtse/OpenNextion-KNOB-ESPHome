@@ -1,0 +1,63 @@
+name: Embedded web syntax
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Parse embedded JavaScript and check static element references
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const root = 'my_components/onx_config_web/';
+          for (const file of ['config_app.h', 'ha_browser.h']) {
+            const source = fs.readFileSync(root + file, 'utf8').split('R"ONXJS(')[1].split(')ONXJS"')[0];
+            new vm.Script(source, { filename: file });
+            console.log(file + ': syntax valid');
+          }
+          const html = fs.readFileSync(root + 'config_page.h', 'utf8');
+          const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+          if (new Set(ids).size !== ids.length) throw Error('Duplicate HTML element IDs');
+          const app = fs.readFileSync(root + 'config_app.h', 'utf8');
+          for (const match of app.matchAll(/\$\('([^']+)'\)/g)) {
+            if (!ids.includes(match[1])) throw Error('Missing HTML element: ' + match[1]);
+          }
+          console.log('Static element references valid');
+          JS
+      - name: Resume the current task
+        if: always()
+        continue-on-error: true
+        env:
+          CALLBACK_URL: ${{ secrets.T3_BUILD_CALLBACK_URL }}
+          RESULT: ${{ job.status }}
+          REPOSITORY: ${{ github.repository }}
+          REVISION: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+          ATTEMPT: ${{ github.run_attempt }}
+        shell: python
+        run: |
+          import json, os, urllib.request
+          url = os.environ.get('CALLBACK_URL')
+          if not url:
+              raise SystemExit('Completion callback is not configured')
+          payload = dict(task='onx-web-syntax', status=os.environ['RESULT'],
+                         repository=os.environ['REPOSITORY'], revision=os.environ['REVISION'],
+                         branch=os.environ['BRANCH'], run_id=os.environ['RUN_ID'],
+                         attempt=os.environ['ATTEMPT'],
+                         log=f"https://github.com/{os.environ['REPOSITORY']}/actions/runs/{os.environ['RUN_ID']}")
+          request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={
+              'User-Agent': 'onx-web-syntax/1.0', 'Content-Type': 'application/json'})
+          try:
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  print('Completion callback HTTP', response.status)
+          except Exception as error:
+              print('Callback failed:', type(error).__name__, 'HTTP', getattr(error, 'code', 'unknown'))
+              raise SystemExit(1)

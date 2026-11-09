@@ -125,6 +125,10 @@ inline View build(const std::string &entity, const std::string &name) {
     else if (kind == "carbon_dioxide") { v.symbol = "☁"; v.badge.text = "☁ Carbon dioxide"; }
     else if (kind == "power" || kind == "energy") { v.symbol = "⚡"; v.badge.text = "⚡ " + std::string(kind == "power" ? "Power" : "Energy"); }
     else v.badge.text = has_prefix(entity,"binary_sensor.") ? "Status" : "Sensor";
+    if (kind == "date" || kind == "timestamp") {
+      const auto formatted=onx_display_settings::format_iso_date(d->state);
+      if(formatted!=d->state) v.value.text=formatted+(kind=="timestamp" && d->state.size()>10 ? d->state.substr(10) : "");
+    }
     if (has_prefix(entity,"binary_sensor.")) v.value.text = d->state == "on" ? "On" : d->state == "off" ? "Off" : d->state;
     v.value.size = v.value.text.size() > 12 ? 24 : 32;
     v.value.y = 84; v.badge.x = 0;

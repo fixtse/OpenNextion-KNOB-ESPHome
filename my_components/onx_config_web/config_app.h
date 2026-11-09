@@ -7,7 +7,7 @@ const $=id=>document.getElementById(id),ha=new OnxHA.Client(),DRAFT='onx.config.
 const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['fan','Fan'],['number','Number'],['input_number','Input Number'],['select','Select'],['input_select','Input Select'],['scene','Scene'],['button','Button'],['input_button','Input Button'],['climate','Climate'],['media_player','Media players'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
 const copy=value=>JSON.parse(JSON.stringify(value));
 const empty=()=>({entity:'',name:'',area:'',action:'',actionName:'',typeOption:'',icon:'',iconOverride:'0',secondary:'',secondaryText:'{value}',sensorGraph:'0',playlists:[]});
-let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[],overlayTimer=0,lastPreviewAt=0;
+let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[],overlayTimer=0,lastPreviewAt=0,slotTab='display',playlistTarget=-1;
 function element(tag,text,className){const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e}
 function message(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error)}
 function safeRead(key){try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}}
@@ -75,42 +75,81 @@ function drawPreview(slot){
  for(const [i,line] of (view.lines||[]).entries()){const name=i===4;text(name&&!slot.secondary?(slot.name||line.text):line.text,line.y,line.size,line.width,line.color,line.x||0,name&&view.layout!=='media')}
  $('preview-status').textContent=view.available?'Live device view':'Device view · waiting for entity data';
 }
-async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden)return;previewBusy=true;lastPreviewAt=Date.now();try{const data=await rpc({op:'preview',entity:slots[active].entity});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
+async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden||$('entity-picker').open)return;previewBusy=true;lastPreviewAt=Date.now();try{const data=await rpc({op:'preview',entity:slots[active].entity});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
 function preview(){const s=slots[active],d=s.entity.split('.')[0];drawPreview(s);
  const rotates={light:'Adjust the selected light control',cover:'Browse; hold and rotate to adjust position',climate:'Adjust the selected setting; hold and turn to choose a setting',fan:'Adjust speed; hold and turn for presets, oscillation or direction',number:'Adjust value within minimum, maximum and step',input_number:'Adjust value within minimum, maximum and step',select:'Choose an option',input_select:'Choose an option',media_player:'Adjust volume; press + turn for next/previous track; hold 0.5s and release for playlists'};
  $('rotate-hint').textContent=s.entity?(rotates[d]||'No adjustment; hold to return'):'Browse your devices';
  const presses={light:'Toggle power',cover:'Use the cover’s normal controls',climate:'Cycle supported HVAC modes; confirm a previewed option',fan:'Toggle power; confirm a previewed option',select:'Confirm option',input_select:'Confirm option',number:'Value sent automatically',input_number:'Value sent automatically',scene:'Activate scene',button:'Press button',input_button:'Press button',media_player:'Play/pause when loaded; run the selected action when idle',script:'Run script',automation:'Use the automation’s normal controls',sensor:'Send sensor press event',binary_sensor:'Send sensor press event',weather:'Read only',timer:'Read only'};
  $('press-hint').textContent=d==='media_player'?('Playing/paused: play/pause. Idle: '+(s.action==='none'?'no action':s.action?(s.actionName||actionLabel(s.action)):'choose an automation or script')):!s.entity?'Open the selected device':nativePress(s.entity)?presses[d]:s.action==='none'?'No action':s.action?(s.actionName||actionLabel(s.action)):presses[d]||'Toggle power';
 }
-function renderTypes(){const s=slots[active],item=ha.items.find(i=>i.entity===s.entity),supported=item?.types;$('entity-type').replaceChildren(...choices(s).map(value=>{const option=element('option',value);option.value=value==='Automatic'?'':value;option.disabled=!!supported&&!supported.includes(value);return option}));$('entity-type').value=s.typeOption||((choices(s)[0]==='Automatic')?'':choices(s)[0]);$('capability-note').textContent=supported?'Available controls are detected from Home Assistant. Refresh the entity list after changing the device.':'Capabilities have not been loaded. Verify manual overrides against the entity in Home Assistant.'}
+function iconButton(label,kind){
+ const b=element('button','','icon-button');b.type='button';b.title=label;b.setAttribute('aria-label',label);
+ const paths={up:'M12 19V5m-6 6 6-6 6 6',down:'M12 5v14m-6-6 6 6 6-6',remove:'m6 6 12 12M18 6 6 18'};
+ const svg=svgNode('svg',{viewBox:'0 0 24 24','aria-hidden':'true',focusable:'false'});svg.append(svgNode('path',{d:paths[kind]}));b.append(svg);return b;
+}
+function markSlotChanges(text){
+ persistDraft();const count=slots.filter((_,i)=>dirtySlot(i)).length;
+ $('save').disabled=busy||!initialized||!dirtySlot(active);$('save-all').disabled=busy||!initialized||!count;$('discard').disabled=busy||!count;
+ $('unsaved-count').textContent=count?count+' unsaved slot'+(count===1?'':'s'):'';message(text);
+}
+function shortPlaylistName(value){
+ let out='';const encoder=new TextEncoder();for(const char of value){if(encoder.encode(out+char).length>48)break;out+=char}return out;
+}
+function renderEditorTabs(){
+ const media=slots[active].entity.startsWith('media_player.');$('slot-tab-playlists').hidden=!media;
+ if(slotTab==='playlists'&&!media)slotTab='display';
+ for(const button of document.querySelectorAll('[data-slot-tab]')){
+  const chosen=button.dataset.slotTab===slotTab;button.setAttribute('aria-selected',String(chosen));button.tabIndex=chosen?0:-1;button.disabled=busy;
+  $('slot-panel-'+button.dataset.slotTab).hidden=!chosen;
+ }
+}
+for(const button of document.querySelectorAll('[data-slot-tab]')){
+ button.onclick=()=>{slotTab=button.dataset.slotTab;renderEditorTabs()};
+ button.onkeydown=event=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();
+  const tabs=[...document.querySelectorAll('[data-slot-tab]')].filter(b=>!b.hidden&&!b.disabled),index=tabs.indexOf(button);
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:(index+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+  if(tabs[next]){slotTab=tabs[next].dataset.slotTab;renderEditorTabs();tabs[next].focus()}
+ };
+}
 function renderPlaylists(){
- const s=slots[active];$('playlist-options').hidden=!s.entity.startsWith('media_player.');
+ const s=slots[active];$('playlist-options').hidden=!s.entity.startsWith('media_player.');$('playlist-count').textContent=s.playlists.length+' of 8';
  $('playlist-entries').replaceChildren();
- $('playlist-actions').replaceChildren(...ha.items.filter(i=>/^(script|automation)\./.test(i.entity)).map(i=>{const o=element('option',i.name||i.entity);o.value=i.entity;return o}));
+ if(!s.playlists.length)$('playlist-entries').append(element('p','Add a playlist or station, then choose the action that starts it.','empty'));
  s.playlists.forEach((entry,index)=>{
-  const row=element('div','','binding'),name=element('input',''),action=element('input','');
-  name.value=entry.name;name.maxLength=48;name.placeholder='Playlist or station name';name.setAttribute('aria-label','Playlist '+(index+1)+' name');
-  action.value=entry.action;action.maxLength=128;action.placeholder='script.play_jazz or automation.radio';action.setAttribute('list','playlist-actions');action.setAttribute('aria-label','Playlist '+(index+1)+' action');
-  for(const input of [name,action])input.disabled=busy||!initialized;
-  const edit=()=>{entry.name=name.value;entry.action=action.value.trim();persistDraft();$('save').disabled=busy||!initialized||!dirtySlot(active);$('save-all').disabled=busy||!initialized||!slots.some((_,i)=>dirtySlot(i));$('discard').disabled=busy||!slots.some((_,i)=>dirtySlot(i));message('Playlist changes not saved.')};
-  name.oninput=action.oninput=edit;name.onchange=action.onchange=()=>changed();
-  row.append(name,action);
-  for(const [label,delta] of [['Move up',-1],['Move down',1],['Remove',0]]){
-   const b=element('button',label,'quiet');b.type='button';b.disabled=busy||!initialized||(delta<0&&index===0)||(delta>0&&index===s.playlists.length-1);
-   b.onclick=()=>{if(delta)[s.playlists[index],s.playlists[index+delta]]=[s.playlists[index+delta],s.playlists[index]];else s.playlists.splice(index,1);changed()};row.append(b);
+  const row=element('article','','playlist-row'),head=element('div','','playlist-row-head'),tools=element('div','','playlist-row-tools');
+  row.setAttribute('aria-label','Playlist '+(index+1));head.append(element('span',String(index+1),'playlist-order'));
+  for(const [label,delta,icon] of [['Move up',-1,'up'],['Move down',1,'down'],['Remove',0,'remove']]){
+   const b=iconButton(label+' playlist '+(index+1),icon);if(!delta)b.classList.add('danger');
+   b.disabled=busy||!initialized||(delta<0&&index===0)||(delta>0&&index===s.playlists.length-1);
+   b.onclick=()=>{if(delta)[s.playlists[index],s.playlists[index+delta]]=[s.playlists[index+delta],s.playlists[index]];else s.playlists.splice(index,1);changed()};tools.append(b);
   }
-  $('playlist-entries').append(row);
+  head.append(tools);row.append(head);
+  const fields=element('div','','playlist-fields'),nameField=element('label','Display name','field'),name=element('input','');
+  name.value=entry.name;name.maxLength=48;name.placeholder='Use the chosen action’s name';name.setAttribute('aria-label','Playlist '+(index+1)+' name');name.disabled=busy||!initialized;
+  name.oninput=()=>{entry.name=name.value;markSlotChanges('Playlist changes not saved.')};nameField.append(name);
+  const action=element('div','','playlist-action'),selected=ha.items.find(i=>i.entity===entry.action);
+  action.append(element('span','Runs','field-caption'),element('strong',entry.action?(selected?.name||entry.action):'No action selected'));
+  if(entry.action)action.append(element('small',entry.action));
+  const choose=element('button',entry.action?'Change action':'Choose action');choose.type='button';choose.dataset.choosePlaylist=String(index);
+  choose.setAttribute('aria-label','Choose action for playlist '+(index+1));choose.disabled=busy||!initialized;choose.onclick=()=>selectMode('playlist',index);action.append(choose);
+  fields.append(nameField,action);row.append(fields);$('playlist-entries').append(row);
  });
  $('add-playlist').disabled=busy||!initialized||s.playlists.length>=8;
 }
-$('add-playlist').onclick=()=>{slots[active].playlists.push({name:'',action:''});changed()};
+$('add-playlist').onclick=()=>selectMode('playlist',slots[active].playlists.length);
+function isActionPicker(){return mode==='action'||mode==='playlist'}
+function selectedPickerEntity(){const s=slots[active];return mode==='playlist'?s.playlists[playlistTarget]?.action:mode==='secondary'?s.secondary:mode==='action'?s.action:s.entity}
+function closePicker(){if($('entity-picker').open)$('entity-picker').close()}
+$('close-picker').onclick=closePicker;
+$('entity-picker').addEventListener('click',event=>{if(event.target!==$('entity-picker'))return;const r=event.target.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closePicker()});
 function render(){
  const icon=slots[active].icon;$('icon-hint').textContent=!slots[active].entity?'':icon?'Home Assistant icon: '+icon:'Using the entity default. Sign in and refresh the entity list to sync Home Assistant icons.';
- $('slots').replaceChildren(...slots.map((s,i)=>{const b=element('button','');b.append(element('b',String(i+1)),element('span',s.name||s.entity||'Empty slot'));if(dirtySlot(i))b.append(element('span','●','dirty-dot'));b.setAttribute('aria-label','Slot '+(i+1)+': '+(s.name||s.entity||'Empty')+(dirtySlot(i)?', unsaved':''));b.setAttribute('aria-current',String(i===active));b.disabled=busy;b.onclick=()=>{active=i;render();search();refreshPreview()};return b}));
+ $('slots').replaceChildren(...slots.map((s,i)=>{const b=element('button','');b.append(element('b',String(i+1)),element('span',s.name||s.entity||'Empty slot'));if(dirtySlot(i))b.append(element('span','●','dirty-dot'));b.setAttribute('aria-label','Slot '+(i+1)+': '+(s.name||s.entity||'Empty')+(dirtySlot(i)?', unsaved':''));b.setAttribute('aria-current',String(i===active));b.disabled=busy;b.onclick=()=>{active=i;slotTab='display';playlistTarget=-1;render();search();refreshPreview()};return b}));
  const s=slots[active],restricted=nativePress(s.entity),count=slots.filter((_,i)=>dirtySlot(i)).length;
  $('slot-title').textContent='Slot '+(active+1);$('unsaved-count').textContent=count?count+' unsaved slot'+(count===1?'':'s'):'';
  $('action-binding').querySelector('h3').textContent=s.entity.startsWith('media_player.')?'When idle':'When pressed';
- renderPlaylists();
+ renderEditorTabs();renderPlaylists();
  $('sensor-options').hidden=!s.entity.startsWith('sensor.');$('secondary-entity').value=s.secondary;$('secondary-text').value=s.secondaryText;$('sensor-presentation').value=s.sensorGraph;
  $('entity-name').textContent=s.name||s.entity||'Empty slot';$('entity-id').textContent=s.entity;$('display-name').value=s.name;
  $('action-name').textContent=s.actionName||actionLabel(s.action);$('action-id').textContent=s.action&&s.action!=='none'?s.action:s.action==='none'?'Ignore a short press':'Use the entity’s normal controls';
@@ -119,19 +158,41 @@ function render(){
  $('action-limit').hidden=!restricted;$('choose-action').disabled=busy||restricted||!s.entity;$('none').disabled=busy||restricted||!s.entity;$('default').disabled=busy||!s.entity;
  $('save').disabled=busy||!initialized||!dirtySlot(active);$('save-all').disabled=busy||!initialized||!count;$('discard').disabled=busy||!count;
  $('move-up').disabled=busy||active===0;$('move-down').disabled=busy||active===9;$('duplicate').disabled=busy||!s.entity||!slots.some(s=>!s.entity);
- for(const id of ['choose-secondary','secondary-entity','secondary-text','sensor-presentation','choose-entity','clear','entity-type','display-name','import','export','ha-connect','ha-disconnect','discard-settings'])$(id).disabled=busy||!initialized;
+ for(const id of ['choose-secondary','secondary-entity','secondary-text','sensor-presentation','choose-entity','clear','display-name','import','export','ha-connect','ha-disconnect','discard-settings'])$(id).disabled=busy||!initialized;
  $('save-settings').disabled=busy||!initialized||!dirtySettings();
- $('display-binding').classList.toggle('active',mode==='entity');$('action-binding').classList.toggle('active',mode==='action');$('action-hint').hidden=mode!=='action';$('search-title').textContent=mode==='action'?'Find an automation or script':mode==='secondary'?'Find a secondary entity':'Find an entity';
- $('filters').replaceChildren(...(mode==='action'?[['actions','All actions'],['automation','Automations'],['script','Scripts']]:domains).map(([value,title])=>{const b=element('button',title);b.setAttribute('aria-pressed',String(value===domain));b.onclick=()=>{domain=value;render();search()};return b}));renderTypes();preview();
+ $('display-binding').classList.toggle('active',slotTab==='display');$('action-binding').classList.toggle('active',slotTab==='action');$('action-hint').hidden=!isActionPicker();$('search-title').textContent=isActionPicker()?'Automations & scripts':mode==='secondary'?'Secondary entities':'Available entities';$('picker-title').textContent=mode==='playlist'?'Choose a playlist action':mode==='action'?'Choose a press action':mode==='secondary'?'Choose a secondary entity':'Choose a display entity';$('picker-context').textContent=mode==='playlist'?(slots[active].playlists[playlistTarget]?.name||'Playlist '+(playlistTarget+1)):slots[active].name||'Slot '+(active+1);
+ $('filters').replaceChildren(...(isActionPicker()?[['actions','All actions'],['automation','Automations'],['script','Scripts']]:domains).map(([value,title])=>{const b=element('button',title);b.setAttribute('aria-pressed',String(value===domain));b.onclick=()=>{domain=value;render();search()};return b}));preview();
 }
 function changed(){if(recovery){recovery=null;$('draft-notice').hidden=true}persistDraft();render();message('Changes not saved. Review and save when ready.')}
-function selectMode(value){mode=value;domain=value==='action'?'actions':'';$('search').value='';render();search();$('search').focus()}
-function choose(item){if(busy)return;const s=slots[active];if(mode==='secondary'){s.secondary=item.entity;mode='entity';changed();search();return;}if(mode==='entity'){if(s.entity!==item.entity){s.action='';s.actionName='';s.secondary='';s.secondaryText='{value}';s.sensorGraph='0';s.playlists=[]}Object.assign(s,{entity:item.entity,name:item.name||item.entity,area:item.area||'',typeOption:item.type||'',icon:item.icon||'',iconOverride:item.iconOverride||'0'})}else{if(!s.entity||nativePress(s.entity))return;s.action=item.entity;s.actionName=item.name||actionLabel(item.entity)}changed();search()}
-function isManualEntity(value){return /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value)&&value.length<=128&&/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\./.test(value)&&(mode!=='action'||/^(automation|script)\./.test(value))}
+function selectMode(value,index=-1){
+ if(busy||!initialized)return;mode=value;playlistTarget=value==='playlist'?index:-1;domain=isActionPicker()?'actions':'';
+ $('search').value='';$('room').value='';render();search();
+ if(!$('entity-picker').open)$('entity-picker').showModal();$('search').focus();
+}
+function choose(item){
+ if(busy)return;const s=slots[active];
+ if(isActionPicker()&&!/^(automation|script)\./.test(item.entity))return;
+ const target=playlistTarget,chosenMode=mode;
+ if(mode==='playlist'){
+  if(target<0||target>s.playlists.length||target>=8)return;
+  if(target===s.playlists.length)s.playlists.push({name:'',action:''});
+  const entry=s.playlists[target],old=ha.items.find(i=>i.entity===entry.action);
+  if(!entry.name.trim()||entry.name===shortPlaylistName(old?.name||entry.action))entry.name=shortPlaylistName(item.name||item.entity);
+  entry.action=item.entity;slotTab='playlists';
+ }else if(mode==='secondary')s.secondary=item.entity;
+ else if(mode==='entity'){
+  if(s.entity!==item.entity){s.action='';s.actionName='';s.secondary='';s.secondaryText='{value}';s.sensorGraph='0';s.playlists=[];s.typeOption=''}
+  Object.assign(s,{entity:item.entity,name:item.name||item.entity,area:item.area||'',icon:item.icon||'',iconOverride:item.iconOverride||'0'});slotTab='display';
+ }else{if(!s.entity||nativePress(s.entity))return;s.action=item.entity;s.actionName=item.name||actionLabel(item.entity)}
+ closePicker();mode='entity';playlistTarget=-1;changed();search();
+ if(chosenMode==='playlist')document.querySelector('[data-choose-playlist="'+target+'"]')?.focus();
+ else $(chosenMode==='action'?'choose-action':chosenMode==='secondary'?'choose-secondary':'choose-entity').focus();
+}
+function isManualEntity(value){return /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value)&&value.length<=128&&/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\./.test(value)&&mode!=='playlist'&&(!isActionPicker()||/^(automation|script)\./.test(value))}
 function search(append=false){const mine=++revision,offset=append?next:0,query=$('search').value.trim();if(!append)$('results').replaceChildren();$('manual').replaceChildren();$('more').hidden=true;
- const items=$('room').value?ha.items.filter(i=>i.area===$('room').value):ha.items,data=OnxHA.search(items,query,domain,offset);if(mine!==revision)return;$('count').textContent=data.total+' matches';
- if(!data.items.length&&!append){$('results').append(element('p',ha.ready?'No matches. Try another name, room, or entity type.':'Sign in on the Home Assistant page to browse entities, or enter a full entity ID.','empty'));if(!ha.ready){const b=element('button','Open Home Assistant setup');b.onclick=()=>page('connection');$('results').append(b)}}
- for(const item of data.items){const row=element('button','','result'),text=element('span','');text.append(element('strong',item.name||item.entity),element('small',item.entity));row.append(text,element('em',item.area||item.entity.split('.')[0]));row.classList.toggle('selected',(mode==='entity'?slots[active].entity:slots[active].action)===item.entity);row.disabled=busy||(mode==='action'&&(!slots[active].entity||nativePress(slots[active].entity)));row.onclick=()=>choose(item);$('results').append(row)}
+ const available=isActionPicker()?ha.items.filter(i=>/^(automation|script)\./.test(i.entity)):ha.items;const items=$('room').value?available.filter(i=>i.area===$('room').value):available,data=OnxHA.search(items,query,domain,offset);if(mine!==revision)return;$('count').textContent=data.total+' matches';
+ if(!data.items.length&&!append){$('results').append(element('p',ha.ready?'No matches. Try another name, room, or entity type.':mode==='playlist'?'Sign in on the Home Assistant page to choose a script or automation.':'Sign in on the Home Assistant page to browse entities, or enter a full entity ID.','empty'));if(!ha.ready){const b=element('button','Open Home Assistant setup');b.onclick=()=>{closePicker();page('connection')};$('results').append(b)}}
+ for(const item of data.items){const row=element('button','','result'),text=element('span','');text.append(element('strong',item.name||item.entity),element('small',item.entity));row.append(text,element('em',item.area||item.entity.split('.')[0]));row.classList.toggle('selected',selectedPickerEntity()===item.entity);row.disabled=busy||(mode==='action'&&(!slots[active].entity||nativePress(slots[active].entity)));row.onclick=()=>choose(item);$('results').append(row)}
  next=data.next;$('more').hidden=next<0;if(isManualEntity(query)&&!ha.items.some(i=>i.entity===query)){const b=element('button','Use entity ID: '+query);b.disabled=busy;b.onclick=()=>choose({entity:query,name:query});$('manual').append(b)}
 }
 function weatherOptions(){const value=settings.weather||'',items=ha.items.filter(i=>i.entity.startsWith('weather.'));if(value&&!items.some(i=>i.entity===value))items.push({entity:value,name:value});$('standby-weather').replaceChildren(...[{entity:'',name:'None'},...items].map(item=>{const o=element('option',item.name||item.entity);o.value=item.entity;return o}));$('standby-weather').value=value}
@@ -144,7 +205,7 @@ function validatePlaylists(entries,entity){
 }
 function validateSlots(input){if(!Array.isArray(input)||input.length!==10)throw Error('A configuration must contain exactly ten slots.');return input.map(s=>{if(!s||typeof s!=='object')throw Error('Invalid slot in configuration.');const result=empty();for(const key of Object.keys(result)){if(key==='playlists')continue;const value=s[key]??(['iconOverride','sensorGraph'].includes(key)?'0':key==='secondaryText'?'{value}':'');if(typeof value!=='string'||value.length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192)||new TextEncoder().encode(value).length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192))throw Error('Invalid or oversized slot field: '+key);result[key]=value}result.playlists=validatePlaylists(s.playlists??[],result.entity);if(result.secondary&&!/^[a-z_]+\.[a-z0-9_]+$/.test(result.secondary)||!['0','1'].includes(result.sensorGraph))throw Error('Choose a valid secondary entity and sensor display.');if(result.icon&&!/^mdi:[a-z0-9-]{1,76}$/.test(result.icon)||!['0','1'].includes(result.iconOverride))throw Error('Invalid entity icon.');if(result.entity&&!isSupported(result.entity))throw Error('Unsupported entity: '+result.entity);if(result.action&&!/^(none|(?:automation|script)\.[a-z0-9_]+)$/.test(result.action))throw Error('Unsupported press action.');if(!result.entity&&result.action)throw Error('An empty slot cannot have a press action.');if(result.typeOption&&!choices(result).includes(result.typeOption))throw Error('Display type does not match its entity.');return result})}
 function isSupported(value){return /^\[Local\] HMI IO(10|11|17|18)$/.test(value)||/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\.[a-z0-9_]+$/.test(value)}
-function validateSettings(value){if(!value||typeof value!=='object')throw Error('Device settings are missing.');value={media_color:'#62B0FF',standby_scope:'main',date_format:'dd-mm',hour_format:'24',show_ampm:'1',...value};const result={};for(const key of ['show_ampm','date_format','hour_format','media_color','standby_scope','brightness','standby','sensitivity','sleep_enabled','sleep_start','sleep_end','sleep_timeout','weather']){if(typeof value[key]!=='string')throw Error('Invalid device setting: '+key);result[key]=value[key]}if(!/^#[0-9a-f]{6}$/i.test(result.media_color)||!['main','all','never'].includes(result.standby_scope))throw Error('Choose a valid progress color and weather timeout behavior.');if(!['0','1'].includes(result.show_ampm)||!['dd-mm','mm-dd','yyyy-mm-dd'].includes(result.date_format)||!['12','24'].includes(result.hour_format))throw Error('Choose a valid date and clock format.');result.media_color=result.media_color.toUpperCase();for(const [key,min,max] of [['brightness',10,100],['standby',1,900],['sleep_timeout',1,3600]])if(!/^\d+$/.test(result[key])||+result[key]<min||+result[key]>max)throw Error('Invalid value for '+key);if(!['1','2','4'].includes(result.sensitivity)||!['0','1'].includes(result.sleep_enabled)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_end)||result.weather&&!/^weather\.[a-z0-9_]+$/.test(result.weather))throw Error('Invalid sleep, sensitivity, or weather setting.');return result}
+function validateSettings(value){if(!value||typeof value!=='object')throw Error('Device settings are missing.');value={media_color:'#62B0FF',standby_scope:'main',date_format:'dd-mm',hour_format:'24',show_ampm:'1',...value};const result={};for(const key of ['show_ampm','date_format','hour_format','media_color','standby_scope','brightness','standby','sensitivity','sleep_enabled','sleep_start','sleep_end','sleep_timeout','weather']){if(typeof value[key]!=='string')throw Error('Invalid device setting: '+key);result[key]=value[key]}if(!/^#[0-9a-f]{6}$/i.test(result.media_color)||!['main','all','never'].includes(result.standby_scope))throw Error('Choose a valid progress color and weather timeout behavior.');if(!['0','1'].includes(result.show_ampm)||!['dd-mm','mm-dd','yyyy-mm-dd','dd-mmm','mmm-dd','yyyy-mmm-dd'].includes(result.date_format)||!['12','24'].includes(result.hour_format))throw Error('Choose a valid date and clock format.');result.media_color=result.media_color.toUpperCase();for(const [key,min,max] of [['brightness',10,100],['standby',1,900],['sleep_timeout',1,3600]])if(!/^\d+$/.test(result[key])||+result[key]<min||+result[key]>max)throw Error('Invalid value for '+key);if(!['1','2','4'].includes(result.sensitivity)||!['0','1'].includes(result.sleep_enabled)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_end)||result.weather&&!/^weather\.[a-z0-9_]+$/.test(result.weather))throw Error('Invalid sleep, sensitivity, or weather setting.');return result}
 function validateDocument(value){if(![1,2].includes(value?.schema))throw Error('Unsupported configuration version.');return {slots:validateSlots(value.slots),settings:validateSettings(value.settings)}}
 async function saveSlots(indices){if(busy||!initialized)return;busy=true;render();search();let completed=0;try{for(const i of indices){const snapshot=copy(slots[i]),item=ha.items.find(item=>item.entity===snapshot.entity);if(item&&Object.hasOwn(item,'icon')){snapshot.icon=item.icon||'';snapshot.iconOverride=item.iconOverride||'0';slots[i].icon=snapshot.icon;slots[i].iconOverride=snapshot.iconOverride;}validateSlots([snapshot,...Array.from({length:9},empty)]);if(nativePress(snapshot.entity)&&snapshot.action)throw Error('Choose Default for the press action on slot '+(i+1)+'.');if(item?.types&&snapshot.typeOption&&!item.types.includes(snapshot.typeOption))throw Error('Slot '+(i+1)+' uses an unsupported control type. Choose a type detected by Home Assistant.');message('Saving slot '+(i+1)+'…');await rpc(slotPayload(i,snapshot));saved[i]=snapshot;completed++;persistDraft()}message(completed+' slot'+(completed===1?'':'s')+' saved.')}catch(error){message(error.message+' '+completed+' slots saved; remaining changes are still marked unsaved.',true)}finally{busy=false;persistDraft();render();search()}}
 $('save').onclick=()=>saveSlots([active]);$('save-all').onclick=()=>saveSlots(slots.map((_,i)=>i).filter(dirtySlot));
@@ -153,7 +214,6 @@ $('choose-secondary').onclick=()=>selectMode('secondary');
 $('choose-entity').onclick=()=>selectMode('entity');$('choose-action').onclick=()=>selectMode('action');$('default').onclick=()=>{slots[active].action='';slots[active].actionName='';changed()};$('none').onclick=()=>{slots[active].action='none';slots[active].actionName='';changed()};$('clear').onclick=()=>{slots[active]=empty();changed();search()};
 $('display-name').oninput=()=>{slots[active].name=$('display-name').value;persistDraft();$('save').disabled=busy||!dirtySlot(active);$('save-all').disabled=busy||!slots.some((_,i)=>dirtySlot(i));$('discard').disabled=!slots.some((_,i)=>dirtySlot(i));$('unsaved-count').textContent='Unsaved changes';preview();message('Display name not saved.')};$('display-name').onchange=()=>render();
 for(const field of ['secondary-entity','secondary-text','sensor-presentation'])$(field).oninput=()=>{slots[active].secondary=$('secondary-entity').value.trim();slots[active].secondaryText=$('secondary-text').value;slots[active].sensorGraph=$('sensor-presentation').value;changed()};
-$('entity-type').onchange=()=>{slots[active].typeOption=$('entity-type').value;changed()};
 function move(delta){if(busy)return;const target=active+delta;[slots[active],slots[target]]=[slots[target],slots[active]];active=target;changed();search()}
 $('move-up').onclick=()=>move(-1);$('move-down').onclick=()=>move(1);$('duplicate').onclick=()=>{const target=slots.findIndex(s=>!s.entity);if(target<0||busy)return;slots[target]=copy(slots[active]);active=target;changed();search()};
 $('search').oninput=()=>{clearTimeout(debounce);debounce=setTimeout(()=>search(),200)};$('room').onchange=()=>search();$('more').onclick=()=>search(true);

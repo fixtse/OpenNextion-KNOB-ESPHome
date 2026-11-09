@@ -60,8 +60,9 @@ validation and compilation. Hardware and live HA behavior still require a device
 ## Playlist and station menu
 
 On the knob's configuration webpage, choose a media player slot and add entries
-under **Playlists & stations**. Give each a name and a `script.*` or `automation.*`
-entity ID that starts that playlist or station on the intended player. Up to eight
+in the **Playlists** tab. Choose a script or automation with the shared action
+picker; its name fills automatically and can be customized. Configure that action
+to start the playlist or station on the intended player. Up to eight
 entries per slot are saved on the knob and included in configuration backups.
 Automation conditions are respected. These actions do not receive a player
 parameter: choose the player in the Home Assistant script or automation itself.
