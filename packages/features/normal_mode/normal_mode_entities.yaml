@@ -1374,6 +1374,13 @@ image:
     type: RGB565
     transparency: alpha_channel
 
+  - platform: file
+    file: "../../../assets/feedback/action_sent.svg"
+    id: action_sent_img
+    resize: 40x40
+    type: RGB565
+    transparency: alpha_channel
+
   - platform: online_image
     id: media_cover_image
     url: http://homeassistant.local:8123/

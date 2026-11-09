@@ -81,13 +81,13 @@ or entering standby cancels the menu; reconnecting never launches an entry.
 
 ## Press feedback
 
-Executable entity presses show a shared 1.5-second on-screen notification.
-Queued native controls show **Action requested**, changing to **Action sent**
-after the API request is transmitted. This covers climate/fan controls,
-select confirmations, scenes/buttons, and media play/pause. Script/automation
-bindings, playlist entries, light/switch toggles, sensor press events, and cover
-commands also show **Action sent** at dispatch. Local GPIO toggles show **Done**.
-This acknowledges dispatch, not successful Home Assistant execution or playback.
-Existing pending-state and timeout messages remain available in the detail view.
-Navigation, unavailable actions, and press bindings set to **No action** do not
-show execution feedback. Leaving the entity or entering standby clears it.
+Executable entity presses show a small checkmark icon for 900ms, without text.
+The icon appears after an action is sent through the API or a local GPIO action
+completes. It covers climate/fan controls, select confirmations, scenes/buttons,
+media play/pause, script/automation bindings, playlist entries, light/switch
+power toggles, sensor press events, and cover commands. It acknowledges dispatch,
+not successful Home Assistant execution or playback. Existing pending-state and
+timeout messages remain available in the detail view. Navigation, unavailable
+actions, and bindings set to **No action** do not show the icon. Leaving the
+entity or entering standby clears it. The icon is bundled with firmware and
+requires no network download.

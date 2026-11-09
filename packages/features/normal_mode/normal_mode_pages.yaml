@@ -33,25 +33,22 @@ lvgl:
       - obj:
           id: normal_action_feedback
           align: bottom_mid
-          y: -36
-          width: 168
-          height: 34
-          radius: 17
-          bg_color: 0x102A25
-          bg_opa: 90%
-          border_width: 1
-          border_color: 0x62D49B
+          y: -28
+          width: 48
+          height: 48
+          radius: 24
+          bg_color: 0x000000
+          bg_opa: 85%
+          border_width: 0
           pad_all: 0
           clickable: false
           scrollable: false
           hidden: true
           widgets:
-            - label:
-                id: normal_action_feedback_text
+            - image:
+                id: normal_action_feedback_icon
                 align: center
-                text: "Action sent"
-                text_font: fonts_MiSans_Medium_18
-                text_color: 0xFFFFFF
+                src: action_sent_img
   pages:
     - id: device_empty
       bg_color: 0x000000
