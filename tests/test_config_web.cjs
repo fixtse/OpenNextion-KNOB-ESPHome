@@ -59,7 +59,7 @@ const { chromium } = require('playwright');
     else if(values.get('op')==='settings_state')result={brightness:'100',standby:'300',sensitivity:'2',sleep_enabled:'0',sleep_start:'23:00',sleep_end:'07:00',sleep_timeout:'300'};
     else if(values.get('op')==='save'){
      if(failSave)result={error:'Could not save the press action; retry'};
-     else {saved.push(Object.fromEntries(values));slots[Number(values.get('slot'))]={entity:values.get('entity'),action:values.get('action')};result={ok:true}}
+     else {saved.push(Object.fromEntries(values));slots[Number(values.get('slot'))]={entity:values.get('entity'),action:values.get('action'),playlists:JSON.parse(values.get('playlists')||'[]')};result={ok:true}}
     }else if(values.get('op')==='refresh'||values.get('op')==='search')throw Error('Catalogue must stay in browser');else result={ok:true};
     results.set(++ticket,result);await route.fulfill({status:202,json:{ticket}});return;
    }
@@ -126,6 +126,20 @@ const { chromium } = require('playwright');
   assert.match(await page.locator('#device-preview').textContent(),/21.5°/);
   await page.screenshot({path:path.join(screenshots,'onx-climate-preview.png'),fullPage:true});
   await page.getByRole('button',{name:'Slot 9: Bedroom',exact:true}).click();
+  assert.equal(await page.locator('#playlist-options').isVisible(),true);
+  await page.locator('#add-playlist').click();
+  await page.getByRole('textbox',{name:'Playlist 1 name',exact:true}).fill('Jazz radio');
+  await page.getByRole('textbox',{name:'Playlist 1 action',exact:true}).fill('script.comfort');
+  await page.locator('#save').click();
+  await page.getByRole('status').filter({hasText:'1 slot saved.'}).waitFor();
+  assert.deepEqual(JSON.parse(saved.at(-1).playlists),[{name:'Jazz radio',action:'script.comfort'}]);
+  await page.locator('#add-playlist').click();
+  await page.getByRole('textbox',{name:'Playlist 2 name',exact:true}).fill('News');
+  await page.getByRole('textbox',{name:'Playlist 2 action',exact:true}).fill('light.invalid');
+  await page.locator('#save').click();
+  await page.getByRole('status').filter({hasText:'Each playlist needs a name'}).waitFor();
+  await page.locator('#playlist-entries .binding').nth(1).getByRole('button',{name:'Remove',exact:true}).click();
+
   await page.locator('#device-preview text').filter({hasText:'Christina Aguilera'}).waitFor();
   assert.equal(await page.locator('.preview-ring').getAttribute('stroke-dasharray'),'470 530');
   assert.match(await page.locator('#device-preview').textContent(),/Volume: 50%/);

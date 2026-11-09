@@ -8,6 +8,7 @@
 
 namespace esphome::onx_config_web {
 struct Query {
+  std::string playlists;
   std::string op, entity, action, search, domain, name, area, action_name, type, icon, icon_override;
   std::string brightness, standby, sensitivity, sleep_enabled, sleep_start, sleep_end, sleep_timeout;
   std::string media_color, standby_scope, date_format, hour_format, show_ampm, secondary, secondary_text, sensor_graph;

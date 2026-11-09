@@ -16,7 +16,7 @@ template<typename F> inline std::string build_json(F &&fill) {
   fill(doc.template to<JsonObject>());
   if (doc.overflowed()) return "{\"error\":\"Not enough memory to build configuration response\"}";
   const size_t size = measureJson(doc);
-  if (size > 16384) return "{\"error\":\"Configuration response exceeds size limit\"}";
+  if (size > 65536) return "{\"error\":\"Configuration response exceeds size limit\"}";
   std::string result; result.reserve(size);
   serializeJson(doc, result);
   return result;
@@ -86,6 +86,57 @@ inline bool save_sensor_config(size_t i,const std::string &primary,const std::st
   onx_sensor_view::configs[i]=next;onx_sensor_view::states[i].bind(next);return true;
 }
 
+inline bool playlists_loaded=false;
+inline esphome::ESPPreferenceObject playlist_preferences[10];
+inline void load_playlists() {
+  if(playlists_loaded || esphome::global_preferences==nullptr) return;
+  for(size_t i=0;i<10;++i) {
+    playlist_preferences[i]=esphome::global_preferences->make_preference<onx_playlist::Config>(esphome::fnv1_hash("onx.playlists.v1."+std::to_string(i)));
+    onx_playlist::Config saved{};
+    if(!playlist_preferences[i].load(&saved) || saved.magic!=0x4F4E5851 || saved.count>onx_playlist::MAX_ENTRIES) continue;
+    saved.entity[128]=0;
+    bool valid=std::string(saved.entity).rfind("media_player.",0)==0 && onx_config::valid_entity(saved.entity);
+    for(auto &entry:saved.entries) {
+      entry.name[48]=entry.action[128]=0;
+    }
+    for(size_t j=0;j<saved.count;++j) valid=valid && saved.entries[j].name[0] && onx_playlist::action_valid(saved.entries[j].action);
+    if(valid) onx_playlist::configs[i]=saved;
+  }
+  playlists_loaded=true;
+}
+inline bool parse_playlists(const std::string &entity,const std::string &raw,onx_playlist::Config &next) {
+  if(raw.empty()) return true; // Old clients clear the list when saving a slot.
+  auto doc=custom_logic::make_psram_json_document();
+  if(deserializeJson(doc,raw) || !doc.is<JsonArray>() || doc.size()>onx_playlist::MAX_ENTRIES) return false;
+  if(doc.size() && entity.rfind("media_player.",0)!=0) return false;
+  custom_logic::copy_string_to_fixed_buffer(entity,next.entity);
+  for(JsonObject entry:doc.as<JsonArray>()) {
+    if(!entry["name"].is<std::string>() || !entry["action"].is<std::string>()) return false;
+    const auto name=entry["name"].as<std::string>(),action=entry["action"].as<std::string>();
+    if(name.empty() || name.size()>48 || name.find_first_of("\r\n")!=std::string::npos || !onx_playlist::action_valid(action)) return false;
+    auto &target=next.entries[next.count++];
+    custom_logic::copy_string_to_fixed_buffer(name,target.name);
+    custom_logic::copy_string_to_fixed_buffer(action,target.action);
+  }
+  return true;
+}
+inline bool save_playlists(size_t slot,const onx_playlist::Config &next) {
+  load_playlists();
+  if(!playlists_loaded || slot>=10) return false;
+  if(!playlist_preferences[slot].save(&next) || !esphome::global_preferences->sync()) return false;
+  onx_playlist::configs[slot]=next;
+  onx_playlist::browser.clear();
+  return true;
+}
+inline const onx_playlist::Config *playlists_for_ui(int ui_slot,const std::string &entity) {
+  load_playlists();
+  if(entity.rfind("media_player.",0)!=0) return nullptr;
+  for(size_t i=0;i<10;++i) {
+    const auto &config=onx_playlist::configs[i];
+    if(custom_logic::normal_ui_slot_for_device_config_slot(i)==static_cast<size_t>(ui_slot) && entity==config.entity && config.count) return &config;
+  }
+  return nullptr;
+}
 struct PressBinding {
   char source[MAX_HA_ENTITY_ID_LENGTH + 1]{};
   char action[MAX_HA_ENTITY_ID_LENGTH + 1]{};
@@ -176,6 +227,7 @@ inline bool save_icon(size_t slot, const std::string &entity, const std::string 
 inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false) {
   custom_logic::load_ha_entities_if_needed();
   load_icons();
+  load_playlists();
   return build_json([&](JsonObject root) {
     root["wifi_connected"] = wifi_connected;
     root["ha_connected"] = ha_connected;
@@ -199,6 +251,12 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       custom_logic::load_device_config_if_needed(i);
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
+      JsonArray playlists=slot["playlists"].to<JsonArray>();
+      const auto &playlist=onx_playlist::configs[i];
+      if(custom_logic::cached_device_entity_id(i)==playlist.entity)
+        for(size_t j=0;j<playlist.count;++j) {
+          auto entry=playlists.add<JsonObject>();entry["name"]=playlist.entries[j].name;entry["action"]=playlist.entries[j].action;
+        }
       const auto &sensor=onx_sensor_view::configs[i];
       const bool same_sensor=custom_logic::cached_device_entity_id(i)==sensor.primary;
       slot["secondary"] = same_sensor?sensor.secondary:"";

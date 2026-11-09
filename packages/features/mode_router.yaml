@@ -243,12 +243,17 @@ onx_config_web:
       if(d && d->received && d->available && !std::isfinite(custom_logic_entity_sub::detail_number(d->state)))
         return onx_entity_config::error("Graphs require a numeric sensor");
     }
+    onx_playlist::Config playlist_config{};
+    if (!onx_entity_config::parse_playlists(query.entity,query.playlists,playlist_config))
+      return onx_entity_config::error("Add up to eight playlist names (48 UTF-8 bytes) and valid script or automation entity IDs");
     if (!custom_logic::save_device_config_entity_id(query.slot, query.entity))
       return onx_entity_config::error("Could not save the displayed entity; retry");
     if (!onx_entity_config::save_action(query.slot, query.entity, query.action))
       return onx_entity_config::error("Entity saved, but press action could not be saved; retry");
     if (!onx_entity_config::save_sensor_config(query.slot,query.entity,query.secondary,query.secondary_text,query.sensor_graph=="1"))
       return onx_entity_config::error("Could not save sensor display settings; retry");
+    if (!onx_entity_config::save_playlists(query.slot,playlist_config))
+      return onx_entity_config::error("Could not save playlist actions; retry");
     if (!onx_entity_config::save_selected_metadata(query)) return onx_entity_config::error("Could not save selected entity details");
     if (!onx_entity_config::save_icon(query.slot, query.entity, query.icon, query.icon_override == "1"))
       return onx_entity_config::error("Could not save selected entity icon");

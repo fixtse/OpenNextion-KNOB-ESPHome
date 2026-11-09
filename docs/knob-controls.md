@@ -56,3 +56,25 @@ In the project's Codespace, run `c++ -std=c++17 tests/test_control_state.cpp -o
 /tmp/test_control_state && /tmp/test_control_state`, the existing C++ and Python
 regressions, the configuration browser tests, and ESPHome 2026.10.2 configuration
 validation and compilation. Hardware and live HA behavior still require a device.
+
+## Playlist and station menu
+
+On the knob's configuration webpage, choose a media player slot and add entries
+under **Playlists & stations**. Give each a name and a `script.*` or `automation.*`
+entity ID that starts that playlist or station on the intended player. Up to eight
+entries per slot are saved on the knob and included in configuration backups.
+Automation conditions are respected. These actions do not receive a player
+parameter: choose the player in the Home Assistant script or automation itself.
+
+With entries configured, press and hold in the media player view. A visible bar
+fills; at **0.5 seconds**, **Release now / Open playlists** appears. Release while
+that cue is visible to open the list. Rotate to highlight an entry and short-press
+to run it. **Action sent** acknowledges the request, not confirmed playback.
+Medium-press again to return to the player. Continue holding to **1.5 seconds** to
+return to the device list. Without entries configured, the usual 688ms back
+threshold remains. No double press is needed.
+
+Short presses on the player view still play/pause or run its idle action. Holding
+and turning there still skips tracks. In the playlist menu, turning while holding
+is ignored and suppresses the release action. Disconnecting, leaving the player,
+or entering standby cancels the menu; reconnecting never launches an entry.

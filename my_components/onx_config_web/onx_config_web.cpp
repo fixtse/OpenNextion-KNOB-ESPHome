@@ -95,8 +95,9 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
       (*origin != "http://" + *host && *origin != "https://" + *host)) {
     respond_(request, 403, "{\"error\":\"Reload this page to authorize configuration\"}"); return;
   }
-  if (request->contentLength() > 4096) { respond_(request, 413, "{\"error\":\"Request too large\"}"); return; }
+  if (request->contentLength() > 8192) { respond_(request, 413, "{\"error\":\"Request too large\"}"); return; }
   Query query;
+  query.playlists = request->arg("playlists");
   query.op = request->arg("op"); query.entity = request->arg("entity"); query.action = request->arg("action");
   query.name = request->arg("name"); query.area = request->arg("area");
   query.action_name = request->arg("action_name"); query.type = request->arg("type");
@@ -111,7 +112,7 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   query.date_format = request->arg("date_format"); query.hour_format = request->arg("hour_format");
   query.media_color = request->arg("media_color"); query.standby_scope = request->arg("standby_scope");
   unsigned slot = 0, offset = 0;
-  if (query.secondary.size()>128 || query.secondary_text.size()>160 || query.sensor_graph.size()>1 || query.show_ampm.size()>1 || query.date_format.size() > 10 || query.hour_format.size() > 2 || query.media_color.size() > 7 || query.standby_scope.size() > 5 || query.icon.size() > 80 || query.icon_override.size() > 1 || query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
+  if (query.playlists.size()>2048 || query.secondary.size()>128 || query.secondary_text.size()>160 || query.sensor_graph.size()>1 || query.show_ampm.size()>1 || query.date_format.size() > 10 || query.hour_format.size() > 2 || query.media_color.size() > 7 || query.standby_scope.size() > 5 || query.icon.size() > 80 || query.icon_override.size() > 1 || query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
       query.search.size() > 128 || query.domain.size() > 32 ||
       query.brightness.size() > 3 || query.standby.size() > 3 || query.sensitivity.size() > 1 ||
       query.sleep_enabled.size() > 1 || query.sleep_start.size() > 5 || query.sleep_end.size() > 5 || query.sleep_timeout.size() > 4 ||

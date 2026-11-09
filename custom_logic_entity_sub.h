@@ -398,6 +398,7 @@ inline bool knob_control_domain(const std::string &id) {
 }
 inline void cancel_controls() {
   control_commands.clear(); control_entity.clear(); control_setting.clear(); control_preview.clear();
+  onx_playlist::browser.clear();
 }
 inline void select_control_entity(const std::string &id) {
   if (control_entity != id) { cancel_controls(); control_entity = id; }

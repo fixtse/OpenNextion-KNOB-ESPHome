@@ -49,11 +49,13 @@ struct Script {
  template<class... T> void execute(T...){++calls;}
  void turn_off(){}
 } exit_standby_mode,ha_screen_off,retry_normal_entity_state,refresh_normal_automation_detail_page,
-  emit_normal_media_track,emit_configured_press_action,refresh_normal_light_detail_page,request_normal_weather_forecast;
+  emit_normal_media_track,emit_configured_press_action,refresh_normal_light_detail_page,request_normal_weather_forecast,
+  emit_normal_playlist_action,refresh_normal_playlist;
 namespace custom_logic_entity_sub {
 struct Detail {int weather_page=0,forecast_count=0;bool received{true},available{true};std::string state="playing";} detail;
 std::string control_preview;
 Detail *entity_detail(const std::string &){return &detail;}
+void select_control_entity(const std::string &){}
 }
 namespace onx_controls {
 unsigned presses=0,rotations=0,cycles=0;
@@ -62,7 +64,12 @@ void cycle(const std::string &,int){++cycles;}
 bool handles(const std::string &s){return s.rfind("media_player.",0)==0||s.rfind("climate.",0)==0;}
 void press(const std::string &){++presses;}
 }
-namespace onx_entity_config {std::string action_for_ui(int){return bound_action;}}
+bool playlist_enabled=false;
+onx_playlist::Config playlist;
+namespace onx_entity_config {
+std::string action_for_ui(int){return bound_action;}
+const onx_playlist::Config *playlists_for_ui(int,const std::string &entity){return playlist_enabled && entity.rfind("media_player.",0)==0 ? &playlist : nullptr;}
+}
 void release(){
 BODY
 }
@@ -71,6 +78,8 @@ ROTATION
 }
 void reset(){
  key_long_press_handled=false;detail_long_press_exit_fired=false;
+ playlist_enabled=false;onx_playlist::browser.clear();key_press_started_ms=1900;
+ emit_normal_playlist_action.calls=0;
  retry_normal_entity_state.calls=emit_normal_media_track.calls=emit_configured_press_action.calls=onx_controls::presses=0;
  bound_action.clear();normal_device_detail_online=true;key_btn.state=false;normal_knob_event_pass=true;normal_clear_wifi_allowed=true;
  onx_controls::rotations=onx_controls::cycles=0;custom_logic_entity_sub::detail.state="playing";
@@ -112,6 +121,25 @@ int main(){
  release();assert(request_normal_weather_forecast.calls==1&&custom_logic_entity_sub::detail.weather_page==2&&key_long_press_handled);
  reset();configured_entity="media_player.room";turn(1);assert(onx_controls::rotations==1&&!emit_normal_media_track.calls);
  normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_SETTINGS;reset();turn(1);assert(!onx_controls::rotations&&!onx_controls::cycles&&!emit_normal_media_track.calls);
+ reset();normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
+ configured_entity="media_player.room";playlist_enabled=true;playlist.count=2;
+ key_press_started_ms=1500;release();
+ assert(onx_playlist::browser.open&&key_long_press_handled&&!onx_controls::presses&&!emit_normal_playlist_action.calls);
+ key_long_press_handled=false;key_press_started_ms=1900;turn(1);
+ assert(onx_playlist::browser.selected==1&&!onx_controls::rotations&&!emit_normal_media_track.calls);
+ release();assert(emit_normal_playlist_action.calls==1&&!onx_controls::presses&&onx_playlist::browser.sent);
+ key_long_press_handled=false;key_press_started_ms=1000;release();
+ assert(!onx_playlist::browser.open&&emit_normal_playlist_action.calls==1);
+ reset();playlist_enabled=true;key_press_started_ms=1501;release();
+ assert(!onx_playlist::browser.open&&onx_controls::presses==1);
+ reset();playlist_enabled=true;key_press_started_ms=501;release();
+ assert(onx_playlist::browser.open&&!onx_controls::presses);
+ reset();playlist_enabled=true;normal_device_detail_online=false;key_press_started_ms=1500;release();
+ assert(!onx_playlist::browser.open&&!emit_normal_playlist_action.calls);
+ reset();playlist_enabled=true;onx_playlist::browser.toggle(configured_entity);key_btn.state=true;turn(1);
+ assert(!emit_normal_media_track.calls&&key_long_press_handled);
+ key_btn.state=false;release();assert(!emit_normal_playlist_action.calls&&!onx_controls::presses);
+
 
 }
 '''.replace('KINDS', kinds).replace('BODY', body).replace('ROTATION', rotation)

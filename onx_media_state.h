@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "onx_playlist.h"
 #include <string>
 #include <algorithm>
 #include <cmath>

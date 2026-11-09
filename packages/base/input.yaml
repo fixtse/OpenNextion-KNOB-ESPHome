@@ -101,6 +101,26 @@ binary_sensor:
                 pressed_kind == NORMAL_DEVICE_DETAIL_KIND_CURTAIN || pressed_kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
             const auto pressed_entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
             auto *pressed_detail = custom_logic_entity_sub::entity_detail(pressed_entity);
+            if (!id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
+                !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
+                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
+                id(normal_device_detail_online) && id(normal_ha_api_connected)) {
+              const auto *list = onx_entity_config::playlists_for_ui(id(normal_device_detail_index), pressed_entity);
+              if (list != nullptr && onx_playlist::medium_press(held_ms)) {
+                custom_logic_entity_sub::select_control_entity(pressed_entity);
+                onx_playlist::browser.toggle(pressed_entity);
+                id(key_long_press_handled) = true;
+              } else if (list != nullptr && onx_playlist::browser.open &&
+                         onx_playlist::browser.entity == pressed_entity && held_ms < onx_playlist::OPEN_MS) {
+                auto &browser = onx_playlist::browser;
+                if (browser.selected >= 0 && browser.selected < list->count) {
+                  id(emit_normal_playlist_action).execute(std::string(list->entries[browser.selected].action));
+                  browser.sent = true; browser.sent_ms = now;
+                }
+                id(key_long_press_handled) = true;
+              }
+              if (id(key_long_press_handled)) id(refresh_normal_playlist).execute();
+            }
             if (held_ms < 688 && !id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
                 !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
                 !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
@@ -324,7 +344,14 @@ binary_sensor:
                       id(normal_detail_exit_light_ready) = false;
                     }
                   } else if (kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) {
-                    if (held_ms < 688) {
+                    const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+                    const auto *list = onx_entity_config::playlists_for_ui(id(normal_device_detail_index), entity);
+                    if (list != nullptr && held_ms >= onx_playlist::BACK_MS) {
+                      id(normal_detail_exit_switch_ready) = true;
+                      id(normal_detail_exit_light_ready) = false;
+                    } else if (list != nullptr && held_ms >= onx_playlist::OPEN_MS) {
+                      // The release handler above owns the medium gesture.
+                    } else if (held_ms < 688) {
                       id(emit_normal_automation_control_event).execute(id(normal_device_detail_index));
                     } else {
                       id(normal_detail_exit_switch_ready) = true;

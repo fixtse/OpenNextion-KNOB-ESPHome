@@ -1,6 +1,20 @@
 #include "../onx_media_state.h"
 #include <cassert>
 int main() {
+  assert(!onx_playlist::medium_press(499));
+  assert(onx_playlist::medium_press(500));
+  assert(onx_playlist::medium_press(1499));
+  assert(!onx_playlist::medium_press(1500));
+  assert(onx_playlist::action_valid("script.jazz"));
+  assert(onx_playlist::action_valid("automation.radio"));
+  assert(!onx_playlist::action_valid("light.radio"));
+  assert(!onx_playlist::action_valid("script."));
+  onx_playlist::Browser browser;
+  browser.toggle("media_player.room");browser.rotate(-1,3);
+  assert(browser.open && browser.selected==2);
+  browser.rotate(1,3);assert(browser.selected==0);
+  browser.toggle("media_player.room");assert(!browser.open);
+
   assert(onx_media::volume_percent(0.60000004f) == "60%");
   assert(onx_media::volume_percent(0.59999996f) == "60%");
   assert(onx_media::volume_percent(0.555f) == "56%");

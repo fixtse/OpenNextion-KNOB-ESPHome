@@ -308,3 +308,4 @@ interval:
       - script.execute: refresh_normal_timer_detail
       - script.execute: refresh_normal_media_progress
       - script.execute: refresh_normal_media_overlay
+      - script.execute: refresh_normal_playlist
