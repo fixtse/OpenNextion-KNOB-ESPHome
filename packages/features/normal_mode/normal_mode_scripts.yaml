@@ -2732,7 +2732,7 @@ script:
             lv_label_set_text(id(normal_playlist_rows), ready ? (browser.open ? "Return to player" : "Open playlists") : "Playlist menu");
             lv_label_set_text(id(normal_playlist_hint), ready ? "Hold longer: back" : "Wait for the cue");
             lv_obj_clear_flag(id(normal_playlist_hold_bar), LV_OBJ_FLAG_HIDDEN);
-            lv_bar_set_value(id(normal_playlist_hold_bar), std::min(100u, held * 100 / onx_playlist::OPEN_MS), LV_ANIM_OFF);
+            lv_bar_set_value(id(normal_playlist_hold_bar), std::min<uint32_t>(100, held * 100 / onx_playlist::OPEN_MS), LV_ANIM_OFF);
             lv_obj_set_style_bg_color(id(normal_playlist_hold_bar), lv_color_hex(ready ? 0x62D49B : 0x62B0FF), LV_PART_INDICATOR);
           } else {
             browser.selected = std::clamp(browser.selected, 0, static_cast<int>(list->count)-1);
