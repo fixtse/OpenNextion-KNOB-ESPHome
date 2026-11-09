@@ -85,6 +85,10 @@ esp32:
   flash_size: 16MB
   framework:
     type: esp-idf
+    sdkconfig_options:
+      # TLS records/certificates exhausted fragmented internal RAM on live units.
+      # This board has 8 MB PSRAM; keep task stacks and DMA in internal memory.
+      CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
     components:
       - espressif/esp_websocket_client^1.7.0
     advanced:

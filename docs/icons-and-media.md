@@ -90,3 +90,8 @@ The network memory gate requires 48 KB total internal free RAM and a 20 KB
 largest block, allowing the observed 28 KB block to start a worker. A low-memory
 deferral is reported as `waiting_for_memory` for icons and artwork. These are
 allocation headroom checks, not a guarantee against every memory failure.
+
+TLS allocation failures (`mbedtls_ssl_setup -0x7F00`) were observed during the
+GitHub OTA manifest check on live firmware `.25`. The ESP-IDF build now allocates
+mbedTLS memory from PSRAM. This covers icon/artwork HTTPS and OTA checks/downloads;
+UI/worker stacks and DMA retain their normal internal-memory placement.
