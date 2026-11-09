@@ -52,6 +52,19 @@ lvgl:
           text_color: 0xFFFFFF
           text: ""
           hidden: true
+      - label:
+          id: normal_device_state_context
+          x: 0
+          y: 124
+          align: top_mid
+          width: 198
+          height: 20
+          long_mode: dot
+          text_align: CENTER
+          text_font: fonts_MiSans_Medium_14
+          text_color: 0xD2D2D2
+          text: ""
+          hidden: true
   pages:
     - id: device_empty
       bg_color: 0x000000

@@ -103,12 +103,43 @@ inline View build(const std::string &entity, const std::string &name) {
   return v;
 }
 inline View carousel(const std::string &entity, const std::string &name) {
+  using namespace custom_logic_entity_sub;
   auto v = build(entity, name); v.layout = "carousel";
+  const auto badge = v.badge.text;
   v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
-  const bool sensor = entity.rfind("sensor.",0)==0 || entity.rfind("binary_sensor.",0)==0;
-  v.icon_x = 0; v.icon_y = sensor ? 38 : 62; v.icon_size = sensor ? 28 : 80;
-  if (!sensor) v.value.text.clear();
-  v.name.y = sensor ? 144 : 151; v.name.width = sensor ? 184 : 180; v.name.size = 18;
+  v.icon_x = 0; v.icon_y = 38; v.icon_size = 28;
+  v.value.y = 84; v.value.size = 32;
+  v.name.y = 144; v.name.width = 184; v.name.size = 18;
+  const auto *d = entity_detail(entity);
+  if (!d || !d->received || !d->available) return v;
+  const auto domain = entity.substr(0,entity.find('.'));
+  if (domain == "light" || domain == "switch") {
+    v.value.text = d->state == "on" ? "On" : d->state == "off" ? "Off" : label(d->state);
+    const float brightness = onx_control::number(d->brightness);
+    if (domain == "light" && d->state == "on" && std::isfinite(brightness))
+      v.context.text = onx_media::volume_percent(brightness / 255.0f) + " brightness";
+  } else if (domain == "cover") {
+    const float position = onx_control::number(d->position);
+    v.value.text = std::isfinite(position) ? onx_media::volume_percent(position / 100.0f) : label(d->state);
+    v.context.text = label(d->state);
+  } else if (domain == "climate" || domain == "fan") {
+    v.context.text = badge;
+  } else if (domain == "media_player") {
+    v.value.text = label(d->state);
+    v.context.text = onx_media::display_text(d->media_title);
+  } else if (domain == "automation") {
+    v.value.text = d->state == "on" ? "Enabled" : d->state == "off" ? "Disabled" : label(d->state);
+  } else if (domain == "script") {
+    v.value.text = d->state == "on" ? "Running" : d->state == "off" ? "Idle" : label(d->state);
+  } else if (domain == "scene" || domain == "button" || domain == "input_button") {
+    v.value.text = "Ready";
+  } else if (domain == "weather") {
+    v.value.text = compact(d->target) + d->unit; v.context.text = label(d->state);
+  } else if (domain == "timer") {
+    v.value.text = label(d->state); v.context.text = d->timer_remaining;
+  }
+  if (!v.context.text.empty()) { v.context.y = 124; v.context.size = 14; v.name.y = 151; }
+  if (v.value.text.size() > 14) v.value.size = 24;
   return v;
 }
 }  // namespace onx_detail_view

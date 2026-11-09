@@ -100,3 +100,8 @@ The weather view's inactivity timer defaults to **From the main screen only**,
 so an opened entity or settings page stays visible. Choose **From any screen**
 for the previous behavior, or **Never automatically** to disable that transition.
 The scheduled sleep timer is configured separately.
+
+Every configured entity now shows a state or value in the main carousel. Lights
+show power and brightness, covers show position and movement, climate and fans
+show their target/speed and mode, and media players show playback state and track.
+Unavailable entities show `--` rather than a stale reading.

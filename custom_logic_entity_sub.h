@@ -344,7 +344,7 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 // Runtime values are keyed by entity ID so compact slot reordering cannot mix feedback.
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
-  std::string volume, media_title, media_artist, picture, media_content_id;
+  std::string volume, media_title, media_artist, picture, media_content_id, brightness, position;
   onx_media::Progress progress;
   std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode;
   std::string percentage, oscillating, direction, sources, source, muted;
@@ -476,10 +476,17 @@ class DeviceSlotStateUpdater {
       auto &detail = entity_details[this->slot_];
       if (detail.entity_id != this->entity_id_) { detail = EntityDetailState{}; detail.entity_id = this->entity_id_; }
       detail.received = true; detail.available = online; detail.received_ms = millis();
+      detail.state = value;
       if (!online && control_entity == this->entity_id_) cancel_controls();
       if (!online) {
         return;
       }
+    }
+    if (field == "brightness" || field == "current_position") {
+      auto &detail = entity_details[this->slot_];
+      if (detail.entity_id != this->entity_id_) { detail = EntityDetailState{}; detail.entity_id = this->entity_id_; }
+      if (field == "brightness") detail.brightness = value;
+      else detail.position = value;
     }
     if (has_prefix(this->entity_id_, "sensor.") || has_prefix(this->entity_id_, "binary_sensor.") ||
         has_prefix(this->entity_id_, "climate.") || has_prefix(this->entity_id_, "media_player.") || has_prefix(this->entity_id_, "script.") ||

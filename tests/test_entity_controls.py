@@ -78,6 +78,13 @@ int main() {
     auto &fan=entity_details[3];fan.entity_id="fan.office";fan.received=fan.available=true;fan.state="on";
     fan.features=1;fan.percentage="40";fan.step=20;
     view=onx_detail_view::build(fan.entity_id,"Office fan");assert(view.badge.text=="🌀 Fan"&&view.value.text=="40%");
+    auto &light=entity_details[4];light.entity_id="light.lamp";light.received=light.available=true;
+    light.state="on";light.brightness="128";
+    view=onx_detail_view::carousel(light.entity_id,"Lamp");assert(view.value.text=="On"&&view.context.text=="50% brightness");
+    light.entity_id="cover.blind";light.state="opening";light.position="25";
+    view=onx_detail_view::carousel(light.entity_id,"Blind");assert(view.value.text=="25%"&&view.context.text=="Opening");
+    light.entity_id="media_player.bedroom";light.state="paused";light.media_title="Hometown Glory";
+    view=onx_detail_view::carousel(light.entity_id,"Bedroom");assert(view.value.text=="Paused"&&view.context.text=="Hometown Glory");
     cancel_controls();
   }
   esphome::api::APIServer api;

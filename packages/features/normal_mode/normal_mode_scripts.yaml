@@ -83,10 +83,12 @@ script:
             lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
             return;
           }
 
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           int total = id(normal_device_count);
           if (total < 0) total = 0;
           if (total > 10) total = 10;
@@ -252,14 +254,16 @@ script:
             lv_obj_set_y(w.title, 151); lv_obj_set_width(w.title, 180); lv_obj_set_height(w.title, 25);
             lv_label_set_long_mode(w.title, LV_LABEL_LONG_DOT);
             const auto entity = settings_entry ? std::string("") : id(ui_presenter)->get_normal_device_entity_id(entry_index);
-            if (entity.rfind("sensor.", 0) == 0 || entity.rfind("binary_sensor.", 0) == 0) {
-              const auto view = onx_detail_view::build(entity, device_title);
+            if (!settings_entry) {
+              const auto view = onx_detail_view::carousel(entity, device_title);
               lv_label_set_text(id(normal_device_sensor_value), view.value.text.c_str());
               lv_obj_set_style_text_font(id(normal_device_sensor_value),
                   view.value.size == 32 ? id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Medium_24)->get_lv_font(), 0);
               set_hidden(id(normal_device_sensor_value), false);
               lv_obj_set_y(w.icon_switch, 38); lv_image_set_scale(w.icon_switch, 90);
-              lv_obj_set_y(w.title, 144); lv_obj_set_width(w.title, 184); lv_obj_set_height(w.title, 44);
+              lv_obj_set_y(w.title, view.name.y); lv_obj_set_width(w.title, 184); lv_obj_set_height(w.title, 40);
+              lv_label_set_text(id(normal_device_state_context), view.context.text.c_str());
+              set_hidden(id(normal_device_state_context), view.context.text.empty());
               lv_label_set_long_mode(w.title, LV_LABEL_LONG_WRAP);
             }
             lv_label_set_text(w.title, device_title.c_str());
@@ -1571,6 +1575,7 @@ script:
           }
           id(normal_device_detail_active) = true;
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1594,6 +1599,7 @@ script:
           }
           id(normal_device_detail_active) = true;
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1617,6 +1623,7 @@ script:
           }
           id(normal_device_detail_active) = true;
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1641,6 +1648,7 @@ script:
           }
           id(normal_device_detail_active) = true;
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1892,6 +1900,7 @@ script:
           id(normal_device_detail_index) = (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS) ? -1 : detail_index;
           id(normal_device_detail_active) = true;
           lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = detail_kind;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
