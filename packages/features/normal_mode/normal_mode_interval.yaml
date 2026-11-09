@@ -9,6 +9,9 @@ interval:
           custom_logic_entity_sub::recover_entity_states(id(api_server), id(normal_ha_api_connected));
   - interval: 1s
     then:
+      - lambda: |-
+          const auto now=id(ha_time).now();
+          if(now.is_valid() && id(normal_ha_api_connected)) custom_logic_entity_sub::sample_sensor_history(now.timestamp);
       - script.execute: check_normal_timer_popup
       - script.execute: refresh_normal_device_page
       # A Native API client becomes identifiable as HA only after it subscribes
@@ -152,7 +155,7 @@ interval:
                 lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
             - lvgl.page.show: standby_page
             - lambda: |-
-                lv_obj_set_style_text_font(id(standby_time_widget), onx_display_settings::datetime.hour_format == 1 ?
+                lv_obj_set_style_text_font(id(standby_time_widget), onx_display_settings::datetime.hour_format == 1 && onx_display_settings::datetime.show_ampm ?
                     id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Bold_64)->get_lv_font(), 0);
             - lvgl.widget.refresh: standby_time_widget
             - lvgl.widget.refresh: standby_date_widget

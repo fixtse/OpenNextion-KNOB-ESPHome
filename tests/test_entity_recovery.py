@@ -12,6 +12,7 @@ class Recovery(unittest.TestCase):
         source = source[source.index('// Recovery reads use existing callbacks'):source.index('inline void subscribe_standby_weather_field')]
         harness = r'''
 #include "onx_recovery_state.h"
+#include "onx_sensor_view.h"
 #include <array>
 #include <vector>
 #include <memory>

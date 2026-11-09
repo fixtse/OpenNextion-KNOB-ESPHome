@@ -3,6 +3,7 @@
 #include "onx_config_rules.h"
 #include "onx_icon_state.h"
 #include "onx_display_settings.h"
+#include "onx_sensor_view.h"
 #include "esphome/components/onx_config_web/onx_config_web.h"
 
 namespace onx_entity_config {
@@ -30,13 +31,21 @@ inline void load_display_settings() {
   onx_display_settings::Settings saved{};
   if (display_preference.load(&saved) && saved.magic == 0x4F4E5844 && saved.media_color <= 0xFFFFFF && saved.standby_scope <= 2)
     onx_display_settings::current = saved;
-  datetime_preference = esphome::global_preferences->make_preference<onx_display_settings::DateTimeSettings>(esphome::fnv1_hash("onx.datetime.v1"));
+  datetime_preference = esphome::global_preferences->make_preference<onx_display_settings::DateTimeSettings>(esphome::fnv1_hash("onx.datetime.v2"));
   onx_display_settings::DateTimeSettings date_saved{};
-  if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 2 && date_saved.hour_format <= 1)
+  if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 2 && date_saved.hour_format <= 1 && date_saved.show_ampm <= 1)
     onx_display_settings::datetime = date_saved;
+  else {
+    struct LegacyDate {uint32_t magic;uint8_t date_format,hour_format;};
+    auto old=esphome::global_preferences->make_preference<LegacyDate>(esphome::fnv1_hash("onx.datetime.v1"));
+    LegacyDate legacy{};
+    if(old.load(&legacy) && legacy.magic==0x4F4E5854 && legacy.date_format<=2 && legacy.hour_format<=1) {
+      onx_display_settings::datetime.date_format=legacy.date_format;onx_display_settings::datetime.hour_format=legacy.hour_format;
+    }
+  }
   display_settings_loaded = true;
 }
-inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format) {
+inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm) {
   load_display_settings();
   onx_display_settings::Settings next{};
   if (!display_settings_loaded || !onx_display_settings::parse_color(color, next.media_color) ||
@@ -44,10 +53,37 @@ inline bool save_display_settings(const std::string &color, const std::string &s
   onx_display_settings::DateTimeSettings date_next{};
   if (!onx_display_settings::parse_date_format(date_format, date_next.date_format) ||
       !onx_display_settings::parse_hour_format(hour_format, date_next.hour_format)) return false;
+  date_next.show_ampm = show_ampm ? 1 : 0;
   if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope &&
-      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format) return true;
+      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format && date_next.show_ampm == onx_display_settings::datetime.show_ampm) return true;
   if (!datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
   onx_display_settings::current = next; onx_display_settings::datetime = date_next; return true;
+}
+
+inline bool sensor_configs_loaded=false;
+inline std::array<esphome::ESPPreferenceObject,10> sensor_preferences;
+inline void load_sensor_configs() {
+  if(sensor_configs_loaded || esphome::global_preferences==nullptr)return;
+  for(size_t i=0;i<10;++i) {
+    const auto key="onx.sensor.v1."+std::to_string(i);
+    sensor_preferences[i]=esphome::global_preferences->make_preference<onx_sensor_view::Config>(esphome::fnv1_hash(key.c_str()));
+    onx_sensor_view::Config saved{};
+    if(sensor_preferences[i].load(&saved)) {
+      saved.primary[128]=saved.secondary[128]=saved.text[160]=0;
+      if((!saved.primary[0]||onx_config::valid_entity(saved.primary)) && (!saved.secondary[0]||onx_config::valid_entity(saved.secondary)) && saved.graph<=1)
+        onx_sensor_view::configs[i]=saved;
+    }
+    onx_sensor_view::states[i].bind(onx_sensor_view::configs[i]);
+  }
+  sensor_configs_loaded=true;
+}
+inline bool save_sensor_config(size_t i,const std::string &primary,const std::string &secondary,const std::string &text,bool graph) {
+  load_sensor_configs();if(!sensor_configs_loaded||i>=10)return false;
+  onx_sensor_view::Config next{};
+  snprintf(next.primary,sizeof(next.primary),"%s",primary.c_str());snprintf(next.secondary,sizeof(next.secondary),"%s",secondary.c_str());
+  snprintf(next.text,sizeof(next.text),"%s",text.empty()?"{value}":text.c_str());next.graph=graph;
+  if(!sensor_preferences[i].save(&next)||!esphome::global_preferences->sync())return false;
+  onx_sensor_view::configs[i]=next;onx_sensor_view::states[i].bind(next);return true;
 }
 
 struct PressBinding {
@@ -163,6 +199,11 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       custom_logic::load_device_config_if_needed(i);
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
+      const auto &sensor=onx_sensor_view::configs[i];
+      const bool same_sensor=custom_logic::cached_device_entity_id(i)==sensor.primary;
+      slot["secondary"] = same_sensor?sensor.secondary:"";
+      slot["secondaryText"] = same_sensor?sensor.text:"{value}";
+      slot["sensorGraph"] = same_sensor&&sensor.graph?"1":"0";
       const auto &icon = onx_icon_state::metadata[i];
       const bool same_icon_entity = icon.entity == custom_logic::cached_device_entity_id(i);
       slot["icon"] = same_icon_entity ? icon.configured : "";

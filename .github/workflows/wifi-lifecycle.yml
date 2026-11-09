@@ -23,6 +23,9 @@ on:
       - 'onx_entity_controls.h'
       - 'onx_detail_view.h'
       - 'onx_display_settings.h'
+      - 'onx_sensor_view.h'
+      - 'onx_sensor_graph.h'
+      - 'tests/test_sensor_view.cpp'
       - 'tests/test_display_settings.cpp'
       - 'tests/test_standby_scope.py'
       - 'tests/test_carousel_layout.py'
@@ -58,6 +61,10 @@ jobs:
             my_components/onx_mode_manager/onx_mode_manager.cpp \
             my_components/onx_app_state/onx_app_state.cpp -o /tmp/test_wifi_lifecycle
           /tmp/test_wifi_lifecycle
+      - name: Test secondary formatting and bounded sensor history
+        run: |
+          c++ -std=c++17 tests/test_sensor_view.cpp -o /tmp/test_sensor_view
+          /tmp/test_sensor_view
       - name: Test timer countdown, popup dismissal and attribute parsing
         run: |
           c++ -std=c++17 tests/test_timer_state.cpp -o /tmp/test_timer_state

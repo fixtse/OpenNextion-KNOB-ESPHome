@@ -11,6 +11,7 @@
 
 #include <ArduinoJson.h>
 #include "onx_timer_state.h"
+#include "onx_sensor_view.h"
 #include "onx_control_state.h"
 #include "onx_icon_state.h"
 #include "onx_media_state.h"
@@ -1084,12 +1085,45 @@ inline void subscribe_field(esphome::api::APIServer *api_server, size_t slot, co
 #endif
 }
 
+inline void subscribe_secondary(esphome::api::APIServer *api_server,size_t slot,const std::string &primary) {
+#ifdef USE_API_HOMEASSISTANT_STATES
+  if(!api_server || slot>=10)return;
+  const auto &config=onx_sensor_view::configs[slot];
+  if(primary!=config.primary || !config.secondary[0])return;
+  const std::string secondary=config.secondary;
+  static std::array<std::set<std::string>,10> registered;
+  if(!registered[slot].insert(primary+"\n"+secondary).second)return;
+  for(const std::string attribute : {std::string(""),std::string("unit_of_measurement")}) {
+    api_server->subscribe_home_assistant_state(secondary, esphome::optional<std::string>(attribute),
+      [slot,primary,secondary,attribute](esphome::StringRef raw) {
+        const auto &c=onx_sensor_view::configs[slot];
+        if(primary!=c.primary || secondary!=c.secondary || custom_logic::cached_device_entity_id(slot)!=primary)return;
+        auto &state=onx_sensor_view::states[slot];state.bind(c);
+        const std::string value=raw.str();
+        if(!attribute.empty()) {state.unit=value;return;}
+        state.received=true;state.available=value!="unknown"&&value!="unavailable"&&value!="None"&&!value.empty();
+        state.value=value.substr(0,192);state.secondary_epoch=0;
+        if(state.available) parse_ha_datetime_epoch(value.size()==10?value+"T00:00:00":value,&state.secondary_epoch);
+      });
+  }
+#endif
+}
+inline void sample_sensor_history(time_t now) {
+  for(size_t i=0;i<10;++i) {
+    const auto &c=onx_sensor_view::configs[i];if(!c.graph || custom_logic::cached_device_entity_id(i)!=c.primary)continue;
+    auto &s=onx_sensor_view::states[i];s.bind(c);
+    const auto *d=entity_detail(c.primary);
+    if(d&&d->received&&d->available)s.sample(now,detail_number(d->state));
+  }
+}
+
 inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, const std::string &entity_id) {
   if (!is_valid_entity_id(entity_id)) {
     ESP_LOGI(TAG, "%s has no valid dynamic HA entity subscription", custom_logic::device_slot_label(slot).c_str());
     return;
   }
 
+  subscribe_secondary(api_server,slot,entity_id);
   subscribe_field(api_server, slot, entity_id, "state", "");
   subscribe_field(api_server, slot, entity_id, "icon", "icon");
   subscribe_field(api_server, slot, entity_id, "device_class", "device_class");
@@ -1158,6 +1192,7 @@ inline bool queue_entity_refresh(const std::string &entity, bool manual) {
 inline void recover_entity_states(esphome::api::APIServer *api, bool connected) {
 #ifdef USE_API_HOMEASSISTANT_STATES
   const uint32_t now = millis();
+  static std::array<onx_recovery::Retry,10> secondary_recovery;
   if (!api || !connected) {
     recovery_queue.clear(); recovering_entity.clear(); recovery_cursor = 0;
     for (auto &retry : recovery_policy) { retry.since = now; retry.delay = 10000; }
@@ -1172,6 +1207,13 @@ inline void recover_entity_states(esphome::api::APIServer *api, bool connected) 
       recovery_policy[slot].attempted(now);
     }
   }
+  for(size_t i=0;i<10;++i) {
+    const auto &c=onx_sensor_view::configs[i];const auto &s=onx_sensor_view::states[i];
+    if(custom_logic::cached_device_entity_id(i)!=c.primary)continue;
+    if(secondary_recovery[i].due(c.secondary,s.received&&s.available,now)) {
+      queue_entity_refresh(c.secondary,false);secondary_recovery[i].attempted(now);
+    }
+  }
   if (recovering_entity.empty()) {
     if (recovery_queue.empty()) return;
     recovering_entity = std::move(recovery_queue.front()); recovery_queue.erase(recovery_queue.begin());
@@ -1179,7 +1221,8 @@ inline void recover_entity_states(esphome::api::APIServer *api, bool connected) 
   }
   bool still_selected = custom_logic::cached_standby_weather_entity_id == recovering_entity;
   for (size_t slot = 0; slot < recovery_policy.size(); ++slot)
-    still_selected |= custom_logic::cached_device_entity_id(slot) == recovering_entity;
+    still_selected |= custom_logic::cached_device_entity_id(slot) == recovering_entity ||
+        (custom_logic::cached_device_entity_id(slot)==onx_sensor_view::configs[slot].primary && recovering_entity==onx_sensor_view::configs[slot].secondary);
   if (!still_selected || now - recovery_started_ms > 15000) { recovering_entity.clear(); return; }
   const auto &subscriptions = api->get_state_subs();
   while (recovery_cursor < subscriptions.size()) {

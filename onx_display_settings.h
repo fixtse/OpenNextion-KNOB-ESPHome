@@ -10,7 +10,7 @@ struct Settings {
 inline Settings current;
 struct DateTimeSettings {
   uint32_t magic{0x4F4E5854};
-  uint8_t date_format{0}, hour_format{0}; // DD-MM, MM-DD, ISO; 24 / 12 hour
+  uint8_t date_format{0}, hour_format{0}, show_ampm{1}; // DD-MM, MM-DD, ISO; 24 / 12 hour
 };
 inline DateTimeSettings datetime;
 inline std::string date_format_text(uint8_t value) { return value == 1 ? "mm-dd" : value == 2 ? "yyyy-mm-dd" : "dd-mm"; }
@@ -28,7 +28,7 @@ inline bool parse_hour_format(const std::string &text, uint8_t &value) {
   return true;
 }
 inline const char *date_pattern() { return datetime.date_format == 1 ? "%m-%d" : datetime.date_format == 2 ? "%Y-%m-%d" : "%d-%m"; }
-inline const char *time_pattern() { return datetime.hour_format == 1 ? "%I:%M %p" : "%H:%M"; }
+inline const char *time_pattern() { return datetime.hour_format == 1 ? (datetime.show_ampm ? "%I:%M %p" : "%I:%M") : "%H:%M"; }
 inline std::string format_iso_date(const std::string &iso) {
   if (iso.size() < 10 || iso[4] != '-' || iso[7] != '-') return iso;
   for (size_t i : {size_t(0),size_t(1),size_t(2),size_t(3),size_t(5),size_t(6),size_t(8),size_t(9)})

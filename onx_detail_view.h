@@ -143,6 +143,20 @@ inline View build(const std::string &entity, const std::string &name) {
     if (!d->unit.empty()) v.value.text += " " + d->unit;
     if (v.hint.text.empty() && (has_prefix(entity,"select.") || has_prefix(entity,"input_select."))) v.hint.text = "Turn to choose · Press to confirm";
   }
+  if (has_prefix(entity,"sensor.")) {
+    const int i=onx_sensor_view::index(entity);
+    if(i>=0) {
+      const auto &c=onx_sensor_view::configs[i];const auto &state=onx_sensor_view::states[i];
+      if(c.secondary[0]) {v.name.text=onx_sensor_view::format(c,state,std::time(nullptr));v.name.size=14;v.name.width=198;}
+      if(c.graph) {
+        v.layout="graph";v.icon.clear();v.badge={onx_media::display_text(name),30,16,184,v.accent};
+        v.value.y=61;v.value.size=24;v.context.text.clear();
+        v.hint={"12h ago                         Now",174,14,196,0xAAAAAA};
+        if(state.history(std::time(nullptr)).size()<2) v.hint.text="Collecting history…";
+        v.name.y=194;v.name.size=14;
+      }
+    }
+  }
   if (v.value.text.size() > 14) v.value.size = std::min(v.value.size, 24);
   v.badge.color = v.accent;
   return v;
@@ -155,9 +169,12 @@ inline View carousel(const std::string &entity, const std::string &name) {
   v.icon_x = 0; v.icon_y = 34; v.icon_size = 40;
   v.value.y = 88; v.value.size = 32;
   v.name.y = 145; v.name.width = 184; v.name.size = 16;
+  const int secondary_index=onx_sensor_view::index(entity);
+  if(secondary_index>=0 && onx_sensor_view::configs[secondary_index].secondary[0]) {v.name.size=14;v.name.width=198;}
   const auto *d = entity_detail(entity);
   if (!d || !d->received || !d->available) return v;
   const auto domain = entity.substr(0,entity.find('.'));
+  if(domain=="sensor" && v.icon.empty()) {v.icon=onx_icon_state::selected_icon(entity);if(v.icon.empty())v.icon="mdi:"+onx_icon_state::fallback(entity);}
   if (domain == "light" || domain == "switch") {
     v.value.text = d->state == "on" ? "On" : d->state == "off" ? "Off" : label(d->state);
     const float brightness = onx_control::number(d->brightness);

@@ -178,3 +178,28 @@ ten idle seconds it returns if still active. Settings, scheduled sleep and an
 explicitly switched-off screen are not interrupted. Timer rings use the selected
 media progress color and flash at completion. Timer control stays in Home
 Assistant or on the originating voice/speaker device.
+
+### Secondary sensor information and graphs
+
+For a sensor slot, open **Advanced display type**. Use **Choose secondary entity**
+or enter an entity ID, then edit **Secondary text**. It replaces the name under
+the main value and stays small beneath an opened graph. Text and numeric secondary
+entities support `{value}` and `{unit}`. Date/time entities also support `{relative}`,
+`{time}`, `{date}`, and `{datetime}`; formatting follows the device date/clock settings.
+For example, pair `sensor.openai_codex_5_hour_remaining` with
+`sensor.openai_codex_5_hour_reset` and use `Resets {relative} ({time})`.
+Missing or unavailable secondary data is reported explicitly.
+
+Select **12-hour graph when opened** for a numeric sensor. The main carousel keeps
+its current reading; the opened view plots the preceding 12 hours and shows the
+secondary information below it. The knob requests bounded five-minute Recorder
+statistics from HA on opening (at most every five minutes), downsampled to ten-minute
+points. `recorder.get_statistics` requires a statistics-enabled sensor and suitable
+HA action permission. Without those statistics, the graph uses live readings
+collected since boot, up to 12 hours. Missing intervals remain gaps; history is not
+persisted across restarts. Text/date sensors can be secondary information but cannot
+be plotted as numeric graphs.
+
+In **Device settings**, **Show AM/PM with 12-hour time** is independently selectable.
+Older date/clock preferences migrate while keeping their selected formats. Sensor
+settings and the AM/PM preference are included in backups; older backups get defaults.

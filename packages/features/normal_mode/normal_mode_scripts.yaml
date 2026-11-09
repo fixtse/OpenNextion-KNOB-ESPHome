@@ -1,4 +1,42 @@
 script:
+  - id: request_normal_sensor_history
+    mode: parallel
+    max_runs: 2
+    parameters:
+      entity: string
+    then:
+      - if:
+          condition:
+            lambda: |-
+              const int i=onx_sensor_view::index(entity);
+              if(i<0 || !onx_sensor_view::configs[i].graph || !id(normal_ha_api_connected))return false;
+              auto &s=onx_sensor_view::states[i];
+              if(s.requested && millis()-s.requested_ms<300000)return false;
+              s.requested=s.pending=true;s.requested_ms=millis();return true;
+          then:
+            - homeassistant.action:
+                action: recorder.get_statistics
+                variables:
+                  sensor_entity: !lambda return entity;
+                data_template:
+                  statistic_ids: "{{ [sensor_entity] }}"
+                  start_time: "{{ (now() - timedelta(hours=12)).isoformat() }}"
+                  period: 5minute
+                  types: "{{ ['mean', 'state'] }}"
+                capture_response: true
+                response_template: !lambda |-
+                  return "{% set ns = namespace(points=[]) %}{% for p in response.get('statistics', response).get('"+entity+"', [])[::2][:73] %}{% set y = p.get('mean') if p.get('mean') is not none else p.get('state') %}{% if y is number %}{% set ns.points = ns.points + [dict(t=as_timestamp(p['start']), y=y)] %}{% endif %}{% endfor %}{{ dict(points=ns.points) | to_json }}";
+                on_success:
+                  - lambda: |-
+                      const int i=onx_sensor_view::index(entity);if(i<0)return;
+                      auto &s=onx_sensor_view::states[i];s.pending=false;
+                      for(JsonObjectConst p:response["response"]["points"].as<JsonArrayConst>())
+                        if(p["t"].is<double>()&&p["y"].is<float>())s.sample(p["t"].as<uint32_t>(),p["y"].as<float>());
+                      id(refresh_normal_automation_detail_page).execute();
+                on_error:
+                  - lambda: |-
+                      const int i=onx_sensor_view::index(entity);if(i>=0)onx_sensor_view::states[i].pending=false;
+
   - id: request_normal_weather_forecast
     mode: parallel
     max_runs: 2
@@ -94,6 +132,7 @@ script:
           id(normal_ha_api_connected) = ha_connected;
           if (!ha_connected) {
             custom_logic_entity_sub::cancel_controls();
+            for(auto &secondary:onx_sensor_view::states){secondary.received=false;secondary.available=false;}
             for (auto &detail : custom_logic_entity_sub::entity_details) {
               detail.received = false;
               detail.available = false;
@@ -325,7 +364,13 @@ script:
             }
             lv_obj_set_style_text_align(w.title, LV_TEXT_ALIGN_CENTER, 0);
             lv_obj_align(w.title, LV_ALIGN_TOP_MID, 0, settings_entry ? 151 : onx_detail_view::carousel(entity, device_title).name.y);
-            lv_label_set_text(w.title, device_title.c_str());
+            if(settings_entry) lv_label_set_text(w.title, device_title.c_str());
+            else {
+              const auto view=onx_detail_view::carousel(entity,device_title);
+              lv_label_set_text(w.title,view.name.text.c_str());
+              lv_obj_set_style_text_font(w.title,view.name.size==14?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
+              lv_obj_set_width(w.title,view.name.width);lv_obj_set_height(w.title,40);
+            }
             set_hidden(w.index_icon, true);
             const auto dots = onx_detail_view::pagination(entry_index, total + 1);
             lv_label_set_text(w.pagination, dots.c_str());
@@ -564,6 +609,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          onx_sensor_graph::hide();
           if (!id(ui_presenter)->is_normal_mode_active() ||
               id(ui_presenter)->is_standby_active() ||
               !id(normal_device_detail_active) ||
@@ -687,6 +733,7 @@ script:
           lv_obj_set_width(id(normal_automation_detail_title), 180);
           if (!timer_detail && entity_id.rfind("media_player.", 0) != 0) {
             const auto view = onx_detail_view::build(entity_id, title);
+            if(view.layout=="graph") onx_sensor_graph::render(lv_obj_get_parent(id(normal_automation_detail_action)),entity_id,id(ha_time).now().timestamp,onx_display_settings::current.media_color);
             auto line = [&](lv_obj_t *label, const onx_detail_view::Line &text) {
               lv_label_set_text(label, text.text.c_str());
               lv_obj_set_x(label, text.x); lv_obj_set_y(label, text.y); lv_obj_set_width(label, text.width);
@@ -2011,6 +2058,8 @@ script:
           }
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) {
             const auto weather_entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+            const int sensor_index=onx_sensor_view::index(weather_entity);
+            if(sensor_index>=0 && onx_sensor_view::configs[sensor_index].graph) id(request_normal_sensor_history).execute(weather_entity);
             if (weather_entity.rfind("weather.", 0) == 0) {
               auto *d = custom_logic_entity_sub::entity_detail(weather_entity);
               if (d) d->weather_page = 0;
