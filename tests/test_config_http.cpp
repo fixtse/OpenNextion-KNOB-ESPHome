@@ -19,7 +19,10 @@ int main() {
   page.url="/knob"; page.method_=HTTP_GET;
   web.handleRequest(&page);
   assert(page.code()==200);
-  const auto token_start=page.body.find("const TOKEN='")+13;
+  const std::string token_marker = "window.ONX_TOKEN='";
+  const auto marker_start = page.body.find(token_marker);
+  assert(marker_start != std::string::npos);
+  const auto token_start = marker_start + token_marker.size();
   const auto token=page.body.substr(token_start,page.body.find("'",token_start)-token_start);
   assert(token.size()==32);
   auto refresh=request(token);

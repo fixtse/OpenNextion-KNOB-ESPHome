@@ -102,8 +102,8 @@ onx_config_web:
         !onx_config::valid_action(query.action) || (query.entity.empty() && !query.action.empty()))
       return onx_entity_config::error("Select a supported entity and an automation or script action");
     const auto domain = custom_logic::ha_domain_from_entity_id(query.entity);
-    if ((domain == "climate" || domain == "media_player") && !query.action.empty())
-      return onx_entity_config::error("Climate and media players use native press controls; choose Default");
+    if (onx_controls::handles(query.entity) && !query.action.empty())
+      return onx_entity_config::error("This entity uses native press controls; choose Default");
     if (!query.type.empty()) {
       const bool allowed = (domain == "switch" && (query.type == "Switch" || query.type == "Plug")) ||
           (domain == "light" && (query.type == "Light (On/Off)" || query.type == "Dimmable Light" || query.type == "Color Temperature Light" || query.type == "RGB Light")) ||

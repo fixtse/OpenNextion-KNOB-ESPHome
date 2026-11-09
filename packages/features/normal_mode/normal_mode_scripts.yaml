@@ -40,6 +40,13 @@ script:
           }
 
           id(normal_ha_api_connected) = ha_connected;
+          if (!ha_connected) {
+            custom_logic_entity_sub::cancel_controls();
+            for (auto &detail : custom_logic_entity_sub::entity_details) {
+              detail.received = false;
+              detail.available = false;
+            }
+          }
           if (ha_connected) {
             id(normal_ha_added) = true;
           }
@@ -168,7 +175,7 @@ script:
                 device_kind = 2;
               } else if (device_type == "curtain" || device_type == "cover") {
                 device_kind = 4;
-              } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer" || device_type == "media_player") {
+              } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer" || device_type == "media_player" || device_type == "fan" || device_type == "number" || device_type == "input_number" || device_type == "select" || device_type == "input_select" || device_type == "scene" || device_type == "button" || device_type == "input_button") {
                 device_kind = 10;
               }
             }
@@ -531,6 +538,32 @@ script:
           }
           lv_obj_set_y(id(normal_automation_detail_action), (entity_id.rfind("climate.", 0) == 0 || entity_id.rfind("weather.", 0) == 0 || entity_id.rfind("media_player.", 0) == 0) ? 126 : 148);
           if (entity_id.rfind("media_player.", 0) == 0) lv_obj_set_y(id(normal_automation_detail_action), 166);
+          if (onx_controls::handles(entity_id)) {
+            last_trigger_text = onx_controls::text(entity_id);
+            lv_obj_set_y(id(normal_automation_detail_action), 46);
+            lv_obj_add_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
+            if (entity_id.rfind("media_player.", 0) == 0) {
+              const auto *detail = custom_logic_entity_sub::entity_detail(entity_id);
+              const auto key = detail == nullptr ? std::string("") : onx_controls::setting(*detail);
+              if (key == "volume_level") {
+                // Preserve artwork and metadata on the primary volume screen.
+                const auto split = last_trigger_text.find('\n');
+                const auto value_end = last_trigger_text.find('\n', split + 1);
+                last_trigger_text = "Volume: " + last_trigger_text.substr(split + 1, value_end - split - 1);
+                lv_obj_set_y(id(normal_automation_detail_action), 166);
+                if (!custom_logic_entity_sub::control_commands.empty()) {
+                  const auto status = onx_controls::text(entity_id);
+                  const auto at = status.find('\n', status.find('\n') + 1);
+                  const auto end = status.find('\n', at + 1);
+                  if (at != std::string::npos) lv_label_set_text(id(normal_media_artist), status.substr(at + 1, end - at - 1).c_str());
+                }
+              } else {
+                lv_obj_add_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
+                lv_obj_add_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
+              }
+            }
+          }
           lv_label_set_text(id(normal_automation_detail_action), last_trigger_text.c_str());
           lv_img_set_src(id(normal_automation_detail_icon),
                          id(normal_automation_press_feedback_active)
@@ -572,7 +605,9 @@ script:
                                          ? "WiFi disconnected"
                                          : (!id(normal_ha_api_connected)
                                                 ? "Home Assistant\ndisconnected"
-                                                : "Device Offline");
+                                                : (custom_logic_entity_sub::entity_detail(entity_id) == nullptr ||
+                                                   !custom_logic_entity_sub::entity_detail(entity_id)->received
+                                                       ? "Waiting for initial data" : "Entity unavailable"));
           lv_label_set_text(id(normal_automation_detail_offline_text), offline_text);
 
   - id: refresh_normal_light_detail_page
@@ -773,7 +808,7 @@ script:
           lv_obj_set_style_img_opa(id(normal_light_cct_gradient), is_on ? LV_OPA_COVER : LV_OPA_40, 0);
           lv_obj_set_style_img_opa(id(normal_light_rgb_gradient), is_on ? LV_OPA_COVER : LV_OPA_40, 0);
           if (show_cct_bar) {
-            int value_pct = std::clamp<int>(detail_slot.light().color_temperature_step(), 0, 10);
+            int value_pct = std::clamp<int>(detail_slot.light().color_temperature_step(), 0, 100);
             id(normal_light_cct_value_pct) = value_pct;
             lv_arc_set_value(id(normal_light_cct_value_arc), value_pct);
           }
@@ -1378,31 +1413,12 @@ script:
                           return detail == nullptr ? std::string("") : detail->state;
             - if:
                 condition:
-                  lambda: return id(ui_presenter)->get_normal_device_entity_id(detail_index).rfind("media_player.", 0) == 0;
-                then:
-                  - homeassistant.service:
-                      service: media_player.media_next_track
-                      data:
-                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
-            - if:
-                condition:
                   lambda: return id(ui_presenter)->get_normal_device_entity_id(detail_index).rfind("script.", 0) == 0;
                 then:
                   - homeassistant.service:
                       service: script.turn_on
                       data:
                         entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
-            - if:
-                condition:
-                  lambda: |-
-                    const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
-                    return entity.rfind("climate.", 0) == 0 && !custom_logic_entity_sub::next_climate_mode(entity).empty();
-                then:
-                  - homeassistant.service:
-                      service: climate.set_hvac_mode
-                      data:
-                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
-                        hvac_mode: !lambda return custom_logic_entity_sub::next_climate_mode(id(ui_presenter)->get_normal_device_entity_id(detail_index));
       - if:
           condition:
             lambda: |-
@@ -1840,7 +1856,7 @@ script:
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_LIGHT;
           } else if (device_type == "curtain" || device_type == "cover") {
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_CURTAIN;
-          } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer" || device_type == "media_player") {
+          } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer" || device_type == "media_player" || device_type == "fan" || device_type == "number" || device_type == "input_number" || device_type == "select" || device_type == "input_select" || device_type == "scene" || device_type == "button" || device_type == "input_button") {
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
           }
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_NONE) {
@@ -1920,7 +1936,7 @@ script:
             if (light_state.custom_supports_rgb()) mode_count++;
             id(normal_detail_light_mode_count) = mode_count;
             int cct_value_pct = (int) light_state.color_temperature_step();
-            id(normal_light_cct_value_pct) = std::clamp(cct_value_pct, 0, 10);
+            id(normal_light_cct_value_pct) = std::clamp(cct_value_pct, 0, 100);
             int rgb_value_pct = (int) light_state.rgb_tick;
             id(normal_light_rgb_value_pct) = std::clamp(rgb_value_pct, 0, 35);
             id(normal_clear_wifi_allowed) = true;
@@ -2184,6 +2200,7 @@ script:
           if (!id(normal_device_detail_active)) {
             return;
           }
+          custom_logic_entity_sub::cancel_controls();
           id(normal_device_detail_active) = false;
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_NONE;
           id(normal_page_index) = 0;
@@ -2206,68 +2223,26 @@ script:
           id: show_normal_device_entry_page
           direction: 0
 
-  # HA evaluates these templates against its authoritative target and capability data.
-  - id: adjust_normal_climate_temperature
-    mode: restart
+  - id: adjust_normal_entity_control
     parameters:
       direction: int
     then:
-      - if:
-          condition:
-            lambda: |-
-              if (!id(normal_knob_event_pass) || id(screen_off_state) ||
-                  !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
-                  id(standby_wakeup_pending) || id(sleep_wakeup_pending) || id(key_btn).state ||
-                  !id(normal_device_detail_active) ||
-                  id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_AUTOMATION ||
-                  !id(normal_device_detail_online) || !id(normal_ha_api_connected)) return false;
-              const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
-              auto *detail = custom_logic_entity_sub::entity_detail(entity);
-              return entity.rfind("climate.", 0) == 0 && detail != nullptr &&
-                     (std::isfinite(custom_logic_entity_sub::detail_number(detail->target)) ||
-                      (std::isfinite(custom_logic_entity_sub::detail_number(detail->low)) &&
-                       std::isfinite(custom_logic_entity_sub::detail_number(detail->high)) &&
-                       custom_logic_entity_sub::detail_number(detail->low) <= custom_logic_entity_sub::detail_number(detail->high))) &&
-                     std::isfinite(detail->minimum) && std::isfinite(detail->maximum) &&
-                     detail->minimum <= detail->maximum;
-          then:
-            - if:
-                condition:
-                  lambda: |-
-                    auto *detail = custom_logic_entity_sub::entity_detail(id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index)));
-                    return detail != nullptr && std::isfinite(custom_logic_entity_sub::detail_number(detail->target));
-                then:
-                  - homeassistant.service:
-                      service: climate.set_temperature
-                      data_template:
-                        entity_id: "{{ entity }}"
-                        temperature: >-
-                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
-                          {% set value = state_attr(entity, 'temperature') | float + (direction | int) * (step if step > 0 else 0.5) %}
-                          {{ [state_attr(entity, 'max_temp') | float, [state_attr(entity, 'min_temp') | float, value] | max] | min }}
-                      variables:
-                        entity: !lambda return id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
-                        direction: !lambda return direction;
-                else:
-                  - homeassistant.service:
-                      service: climate.set_temperature
-                      data_template:
-                        entity_id: "{{ entity }}"
-                        target_temp_low: >-
-                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
-                          {% set lo = state_attr(entity, 'target_temp_low') | float %}
-                          {% set hi = state_attr(entity, 'target_temp_high') | float %}
-                          {% set delta = [state_attr(entity, 'max_temp') | float - hi, [state_attr(entity, 'min_temp') | float - lo, (direction | int) * (step if step > 0 else 0.5)] | max] | min %}
-                          {{ lo + delta }}
-                        target_temp_high: >-
-                          {% set step = state_attr(entity, 'target_temp_step') | float(0.5) %}
-                          {% set lo = state_attr(entity, 'target_temp_low') | float %}
-                          {% set hi = state_attr(entity, 'target_temp_high') | float %}
-                          {% set delta = [state_attr(entity, 'max_temp') | float - hi, [state_attr(entity, 'min_temp') | float - lo, (direction | int) * (step if step > 0 else 0.5)] | max] | min %}
-                          {{ hi + delta }}
-                      variables:
-                        entity: !lambda return id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
-                        direction: !lambda return direction;
+      - lambda: |-
+          if (!id(normal_knob_event_pass) || id(screen_off_state) ||
+              !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
+              id(standby_wakeup_pending) || id(sleep_wakeup_pending) ||
+              !id(normal_device_detail_active) || !id(normal_device_detail_online) ||
+              !id(normal_ha_api_connected) || id(detail_long_press_exit_fired)) return;
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          if (!onx_controls::handles(entity)) return;
+          if (id(key_btn).state) {
+            onx_controls::cycle(entity, direction);
+            id(key_long_press_handled) = true;
+          } else {
+            onx_controls::rotate(entity, direction);
+          }
+          id(ui_presenter)->notify_user_activity();
+          id(refresh_normal_automation_detail_page).execute();
 
   - id: refresh_normal_timer_detail
     mode: restart
@@ -2336,33 +2311,6 @@ script:
                 service: script.turn_on
                 data:
                   entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);
-
-  - id: adjust_normal_media_volume
-    parameters:
-      direction: int
-    then:
-      - if:
-          condition:
-            lambda: |-
-              if (!id(normal_knob_event_pass) || id(screen_off_state) ||
-                  !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
-                  id(standby_wakeup_pending) || id(sleep_wakeup_pending) || id(key_btn).state ||
-                  !id(normal_device_detail_active) || !id(normal_device_detail_online) ||
-                  !id(normal_ha_api_connected)) return false;
-              const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
-              auto *detail = custom_logic_entity_sub::entity_detail(entity);
-              return entity.rfind("media_player.", 0) == 0 && detail != nullptr &&
-                     std::isfinite(custom_logic_entity_sub::detail_number(detail->volume));
-          then:
-            - homeassistant.service:
-                service: media_player.volume_set
-                data_template:
-                  entity_id: "{{ entity }}"
-                  volume_level: >-
-                    {{ [1, [0, (state_attr(entity, 'volume_level') | float(0)) + (direction | int) * 0.02] | max] | min }}
-                variables:
-                  entity: !lambda return id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
-                  direction: !lambda return direction;
 
   - id: refresh_normal_media_cover
     then:

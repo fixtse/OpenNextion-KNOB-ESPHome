@@ -2,7 +2,7 @@
 namespace esphome::onx_config_web {
 static const char HA_BROWSER_JS[] = R"ONXJS(
 (()=>{
- const supported=/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script)\./;
+ const supported=/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\./;
  const local=()=>[10,11,17,18].map(pin=>({entity:'[Local] HMI IO'+pin,name:'HMI IO'+pin,area:'On this knob'}));
  function catalogue(states,registry=[],areas=[],devices=[]){
   const records=new Map((Array.isArray(registry)?registry:registry.entities||[]).map(e=>[e.entity_id||e.ei,e]));

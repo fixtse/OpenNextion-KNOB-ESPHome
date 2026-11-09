@@ -2130,6 +2130,14 @@ inline std::string custom_type_from_device1_type_option(const std::string &optio
   }
   if (option == "Sensor") return "sensor";
   if (option == "Binary Sensor") return "binary_sensor";
+  if (option == "Fan") return "fan";
+  if (option == "Number") return "number";
+  if (option == "Input Number") return "input_number";
+  if (option == "Select") return "select";
+  if (option == "Input Select") return "input_select";
+  if (option == "Scene") return "scene";
+  if (option == "Button") return "button";
+  if (option == "Input Button") return "input_button";
   if (option == "Climate") return "climate";
   if (option == "Media Player") return "media_player";
   if (option == "Script") return "script";
@@ -2260,8 +2268,8 @@ inline std::string preferred_device_type_option(size_t slot, const char *const *
     preferred = light_type_option_from_custom_mask(cached_device_custom_light_capability_mask(slot));
   } else if (domain == "automation") {
     preferred = "Automation";
-  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer" || domain == "media_player") {
-    preferred = domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : domain == "media_player" ? "Media Player" : "Script";
+  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer" || domain == "media_player" || domain == "fan" || domain == "number" || domain == "input_number" || domain == "select" || domain == "input_select" || domain == "scene" || domain == "button" || domain == "input_button") {
+    preferred = domain == "fan" ? "Fan" : domain == "number" ? "Number" : domain == "input_number" ? "Input Number" : domain == "select" ? "Select" : domain == "input_select" ? "Input Select" : domain == "scene" ? "Scene" : domain == "button" ? "Button" : domain == "input_button" ? "Input Button" : domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : domain == "media_player" ? "Media Player" : "Script";
   } else {
     preferred = "Switch";
   }
@@ -2294,8 +2302,8 @@ inline bool apply_device_type_options(size_t slot, esphome::select::Select *my_s
     option_count = build_light_type_options(get_device_inferred_light_capability_mask(slot), options, 4);
   } else if (domain == "automation") {
     options[option_count++] = "Automation";
-  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer" || domain == "media_player") {
-    options[option_count++] = domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : domain == "media_player" ? "Media Player" : "Script";
+  } else if (domain == "sensor" || domain == "binary_sensor" || domain == "climate" || domain == "script" || domain == "weather" || domain == "timer" || domain == "media_player" || domain == "fan" || domain == "number" || domain == "input_number" || domain == "select" || domain == "input_select" || domain == "scene" || domain == "button" || domain == "input_button") {
+    options[option_count++] = domain == "fan" ? "Fan" : domain == "number" ? "Number" : domain == "input_number" ? "Input Number" : domain == "select" ? "Select" : domain == "input_select" ? "Input Select" : domain == "scene" ? "Scene" : domain == "button" ? "Button" : domain == "input_button" ? "Input Button" : domain == "sensor" ? "Sensor" : domain == "binary_sensor" ? "Binary Sensor" : domain == "climate" ? "Climate" : domain == "weather" ? "Weather" : domain == "timer" ? "Timer" : domain == "media_player" ? "Media Player" : "Script";
   } else {
     options[option_count++] = "none";
   }
@@ -3656,7 +3664,8 @@ inline bool is_supported_normal_device_entity_id(const char *entity_id) {
          strncmp(entity_id, "sensor.", 7) == 0 || strncmp(entity_id, "binary_sensor.", 14) == 0 ||
          strncmp(entity_id, "climate.", 8) == 0 || strncmp(entity_id, "script.", 7) == 0 ||
          strncmp(entity_id, "weather.", 8) == 0 || strncmp(entity_id, "timer.", 6) == 0 ||
-         strncmp(entity_id, "media_player.", 13) == 0;
+         strncmp(entity_id, "media_player.", 13) == 0 ||
+         strncmp(entity_id, "fan.", 4) == 0 || strncmp(entity_id, "number.", 7) == 0 || strncmp(entity_id, "input_number.", 13) == 0 || strncmp(entity_id, "select.", 7) == 0 || strncmp(entity_id, "input_select.", 13) == 0 || strncmp(entity_id, "scene.", 6) == 0 || strncmp(entity_id, "button.", 7) == 0 || strncmp(entity_id, "input_button.", 13) == 0;
 }
 
 inline bool is_local_hmi_gpio_switch_entity_id(const std::string &entity_id) {

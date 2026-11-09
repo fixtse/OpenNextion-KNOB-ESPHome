@@ -332,19 +332,19 @@ uint8_t NormalLightState::color_temperature_step() const {
   uint16_t max_kelvin = this->max_color_temperature_kelvin;
   normalize_kelvin_range(&min_kelvin, &max_kelvin);
   if (min_kelvin == 0 || max_kelvin == 0) {
-    return 5;
+    return 50;
   }
   const int span = std::max<int>(1, max_kelvin - min_kelvin);
   int kelvin = this->color_temperature_kelvin;
   if (kelvin >= 153 && kelvin <= 500) {
     kelvin = static_cast<int>((1000000 + kelvin / 2) / kelvin);
   } else if (kelvin <= 100) {
-    return static_cast<uint8_t>(std::clamp(kelvin, 0, 10));
+    return static_cast<uint8_t>(std::clamp(kelvin, 0, 10) * 10);
   }
   if (kelvin < min_kelvin || kelvin > max_kelvin) {
-    return 5;
+    return 50;
   }
-  return static_cast<uint8_t>(std::clamp((int) ((max_kelvin - kelvin) * 10 + span / 2) / span, 0, 10));
+  return static_cast<uint8_t>(std::clamp((int) ((max_kelvin - kelvin) * 100 + span / 2) / span, 0, 100));
 }
 
 uint16_t NormalLightState::kelvin_from_color_temperature_step(uint8_t step) const {
@@ -355,9 +355,9 @@ uint16_t NormalLightState::kelvin_from_color_temperature_step(uint8_t step) cons
     return 0;
   }
   const int span = std::max<int>(1, max_kelvin - min_kelvin);
-  const int normalized_step = std::clamp<int>(step, 0, 10);
+  const int normalized_step = std::clamp<int>(step, 0, 100);
   return static_cast<uint16_t>(
-      std::clamp(max_kelvin - (normalized_step * span + 5) / 10, (int) min_kelvin, (int) max_kelvin));
+      std::clamp(max_kelvin - (normalized_step * span + 50) / 100, (int) min_kelvin, (int) max_kelvin));
 }
 
 uint16_t NormalLightState::hue_degrees() const { return static_cast<uint16_t>((this->rgb_tick % 36) * 10); }

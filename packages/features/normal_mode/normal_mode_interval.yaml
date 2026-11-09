@@ -1,4 +1,11 @@
 interval:
+  - interval: 100ms
+    then:
+      - lambda: |-
+          const bool active = id(normal_device_detail_active) && !id(screen_off_state) &&
+                              id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active();
+          const auto entity = active ? id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index)) : std::string("");
+          onx_controls::tick(id(api_server), entity, id(normal_ha_api_connected));
   - interval: 1s
     then:
       # A Native API client becomes identifiable as HA only after it subscribes

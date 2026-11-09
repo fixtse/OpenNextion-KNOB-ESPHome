@@ -11,6 +11,7 @@
 
 #include <ArduinoJson.h>
 #include "onx_timer_state.h"
+#include "onx_control_state.h"
 #include "esphome.h"
 #include "esphome/components/api/api_server.h"
 #include "esphome/components/select/select.h"
@@ -340,11 +341,15 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
   std::string volume, media_title, media_artist, picture;
+  std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode;
+  std::string percentage, oscillating, direction, sources, source, muted;
+  uint32_t features{0}, received_ms{0};
+  bool received{false}, available{false};
   std::string timer_duration, timer_remaining, timer_finishes_at, timer_name;
   bool voice_timer{false};
   double voice_duration{NAN}, voice_remaining{NAN};
   uint32_t timer_received_ms{0};
-  float minimum{NAN}, maximum{NAN}, step{NAN};
+  float minimum{NAN}, maximum{NAN}, step{NAN}, humidity_min{NAN}, humidity_max{NAN};
 };
 static std::array<EntityDetailState, custom_logic::CONFIGURABLE_DEVICE_SLOT_COUNT> entity_details{};
 
@@ -365,18 +370,58 @@ inline bool is_timer_detail(const std::string &entity_id) {
   return has_prefix(entity_id, "timer.") || (detail != nullptr && detail->voice_timer);
 }
 
-inline std::string next_climate_mode(const std::string &entity_id) {
-  auto *detail = entity_detail(entity_id);
-  if (detail == nullptr) return "";
-  JsonDocument doc = custom_logic::make_psram_json_document();
-  if (deserializeJson(doc, detail->modes) != DeserializationError::Ok || !doc.is<JsonArray>()) return "";
-  JsonArray modes = doc.as<JsonArray>();
-  if (modes.size() == 0) return "";
-  for (size_t i = 0; i < modes.size(); ++i) {
-    if (detail->state == modes[i].as<std::string>())
-      return modes[(i + 1) % modes.size()].as<std::string>();
+inline std::vector<onx_control::Command> control_commands;
+inline std::string control_entity, control_setting, control_preview;
+inline bool knob_control_domain(const std::string &id) {
+  for (const char *domain : {"fan.", "number.", "input_number.", "select.", "input_select.", "scene.", "button.", "input_button."})
+    if (has_prefix(id, domain)) return true;
+  return false;
+}
+inline void cancel_controls() {
+  control_commands.clear(); control_entity.clear(); control_setting.clear(); control_preview.clear();
+}
+inline void select_control_entity(const std::string &id) {
+  if (control_entity != id) { cancel_controls(); control_entity = id; }
+}
+inline std::string requested_value(const std::string &field, const std::string &actual) {
+  for (const auto &command : control_commands) {
+    const auto value = command.effective(field, actual);
+    if (command.active && value != actual) return value;
   }
-  return modes[0].as<std::string>();
+  return actual;
+}
+inline void request_control(const std::string &entity, const std::string &service,
+                            std::vector<onx_control::Value> values) {
+  // Independent controls retain their pending values (e.g. temperature + HVAC mode).
+  // Mutually exclusive actions such as fan on/off supersede only the same field.
+  for (auto &command : control_commands) {
+    if (command.service == service) continue;
+    bool overlaps = false;
+    for (const auto &old : command.values) for (const auto &next : values)
+      overlaps |= old.field == next.field;
+    if (overlaps) command.cancel();
+  }
+  auto it = std::find_if(control_commands.begin(), control_commands.end(), [&](const onx_control::Command &c) {
+    return c.service == service;
+  });
+  if (it == control_commands.end()) {
+    it = std::find_if(control_commands.begin(), control_commands.end(), [](const onx_control::Command &c) { return !c.active && !c.failed; });
+    if (it == control_commands.end()) { control_commands.emplace_back(); it = control_commands.end() - 1; }
+  }
+  it->request(entity, service, std::move(values), millis());
+}
+inline std::string next_option(const std::string &raw, const std::string &current, int direction = 1) {
+  const auto list = onx_control::options(raw);
+  if (list.empty()) return "";
+  auto found = std::find(list.begin(), list.end(), current);
+  const int index = found == list.end() ? (direction > 0 ? -1 : 0) : found - list.begin();
+  return list[(index + direction + static_cast<int>(list.size())) % list.size()];
+}
+inline std::string next_climate_mode(const std::string &entity_id) {
+  const auto *detail = entity_detail(entity_id);
+  if (detail == nullptr) return "";
+  const auto current = control_entity == entity_id ? requested_value("state", detail->state) : detail->state;
+  return next_option(detail->modes, current);
 }
 
 class DeviceSlotStateUpdater {
@@ -392,26 +437,32 @@ class DeviceSlotStateUpdater {
       ESP_LOGW(TAG, "%s state ignored; normal UI storage is unavailable", this->slot_label_().c_str());
       return;
     }
+    if (custom_logic::cached_device_entity_id(this->slot_) != this->entity_id_) return;
     const size_t ui_slot = this->ui_slot_();
     if (this->is_light_() && ui_slot != static_cast<size_t>(-1) &&
         this->defer_nonmatching_light_feedback_(ui_slot, field, value)) {
       return;
     }
     if (field == "state") {
-      const bool online = !value.empty() && value != "unknown" && value != "unavailable";
+      const bool stateless = has_prefix(this->entity_id_, "scene.") || has_prefix(this->entity_id_, "button.") || has_prefix(this->entity_id_, "input_button.");
+      const bool online = !value.empty() && (value != "unknown" || stateless) && value != "unavailable";
       if (ui_slot == static_cast<size_t>(-1)) {
         // ESP_LOGI(TAG, "%s state ignored; no compact UI slot for entity=%s", this->slot_label_().c_str(),
         //          this->entity_id_.c_str());
         return;
       }
       custom_logic::set_normal_ui_device_online_state(ui_slot, online);
+      auto &detail = entity_details[this->slot_];
+      if (detail.entity_id != this->entity_id_) { detail = EntityDetailState{}; detail.entity_id = this->entity_id_; }
+      detail.received = true; detail.available = online; detail.received_ms = millis();
+      if (!online && control_entity == this->entity_id_) cancel_controls();
       if (!online) {
         return;
       }
     }
     if (has_prefix(this->entity_id_, "sensor.") || has_prefix(this->entity_id_, "binary_sensor.") ||
         has_prefix(this->entity_id_, "climate.") || has_prefix(this->entity_id_, "media_player.") || has_prefix(this->entity_id_, "script.") ||
-        has_prefix(this->entity_id_, "weather.") || has_prefix(this->entity_id_, "timer.")) {
+        has_prefix(this->entity_id_, "weather.") || has_prefix(this->entity_id_, "timer.") || knob_control_domain(this->entity_id_)) {
       if (ui_slot == static_cast<size_t>(-1)) return;
       auto &detail = entity_details[this->slot_];
       if (detail.entity_id != this->entity_id_) {
@@ -456,9 +507,36 @@ class DeviceSlotStateUpdater {
       else if (field == "target_temp_low") detail.low = value;
       else if (field == "target_temp_high") detail.high = value;
       else if (field == "hvac_modes") detail.modes = value;
+      else if (field == "options") detail.options = value;
+      else if (field == "preset_modes") detail.presets = value;
+      else if (field == "preset_mode") detail.preset = value;
+      else if (field == "fan_modes") detail.fan_modes = value;
+      else if (field == "fan_mode") detail.fan_mode = value;
+      else if (field == "swing_modes") detail.swing_modes = value;
+      else if (field == "swing_mode") detail.swing_mode = value;
+      else if (field == "percentage") detail.percentage = value;
+      else if (field == "oscillating") detail.oscillating = value;
+      else if (field == "direction") detail.direction = value;
+      else if (field == "source_list") detail.sources = value;
+      else if (field == "source") detail.source = value;
+      else if (field == "is_volume_muted") detail.muted = value;
+      else if (field == "supported_features") detail.features = static_cast<uint32_t>(std::max(0.0f, detail_number(value)));
+      else if (field == "min") detail.minimum = detail_number(value);
+      else if (field == "max") detail.maximum = detail_number(value);
+      else if (field == "step" || field == "percentage_step") detail.step = detail_number(value);
+      else if (field == "min_humidity") detail.humidity_min = detail_number(value);
+      else if (field == "max_humidity") detail.humidity_max = detail_number(value);
       else if (field == "min_temp") detail.minimum = detail_number(value);
       else if (field == "max_temp") detail.maximum = detail_number(value);
       else if (field == "target_temp_step") detail.step = detail_number(value);
+      if (control_entity == this->entity_id_) {
+        std::string feedback = value;
+        if (field == "oscillating" || field == "is_volume_muted") {
+          if (value == "True" || value == "true") feedback = "true";
+          else if (value == "False" || value == "false") feedback = "false";
+        }
+        for (auto &command : control_commands) command.feedback(field, feedback);
+      }
       return;
     }
     if (field == "state") {
@@ -932,12 +1010,22 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
     for (const char *attribute : weather_attributes())
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "media_player.")) {
-    for (const char *attribute : {"volume_level", "media_title", "media_artist", "entity_picture"})
+    for (const char *attribute : {"volume_level", "media_title", "media_artist", "entity_picture", "supported_features", "source_list", "source", "is_volume_muted"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "climate.")) {
     for (const char *attribute : {"current_temperature", "temperature", "target_temp_low", "target_temp_high",
-                                  "hvac_modes", "min_temp", "max_temp", "target_temp_step"})
+                                  "hvac_modes", "min_temp", "max_temp", "target_temp_step", "supported_features",
+                                  "preset_modes", "preset_mode", "fan_modes", "fan_mode", "swing_modes", "swing_mode",
+                                  "humidity", "min_humidity", "max_humidity"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "fan.")) {
+    for (const char *attribute : {"supported_features", "percentage", "percentage_step", "preset_modes", "preset_mode", "oscillating", "direction"})
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "number.") || has_prefix(entity_id, "input_number.")) {
+    for (const char *attribute : {"min", "max", "step", "unit_of_measurement"})
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "select.") || has_prefix(entity_id, "input_select.")) {
+    subscribe_field(api_server, slot, entity_id, "options", "options");
   } else if (has_prefix(entity_id, "light.")) {
     for (const char *attribute : light_attributes()) {
       subscribe_field(api_server, slot, entity_id, attribute, attribute);

@@ -9,6 +9,8 @@ const { chromium } = require('playwright');
   const html = fs.readFileSync('my_components/onx_config_web/config_page.h','utf8').split('R"ONXHTML(')[1].split(')ONXHTML";')[0];
   const entities = [
    {entity:'sensor.living_room_temperature',name:'Living room temperature',area:'Living room'},
+   {entity:'fan.office',name:'Office fan',area:'Office'},
+   {entity:'select.office_mode',name:'Office mode',area:'Office'},
    {entity:'binary_sensor.front_door',name:'Front door',area:'Hallway'},
    {entity:'script.comfort',name:'Comfort scene',area:'Living room'},
    {entity:'automation.welcome',name:'Welcome home',area:'Hallway'}
@@ -22,6 +24,10 @@ const { chromium } = require('playwright');
     const source=fs.readFileSync('my_components/onx_config_web/ha_browser.h','utf8').split('R"ONXJS(')[1].split(')ONXJS"')[0];
     const mock=`OnxHA.Client=class {constructor(){this.items=${JSON.stringify(entities)};this.ready=true}read(){return {base:'http://ha.test:8123'}}async finishLogin(){}async load(){return this.items}disconnect(){this.items=[];this.ready=false}};`;
     await route.fulfill({contentType:'text/javascript',body:source+'\n'+mock});return;
+   }
+   if(url.pathname==='/knob/app.js'){
+    const source=fs.readFileSync('my_components/onx_config_web/config_app.h','utf8').split('R"ONXJS(')[1].split(')ONXJS"')[0];
+    await route.fulfill({contentType:'text/javascript',body:source});return;
    }
    if(url.pathname==='/knob/api'){
     const values=new URLSearchParams(request.postData());
@@ -64,6 +70,15 @@ const { chromium } = require('playwright');
   await page.locator('#choose-action').click();
   await page.locator('#search').fill('script.manual');
   await page.getByRole('button',{name:'Use entity ID: script.manual'}).waitFor();
+  await page.locator('#choose-entity').click();
+  await page.locator('#search').fill('Office fan');
+  await page.getByRole('button',{name:'Office fan',exact:true}).click();
+  assert.equal(await page.locator('#choose-action').isDisabled(),true);
+  assert.match(await page.locator('#rotate-hint').textContent(),/speed/);
+  await page.locator('#choose-entity').click();
+  await page.locator('#search').fill('Office mode');
+  await page.getByRole('button',{name:'Office mode',exact:true}).click();
+  assert.match(await page.locator('#press-hint').textContent(),/Confirm option/);
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
   assert.equal(overflow,false,'Mobile page must not overflow horizontally');

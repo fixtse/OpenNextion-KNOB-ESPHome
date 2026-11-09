@@ -240,3 +240,12 @@ Under the Home Assistant device's configuration controls, **Restart device**
 reboots while keeping settings. **Reset device** performs a factory reset,
 clearing the knob's saved Wi-Fi, Home Assistant configuration, and press actions
 and returning it to provisioning. Use Restart for an ordinary reboot.
+
+### Rotary entity controls
+
+Fan, number/input_number, select/input_select, scene and button entities can now
+be selected in the web configuration. Climate supports capability-dependent
+secondary settings and local accumulation of rapid temperature adjustments.
+Hold and turn to choose a setting; turn normally to adjust; press to confirm an
+option. See [native knob controls](docs/knob-controls.md) for behavior, pending
+command feedback and Home Assistant action permissions.

@@ -13,7 +13,12 @@ on:
       - 'tests/test_selected_metadata.py'
       - 'tests/test_config_web.cjs'
       - 'onx_entity_config.h'
-      - 'tests/test_control_templates.py'
+      - 'tests/test_control_state.cpp'
+      - 'tests/test_entity_controls.py'
+      - 'custom_logic_entity_sub.h'
+      - 'packages/base/input.yaml'
+      - 'onx_control_state.h'
+      - 'onx_entity_controls.h'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
       - 'onx_registry_queue.h'
@@ -40,11 +45,11 @@ jobs:
           node-version: '24'
       - name: Test browser-only Home Assistant discovery and authentication
         run: node tests/test_browser_catalogue.cjs
-      - name: Test climate templates, volume limits and artwork URL handling
+      - name: Test command feedback, option parsing, numeric limits and media state
         run: |
-          python3 -m venv /tmp/onx-control-tests
-          /tmp/onx-control-tests/bin/pip install Jinja2==3.1.6
-          /tmp/onx-control-tests/bin/python tests/test_control_templates.py
+          c++ -std=c++17 tests/test_control_state.cpp -o /tmp/test_control_state
+          /tmp/test_control_state
+          python3 tests/test_entity_controls.py
           c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state
           /tmp/test_media_state
       - name: Test registry thread handoff and bounded preference memory
