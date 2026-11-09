@@ -178,6 +178,9 @@ inline View carousel(const std::string &entity, const std::string &name) {
   } else if (domain == "scene" || domain == "button" || domain == "input_button") {
     v.value.text = "Ready";
   } else if (domain == "weather") {
+    v.name.text = onx_media::display_text(name);
+    v.icon = onx_icon_state::selected_icon(entity);
+    if (v.icon.empty()) v.icon = "mdi:" + onx_icon_state::fallback(entity);
     v.value.text = compact(d->target) + d->unit; v.context.text = label(d->state);
   } else if (domain == "timer") {
     v.value.text = label(d->state); v.context.text = d->timer_remaining;

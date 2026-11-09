@@ -80,7 +80,7 @@ int main() {
     assert(view.badge.text=="11-10" && view.value.text=="18°C" && view.context.text=="Low 9°C");
     assert(view.hint.text.find("80%")!=std::string::npos);
     view=onx_detail_view::carousel(weather.entity_id,"Home");
-    assert(view.value.text=="17.65°C");
+    assert(view.value.text=="17.65°C" && view.name.text=="Home" && !view.icon.empty());
     weather={};clock_ms=100;
   }
   {
