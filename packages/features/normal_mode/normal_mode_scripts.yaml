@@ -255,6 +255,7 @@ script:
             if (!settings_entry) {
               const auto view = onx_detail_view::carousel(entity, device_title);
               lv_label_set_text(w.value, view.value.text.c_str());
+              lv_obj_set_y(w.value, view.value.y);
               lv_obj_set_style_text_font(w.value,
                   view.value.size == 32 ? id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Medium_24)->get_lv_font(), 0);
               set_hidden(w.value, false);

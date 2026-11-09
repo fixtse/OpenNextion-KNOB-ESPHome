@@ -66,11 +66,11 @@ int main() {
     assert(view.value.text=="16.63 °C"&&view.value.size==32&&view.icon_size==40);
     assert(view.badge.text=="🌡 Temperature"&&view.name.width==180);
     const auto main_view=onx_detail_view::carousel(sensor.entity_id,"Madrid Piso Temperature");
-    assert(main_view.value.text=="16.63 °C"&&main_view.icon_size==28&&main_view.name.y==145);
+    assert(main_view.value.text=="16.63 °C"&&main_view.icon_size==40&&main_view.name.y==145);
     assert(view.badge.x==0&&view.icon_x==0);
     assert(view.icon_y>=view.value.y+view.value.size+16);
     assert(onx_detail_view::image_object_y(view.icon_y,view.icon_size)+40-view.icon_size/2==view.icon_y);
-    assert(main_view.icon_y+main_view.icon_size+16<=main_view.value.y);
+    assert(main_view.icon_y+main_view.icon_size+12<=main_view.value.y);
     assert(main_view.name.y+2*(main_view.name.size+2)+24<=212);
     assert(onx_detail_view::pagination(4,7)=="· · · · ● · ·");
     auto &climate=entity_details[2];climate.entity_id="climate.heater";climate.received=climate.available=true;

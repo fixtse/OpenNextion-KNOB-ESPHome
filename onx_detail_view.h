@@ -115,8 +115,8 @@ inline View carousel(const std::string &entity, const std::string &name) {
   auto v = build(entity, name); v.layout = "carousel";
   const auto badge = v.badge.text;
   v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
-  v.icon_x = 0; v.icon_y = 34; v.icon_size = 28;
-  v.value.y = 84; v.value.size = 32;
+  v.icon_x = 0; v.icon_y = 34; v.icon_size = 40;
+  v.value.y = 88; v.value.size = 32;
   v.name.y = 145; v.name.width = 184; v.name.size = 16;
   const auto *d = entity_detail(entity);
   if (!d || !d->received || !d->available) return v;
@@ -147,7 +147,7 @@ inline View carousel(const std::string &entity, const std::string &name) {
     v.value.text = label(d->state); v.context.text = d->timer_remaining;
   }
   if (!v.context.text.empty()) {
-    v.context.y = domain == "climate" ? 30 : 124;
+    v.context.y = domain == "climate" ? 30 : 130;
     v.context.size = domain == "climate" ? 24 : 14;
     v.name.y = domain == "climate" ? 145 : 151;
   }
