@@ -137,3 +137,16 @@ still paused. The badge clears on leaving the media view or losing its connectio
 Climate views use a larger centered HVAC emoji/mode heading without a separate
 entity icon. With preset, fan or swing mode selected, pressing cycles that selected
 feature; temperature controls retain the HVAC-mode press action.
+
+### Opened weather pages
+
+Open a weather entity and turn the dial to browse current temperature, feels-like
+and humidity; wind, pressure, visibility and UV; then daily forecasts for up to
+five days, with high/low temperatures and rain probability. Missing measurements
+show a dash. The live preview uses the same selected page as the screen.
+
+Daily forecasts use Home Assistant's native `weather.get_forecasts` action,
+without a device access token. Enable permission for the device to perform
+Home Assistant actions. Providers without daily forecast support show
+“Not available”; press to retry (requests are limited to once per 20 seconds).
+Opening the entity refreshes forecasts cached for more than 15 minutes.

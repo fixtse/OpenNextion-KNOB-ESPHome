@@ -73,6 +73,42 @@ inline View build(const std::string &entity, const std::string &name) {
       v.hint.text = option ? "Press: next " + label(key) : temperature ? "Press: HVAC mode" : "Turn to adjust " + label(key);
       v.hint.text += "\nHold + turn: setting";
     }
+  } else if (has_prefix(entity, "weather.")) {
+    v.icon.clear(); v.badge.x = 0; v.badge.y = 28; v.badge.width = 200;
+    v.value.y = 65; v.context.y = 109; v.hint.y = 143; v.name.y = 188;
+    auto reading = [](const std::string &value, const std::string &unit) {
+      return value.empty() || value == "None" || value == "unknown" || value == "unavailable" ? std::string("—") : compact(value) + unit;
+    };
+    auto condition = [](const std::string &state) {
+      if (state == "partlycloudy") return std::string("Partly cloudy");
+      if (state == "clear-night") return std::string("Clear night");
+      return label(state);
+    };
+    const int count = 3 + d->forecast_count;
+    const int page = std::max(0, std::min(d->weather_page, count - 1));
+    v.name.text = std::to_string(page + 1) + "/" + std::to_string(count) + " · " + onx_media::display_text(name);
+    if (page == 0) {
+      v.badge.text = condition(d->state);
+      v.value.text = reading(d->target, d->unit);
+      v.context.text = "Feels " + reading(d->apparent_temperature, d->unit);
+      v.hint.text = "Humidity " + reading(d->humidity, "%") + "\nTurn for more";
+    } else if (page == 1) {
+      v.badge.text = "Wind & atmosphere"; v.value.size = 24;
+      v.value.text = reading(d->wind_speed, " " + d->wind_unit);
+      v.context.text = "Pressure " + reading(d->pressure, " " + d->pressure_unit);
+      v.hint.text = "Visibility " + reading(d->visibility, " " + d->visibility_unit) + "\nUV " + reading(d->uv_index, "");
+    } else if (page == 2) {
+      v.badge.text = "Daily forecast"; v.value.size = 24;
+      const bool timed_out = d->forecast_pending && static_cast<uint32_t>(millis() - d->forecast_requested_ms) >= 20000;
+      v.value.text = d->forecast_count ? std::to_string(d->forecast_count) + " days" : d->forecast_pending && !timed_out ? "Loading…" : "Not available";
+      v.context.text = d->forecast_count ? "Turn to see each day" : "Provider or action unavailable";
+      v.hint.text = "Press to refresh";
+    } else {
+      const auto &f = d->forecast[page - 3];
+      v.badge.text = f.date.size() >= 10 ? f.date.substr(5, 5) : f.date;
+      v.value.text = reading(f.high, d->unit); v.context.text = "Low " + reading(f.low, d->unit);
+      v.hint.text = condition(f.condition) + "\nRain chance " + reading(f.rain, "%");
+    }
   } else if (has_prefix(entity, "fan.")) {
     const auto state = onx_controls::effective(*d,"state");
     v.symbol = state == "off" ? "⏸" : "🌀";

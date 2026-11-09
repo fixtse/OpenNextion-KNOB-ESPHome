@@ -49,9 +49,9 @@ struct Script {
  template<class... T> void execute(T...){++calls;}
  void turn_off(){}
 } exit_standby_mode,ha_screen_off,retry_normal_entity_state,refresh_normal_automation_detail_page,
-  emit_normal_media_track,emit_configured_press_action,refresh_normal_light_detail_page;
+  emit_normal_media_track,emit_configured_press_action,refresh_normal_light_detail_page,request_normal_weather_forecast;
 namespace custom_logic_entity_sub {
-struct Detail {bool received{true},available{true};std::string state="playing";} detail;
+struct Detail {int weather_page=0,forecast_count=0;bool received{true},available{true};std::string state="playing";} detail;
 std::string control_preview;
 Detail *entity_detail(const std::string &){return &detail;}
 }
@@ -106,7 +106,11 @@ int main(){
   assert(!normal_clear_wifi_allowed&&key_long_press_handled&&!onx_controls::cycles&&!onx_controls::rotations);
   key_btn.state=false;release();assert(!onx_controls::presses&&!emit_configured_press_action.calls);
  }
- reset();turn(1);assert(onx_controls::rotations==1&&!emit_normal_media_track.calls);
+ reset();configured_entity="weather.home";custom_logic_entity_sub::detail.forecast_count=2;
+ custom_logic_entity_sub::detail.weather_page=0;turn(-1);assert(custom_logic_entity_sub::detail.weather_page==4);
+ turn(1);assert(custom_logic_entity_sub::detail.weather_page==0);
+ release();assert(request_normal_weather_forecast.calls==1&&custom_logic_entity_sub::detail.weather_page==2&&key_long_press_handled);
+ reset();configured_entity="media_player.room";turn(1);assert(onx_controls::rotations==1&&!emit_normal_media_track.calls);
  normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_SETTINGS;reset();turn(1);assert(!onx_controls::rotations&&!onx_controls::cycles&&!emit_normal_media_track.calls);
 
 }

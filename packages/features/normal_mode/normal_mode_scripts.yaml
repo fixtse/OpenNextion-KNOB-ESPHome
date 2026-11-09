@@ -1,4 +1,56 @@
 script:
+  - id: request_normal_weather_forecast
+    mode: parallel
+    max_runs: 2
+    parameters:
+      entity: string
+      force: bool
+    then:
+      - if:
+          condition:
+            lambda: |-
+              auto *d = custom_logic_entity_sub::entity_detail(entity);
+              if (!d || entity.rfind("weather.", 0) != 0 || !d->available || !id(normal_ha_api_connected)) return false;
+              const uint32_t age = millis() - d->forecast_requested_ms;
+              if (d->forecast_requested && (age < 20000 || (!force && age < 900000))) return false;
+              d->forecast_requested = d->forecast_pending = true;
+              d->forecast_requested_ms = millis();
+              return true;
+          then:
+            - homeassistant.action:
+                action: weather.get_forecasts
+                data:
+                  entity_id: !lambda return entity;
+                  type: daily
+                capture_response: true
+                response_template: !lambda |-
+                  return "{% set ns = namespace(days=[]) %}{% for f in response.get('" + entity + "', {}).get('forecast', [])[:5] %}{% set ns.days = ns.days + [dict(date=f.get('datetime',''), condition=f.get('condition',''), high=f.get('temperature'), low=f.get('templow'), rain=f.get('precipitation_probability'))] %}{% endfor %}{{ dict(days=ns.days) | to_json }}";
+                on_success:
+                  - lambda: |-
+                      auto *d = custom_logic_entity_sub::entity_detail(entity);
+                      if (!d) return;
+                      d->forecast_pending = false;
+                      d->forecast_count = 0;
+                      for (JsonObjectConst day : response["response"]["days"].as<JsonArrayConst>()) {
+                        if (d->forecast_count >= 5) break;
+                        auto &f = d->forecast[d->forecast_count++];
+                        f.date = std::string(day["date"] | "").substr(0, 32);
+                        f.condition = std::string(day["condition"] | "").substr(0, 40);
+                        auto number = [](JsonVariantConst v) -> std::string {
+                          if (v.isNull() || (!v.is<float>() && !v.is<int>())) return "";
+                          return onx_detail_view::compact(std::to_string(v.as<float>()));
+                        };
+                        f.high = number(day["high"]); f.low = number(day["low"]); f.rain = number(day["rain"]);
+                      }
+                      d->forecast_failed = d->forecast_count == 0;
+                      d->weather_page = std::min(d->weather_page, 2 + d->forecast_count);
+                      id(refresh_normal_automation_detail_page).execute();
+                on_error:
+                  - lambda: |-
+                      auto *d = custom_logic_entity_sub::entity_detail(entity);
+                      if (d) { d->forecast_pending = false; d->forecast_failed = true; }
+                      id(refresh_normal_automation_detail_page).execute();
+
   - id: enter_sleep_mode
     mode: restart
     then:
@@ -1958,6 +2010,12 @@ script:
             return;
           }
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) {
+            const auto weather_entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+            if (weather_entity.rfind("weather.", 0) == 0) {
+              auto *d = custom_logic_entity_sub::entity_detail(weather_entity);
+              if (d) d->weather_page = 0;
+              id(request_normal_weather_forecast).execute(weather_entity, false);
+            }
             id(normal_automation_press_feedback_active) = false;
             ESP_LOGI("normal_mode", "automation detail opened for index=%d", detail_index);
             lv_scr_load(id(normal_automation_page)->obj);
@@ -2246,6 +2304,16 @@ script:
               !id(normal_device_detail_active) || id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_AUTOMATION || !id(normal_device_detail_online) ||
               !id(normal_ha_api_connected) || id(detail_long_press_exit_fired)) return;
           const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          if (entity.rfind("weather.", 0) == 0) {
+            auto *d = custom_logic_entity_sub::entity_detail(entity);
+            if (!d) return;
+            const int count = 3 + d->forecast_count;
+            d->weather_page = (d->weather_page + (direction < 0 ? -1 : 1) + count) % count;
+            if (id(key_btn).state) { id(key_long_press_handled) = true; id(normal_clear_wifi_allowed) = false; }
+            id(ui_presenter)->notify_user_activity();
+            id(refresh_normal_automation_detail_page).execute();
+            return;
+          }
           if (!onx_controls::handles(entity)) return;
           if (id(key_btn).state) {
             id(normal_clear_wifi_allowed) = false;

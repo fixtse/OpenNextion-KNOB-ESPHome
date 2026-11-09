@@ -59,6 +59,31 @@ int main() {
   using namespace custom_logic_entity_sub;
   using namespace onx_controls;
   {
+    auto &weather = entity_details[9]; weather.entity_id="weather.home";
+    weather.state="partlycloudy"; weather.target="17.65"; weather.unit="°C";
+    weather.received=weather.available=true; weather.humidity="52";
+    auto view=onx_detail_view::build(weather.entity_id,"Home");
+    assert(view.value.text=="17.65°C" && view.badge.text=="Partly cloudy");
+    assert(view.hint.text.find("52%")!=std::string::npos);
+    weather.weather_page=1;
+    view=onx_detail_view::build(weather.entity_id,"Home");
+    assert(view.value.text=="—" && view.badge.text=="Wind & atmosphere");
+    weather.weather_page=2;
+    assert(onx_detail_view::build(weather.entity_id,"Home").value.text=="Not available");
+    weather.forecast_pending=true;weather.forecast_requested_ms=clock_ms;
+    assert(onx_detail_view::build(weather.entity_id,"Home").value.text=="Loading…");
+    clock_ms+=20000;
+    assert(onx_detail_view::build(weather.entity_id,"Home").value.text=="Not available");
+    weather.forecast_count=1;weather.weather_page=3;
+    weather.forecast[0]={"2026-11-10T12:00:00+00:00","rainy","18","9","80"};
+    view=onx_detail_view::build(weather.entity_id,"Home");
+    assert(view.badge.text=="11-10" && view.value.text=="18°C" && view.context.text=="Low 9°C");
+    assert(view.hint.text.find("80%")!=std::string::npos);
+    view=onx_detail_view::carousel(weather.entity_id,"Home");
+    assert(view.value.text=="17.65°C");
+    weather={};clock_ms=100;
+  }
+  {
     auto &sensor = entity_details[1];
     sensor.entity_id="sensor.madrid_piso_temperature"; sensor.state="16.63";sensor.unit="°C";sensor.received=sensor.available=true;
     onx_icon_state::metadata[1].bind(sensor.entity_id);onx_icon_state::metadata[1].device_class="temperature";

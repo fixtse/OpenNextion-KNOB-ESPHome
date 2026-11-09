@@ -144,8 +144,8 @@ inline const std::array<const char *, 1> &automation_attributes() {
   return attrs;
 }
 
-inline const std::array<const char *, 3> &weather_attributes() {
-  static const std::array<const char *, 3> attrs{{"temperature", "temperature_unit", "humidity"}};
+inline const std::array<const char *, 12> &weather_attributes() {
+  static const std::array<const char *, 12> attrs{{"temperature", "temperature_unit", "humidity", "apparent_temperature", "wind_speed", "wind_speed_unit", "wind_bearing", "pressure", "pressure_unit", "visibility", "visibility_unit", "uv_index"}};
   return attrs;
 }
 
@@ -345,6 +345,12 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
   std::string volume, media_title, media_artist, picture, media_content_id, brightness, position;
+  std::string apparent_temperature, wind_speed, wind_unit, wind_bearing, pressure, pressure_unit, visibility, visibility_unit, uv_index;
+  struct ForecastDay { std::string date, condition, high, low, rain; };
+  std::array<ForecastDay, 5> forecast{};
+  int forecast_count{0}, weather_page{0};
+  uint32_t forecast_requested_ms{0};
+  bool forecast_requested{false}, forecast_pending{false}, forecast_failed{false};
   onx_media::Progress progress;
   std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode;
   std::string percentage, oscillating, direction, sources, source, muted;
@@ -547,6 +553,15 @@ class DeviceSlotStateUpdater {
       else if (field == "current_temperature") detail.current = value;
       else if (field == "temperature") detail.target = value;
       else if (field == "temperature_unit") detail.unit = value;
+      else if (field == "apparent_temperature") detail.apparent_temperature = value;
+      else if (field == "wind_speed") detail.wind_speed = value;
+      else if (field == "wind_speed_unit") detail.wind_unit = value;
+      else if (field == "wind_bearing") detail.wind_bearing = value;
+      else if (field == "pressure") detail.pressure = value;
+      else if (field == "pressure_unit") detail.pressure_unit = value;
+      else if (field == "visibility") detail.visibility = value;
+      else if (field == "visibility_unit") detail.visibility_unit = value;
+      else if (field == "uv_index") detail.uv_index = value;
       else if (field == "humidity") detail.humidity = value;
       else if (field == "target_temp_low") detail.low = value;
       else if (field == "target_temp_high") detail.high = value;
@@ -1204,7 +1219,7 @@ inline void subscribe_standby_weather_entity(esphome::api::APIServer *api_server
 
   subscribe_standby_weather_field(api_server, entity_id, "state", "", entity_id_out, state_out, temperature_out,
                                   temperature_unit_out, humidity_out);
-  for (const char *attribute : weather_attributes()) {
+  for (const char *attribute : {"temperature", "temperature_unit", "humidity"}) {
     subscribe_standby_weather_field(api_server, entity_id, attribute, attribute, entity_id_out, state_out,
                                     temperature_out, temperature_unit_out, humidity_out);
   }
