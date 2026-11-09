@@ -39,7 +39,54 @@ onx_ui:
 onx_config_web:
   id: entity_config_web
   handler: !lambda |-
-    if (query.op == "state") return onx_entity_config::state(id(ha_host).state);
+    if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "settings_state") {
+      return esphome::json::build_json([&](JsonObject root) {
+        root["brightness"] = std::to_string(std::clamp(id(normal_brightness_value), 10, 100));
+        root["standby"] = std::to_string(id(app_storage)->get_standby_timeout_ms() / 1000U);
+        root["sensitivity"] = std::to_string(id(normal_knob_applied_value));
+        root["sleep_enabled"] = id(ui_presenter)->get_sleep_mode_enabled() ? "1" : "0";
+        root["sleep_start"] = id(ui_presenter)->get_sleep_window_start_time().substr(0, 5);
+        root["sleep_end"] = id(ui_presenter)->get_sleep_window_end_time().substr(0, 5);
+        root["sleep_timeout"] = std::to_string(id(ui_presenter)->get_sleep_timeout_ms() / 1000U);
+      });
+    }
+    if (query.op == "settings") {
+      unsigned brightness, standby, sensitivity, sleep_timeout;
+      if (!onx_config::integer_in_range(query.brightness, 10, 100, brightness) ||
+          !onx_config::integer_in_range(query.standby, 1, 900, standby) ||
+          !onx_config::integer_in_range(query.sensitivity, 1, 4, sensitivity) || sensitivity == 3 ||
+          !onx_config::integer_in_range(query.sleep_timeout, 1, 3600, sleep_timeout) ||
+          (query.sleep_enabled != "0" && query.sleep_enabled != "1") ||
+          !onx_config::valid_time(query.sleep_start) || !onx_config::valid_time(query.sleep_end))
+        return onx_entity_config::error("Invalid display or sleep settings; check the limits and times");
+      const bool enabled = query.sleep_enabled == "1";
+      const std::string start = query.sleep_start + ":00", end = query.sleep_end + ":00";
+      const uint16_t start_minutes = (start[0] - '0') * 600 + (start[1] - '0') * 60 + (start[3] - '0') * 10 + start[4] - '0';
+      const uint16_t end_minutes = (end[0] - '0') * 600 + (end[1] - '0') * 60 + (end[3] - '0') * 10 + end[4] - '0';
+      if (!id(app_storage)->set_standby_timeout_ms(standby * 1000U) ||
+          !id(app_storage)->set_sleep_mode_config(enabled, start_minutes, end_minutes, sleep_timeout * 1000U))
+        return onx_entity_config::error("Could not persist display settings; retry");
+      auto standby_call = id(standby_timeout_seconds).make_call();
+      standby_call.set_value(standby); standby_call.perform();
+      id(ui_presenter)->set_sleep_mode_config(enabled, start, end, sleep_timeout * 1000U);
+      id(sleep_mode_enabled).publish_state(enabled);
+      id(sleep_mode_start_time).publish_state(start);
+      id(sleep_mode_end_time).publish_state(end);
+      id(sleep_timeout_seconds).publish_state(sleep_timeout);
+      id(normal_knob_applied_value) = sensitivity;
+      id(normal_knob_pending_value) = sensitivity;
+      id(normal_brightness_value) = brightness;
+      auto light_call = id(lcd_backlight)->make_call();
+      light_call.set_state(true); light_call.set_brightness(brightness / 100.0f); light_call.perform();
+      id(screen_off_state) = false;
+      id(ha_display_light_syncing) = true;
+      auto ha_call = id(ha_light)->make_call();
+      ha_call.set_state(true); ha_call.set_brightness(brightness / 100.0f); ha_call.perform();
+      id(ha_display_light_syncing) = false;
+      id(ui_presenter)->notify_user_activity();
+      return std::string("{\"ok\":true}");
+    }
     if (query.op == "weather") {
       if (!query.entity.empty() && (!onx_config::valid_entity(query.entity) || query.entity.rfind("weather.", 0) != 0)) return onx_entity_config::error("Choose a weather entity");
       if (!custom_logic::save_standby_weather_config_entity_id(query.entity) || !onx_entity_config::save_selected_metadata(query))
@@ -55,6 +102,8 @@ onx_config_web:
         !onx_config::valid_action(query.action) || (query.entity.empty() && !query.action.empty()))
       return onx_entity_config::error("Select a supported entity and an automation or script action");
     const auto domain = custom_logic::ha_domain_from_entity_id(query.entity);
+    if ((domain == "climate" || domain == "media_player") && !query.action.empty())
+      return onx_entity_config::error("Climate and media players use native press controls; choose Default");
     if (!query.type.empty()) {
       const bool allowed = (domain == "switch" && (query.type == "Switch" || query.type == "Plug")) ||
           (domain == "light" && (query.type == "Light (On/Off)" || query.type == "Dimmable Light" || query.type == "Color Temperature Light" || query.type == "RGB Light")) ||

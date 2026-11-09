@@ -9,8 +9,15 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
   const rooms=new Map(areas.map(a=>[a.area_id,a.name]));const deviceRooms=new Map(devices.map(d=>[d.id,d.area_id]));
   return states.filter(s=>supported.test(s.entity_id)).map(s=>{
    const r=records.get(s.entity_id)||{},a=s.attributes||{},m=a.supported_color_modes||[];
-   const type=s.entity_id.startsWith('light.')?(m.some(v=>['rgb','rgbw','rgbww','xy','hs'].includes(v))?'RGB Light':m.includes('color_temp')?'Color Temperature Light':m.includes('brightness')?'Dimmable Light':'Light (On/Off)'):s.entity_id.startsWith('cover.')?'Cover (Preset On)':'';
-   return {entity:s.entity_id,name:a.friendly_name||r.en||r.name||s.entity_id,area:rooms.get(r.ai||r.area_id||deviceRooms.get(r.di||r.device_id))||'',type};
+   const types=[];
+   if(s.entity_id.startsWith('light.')){
+    types.push('Light (On/Off)');
+    if(m.some(v=>['brightness','color_temp','white','rgb','rgbw','rgbww','xy','hs'].includes(v)))types.push('Dimmable Light');
+    if(m.includes('color_temp'))types.push('Color Temperature Light');
+    if(m.some(v=>['rgb','rgbw','rgbww','xy','hs'].includes(v)))types.push('RGB Light');
+   }else if(s.entity_id.startsWith('cover.')){types.push('Cover (Preset Off)');if((Number(a.supported_features)||0)&4)types.push('Cover (Preset On)');}
+   const type=types.at(-1)||'';
+   return {entity:s.entity_id,name:a.friendly_name||r.en||r.name||s.entity_id,area:rooms.get(r.ai||r.area_id||deviceRooms.get(r.di||r.device_id))||'',type,types:types.length?types:undefined};
   }).concat(local()).sort((a,b)=>(a.area+' '+a.name+' '+a.entity).localeCompare(b.area+' '+b.name+' '+b.entity));
  }
  function search(items,q,domain,offset=0){
@@ -44,19 +51,20 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
   async token(){const auth=this.read('onx.ha.auth');if(!auth)throw Error('Connect to Home Assistant to load entities in this browser.');return auth.expires>Date.now()+30000?auth:await this.exchange(auth.base,{grant_type:'refresh_token',refresh_token:auth.refresh,client_id:location.origin+'/'});}
   async load(){
    const auth=await this.token();const url=new URL(auth.base+'/api/websocket');url.protocol=url.protocol==='https:'?'wss:':'ws:';
-   const socket=new WebSocket(url);let id=0;const requests=new Map();
+   this.ready=false;const socket=new WebSocket(url);let id=0;const requests=new Map();
    const call=type=>new Promise((resolve,reject)=>{const key=++id;requests.set(key,{resolve,reject});socket.send(JSON.stringify({id:key,type}));});
    try{
     await new Promise((resolve,reject)=>{
      const timer=setTimeout(()=>reject(Error('Home Assistant connection timed out')),15000);
      socket.onerror=()=>{clearTimeout(timer);reject(Error('Cannot connect to Home Assistant from this browser'));};
-     socket.onmessage=event=>{let data;try{data=JSON.parse(event.data)}catch{reject(Error('Invalid Home Assistant response'));return}
+     socket.onclose=()=>{clearTimeout(timer);reject(Error('Home Assistant disconnected during sign-in'));};
+     socket.onmessage=event=>{let data;try{data=JSON.parse(event.data)}catch{clearTimeout(timer);reject(Error('Invalid Home Assistant response'));return}
       if(data.type==='auth_required')socket.send(JSON.stringify({type:'auth',access_token:auth.access}));
       else if(data.type==='auth_ok'){clearTimeout(timer);resolve()}
       else if(data.type==='auth_invalid'){clearTimeout(timer);this.storage.removeItem('onx.ha.auth');reject(Error('Home Assistant sign-in expired. Connect again.'))}
      };
     });
-    socket.onmessage=event=>{const data=JSON.parse(event.data),pending=requests.get(data.id);if(!pending)return;requests.delete(data.id);data.success?pending.resolve(data.result):pending.reject(Error(data.error?.message||'Home Assistant request failed'));};
+    socket.onmessage=event=>{let data;try{data=JSON.parse(event.data)}catch{for(const p of requests.values())p.reject(Error('Invalid Home Assistant response'));requests.clear();socket.close();return}const pending=requests.get(data.id);if(!pending)return;requests.delete(data.id);data.success?pending.resolve(data.result):pending.reject(Error(data.error?.message||'Home Assistant request failed'));};
     socket.onclose=()=>{for(const p of requests.values())p.reject(Error('Home Assistant disconnected'));requests.clear();};
     const timeout=setTimeout(()=>socket.close(),30000);
     try{const [states,registry,areas,devices]=await Promise.all([call('get_states'),call('config/entity_registry/list_for_display').catch(()=>[]),call('config/area_registry/list').catch(()=>[]),call('config/device_registry/list').catch(()=>[])]);this.items=catalogue(states,registry,areas,devices);this.ready=true;return this.items;}finally{clearTimeout(timeout)}

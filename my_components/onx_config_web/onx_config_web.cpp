@@ -1,5 +1,6 @@
 #include "onx_config_web.h"
 #include "config_page.h"
+#include "config_app.h"
 #include "ha_browser.h"
 #include "esphome/components/wifi/wifi_component.h"
 #include <array>
@@ -23,7 +24,7 @@ bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
   // address open our app after Wi-Fi connects. Do not expose the generic server
   // entity-control endpoints alongside the configuration app.
   if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) return true;
-  return url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result";
+  return url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js";
 }
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
   auto *response = request->beginResponse(code, "application/json", body);
@@ -43,8 +44,9 @@ void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::st
 void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
-  if (url == "/knob/ha.js" && request->method() == HTTP_GET) {
-    auto *response = request->beginResponse(200, "text/javascript; charset=utf-8", HA_BROWSER_JS);
+  if ((url == "/knob/ha.js" || url == "/knob/app.js") && request->method() == HTTP_GET) {
+    auto *response = request->beginResponse(200, "text/javascript; charset=utf-8",
+        url == "/knob/ha.js" ? HA_BROWSER_JS : CONFIG_APP_JS);
     response->addHeader("Cache-Control", "no-store");
     request->send(response);
     return;
@@ -83,9 +85,15 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   query.name = request->arg("name"); query.area = request->arg("area");
   query.action_name = request->arg("action_name"); query.type = request->arg("type");
   query.search = request->arg("q"); query.domain = request->arg("domain");
+  query.brightness = request->arg("brightness"); query.standby = request->arg("standby");
+  query.sensitivity = request->arg("sensitivity"); query.sleep_enabled = request->arg("sleep_enabled");
+  query.sleep_start = request->arg("sleep_start"); query.sleep_end = request->arg("sleep_end");
+  query.sleep_timeout = request->arg("sleep_timeout");
   unsigned slot = 0, offset = 0;
   if (query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
       query.search.size() > 128 || query.domain.size() > 32 ||
+      query.brightness.size() > 3 || query.standby.size() > 3 || query.sensitivity.size() > 1 ||
+      query.sleep_enabled.size() > 1 || query.sleep_start.size() > 5 || query.sleep_end.size() > 5 || query.sleep_timeout.size() > 4 ||
       query.name.size() > 192 || query.area.size() > 192 || query.action_name.size() > 192 || query.type.size() > 32 ||
       (request->hasArg("slot") && (!number(request->arg("slot"), slot) || slot >= 10)) ||
       (request->hasArg("offset") && (!number(request->arg("offset"), offset) || offset > 100000))) {

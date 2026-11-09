@@ -55,9 +55,11 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
 inline std::string error(const char *message) {
   return esphome::json::build_json([&](JsonObject root) { root["error"] = message; });
 }
-inline std::string state(const std::string &host = "") {
+inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false) {
   custom_logic::load_ha_entities_if_needed();
   return esphome::json::build_json([&](JsonObject root) {
+    root["wifi_connected"] = wifi_connected;
+    root["ha_connected"] = ha_connected;
     root["count"] = custom_logic::cached_ha_entities().count;
     std::string url = custom_logic::build_ha_http_state_url(host, "sensor.placeholder");
     const auto path = url.find("/api/states/");
