@@ -1359,6 +1359,37 @@ lvgl:
                   text_color: 0xD2D2D2
                   text: "Syncing"
                   hidden: true
+              - label:
+                  id: normal_media_title
+                  y: 122
+                  align: top_mid
+                  width: 196
+                  height: 21
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_media_artist
+                  y: 144
+                  align: top_mid
+                  width: 196
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - image:
+                  id: normal_media_cover
+                  x: 0
+                  y: 18
+                  align: top_mid
+                  src: media_cover_image
+                  hidden: true
               - image:
                   id: normal_automation_detail_icon
                   x: 0

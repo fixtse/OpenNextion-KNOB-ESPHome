@@ -9,6 +9,10 @@ on:
       - 'tests/test_wifi_lifecycle.cpp'
       - 'custom_logic.h'
       - 'tests/test_entity_discovery.py'
+      - 'tests/test_control_templates.py'
+      - 'tests/test_media_state.cpp'
+      - 'onx_media_state.h'
+      - 'packages/features/normal_mode/normal_mode_scripts.yaml'
       - '.github/workflows/wifi-lifecycle.yml'
   workflow_dispatch:
 permissions:
@@ -31,6 +35,13 @@ jobs:
             -o /tmp/arduinojson.tar.gz
           tar -xzf /tmp/arduinojson.tar.gz -C /tmp
           python3 tests/test_entity_discovery.py /tmp/ArduinoJson-7.4.3/src
+      - name: Test climate templates, volume limits and artwork URL handling
+        run: |
+          python3 -m venv /tmp/onx-control-tests
+          /tmp/onx-control-tests/bin/pip install Jinja2==3.1.6
+          /tmp/onx-control-tests/bin/python tests/test_control_templates.py
+          c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state
+          /tmp/test_media_state
       - name: Resume validation thread
         if: ${{ always() }}
         env:

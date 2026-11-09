@@ -335,6 +335,7 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 // Runtime values are keyed by entity ID so compact slot reordering cannot mix feedback.
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
+  std::string volume, media_title, media_artist, picture;
   std::string timer_duration, timer_remaining, timer_finishes_at, timer_name;
   bool voice_timer{false};
   double voice_duration{NAN}, voice_remaining{NAN};
@@ -405,7 +406,7 @@ class DeviceSlotStateUpdater {
       }
     }
     if (has_prefix(this->entity_id_, "sensor.") || has_prefix(this->entity_id_, "binary_sensor.") ||
-        has_prefix(this->entity_id_, "climate.") || has_prefix(this->entity_id_, "script.") ||
+        has_prefix(this->entity_id_, "climate.") || has_prefix(this->entity_id_, "media_player.") || has_prefix(this->entity_id_, "script.") ||
         has_prefix(this->entity_id_, "weather.") || has_prefix(this->entity_id_, "timer.")) {
       if (ui_slot == static_cast<size_t>(-1)) return;
       auto &detail = entity_details[this->slot_];
@@ -440,6 +441,10 @@ class DeviceSlotStateUpdater {
       else if (field == "remaining") detail.timer_remaining = value;
       else if (field == "finishes_at") detail.timer_finishes_at = value;
       else if (field == "unit_of_measurement") detail.unit = value;
+      else if (field == "volume_level") detail.volume = value;
+      else if (field == "media_title") detail.media_title = value;
+      else if (field == "media_artist") detail.media_artist = value;
+      else if (field == "entity_picture") detail.picture = value;
       else if (field == "current_temperature") detail.current = value;
       else if (field == "temperature") detail.target = value;
       else if (field == "temperature_unit") detail.unit = value;
@@ -921,6 +926,9 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "weather.")) {
     for (const char *attribute : weather_attributes())
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
+  } else if (has_prefix(entity_id, "media_player.")) {
+    for (const char *attribute : {"volume_level", "media_title", "media_artist", "entity_picture"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "climate.")) {
     for (const char *attribute : {"current_temperature", "temperature", "target_temp_low", "target_temp_high",

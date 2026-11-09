@@ -21,7 +21,7 @@ static const char CONFIG_PAGE[] = R"ONXHTML(<!doctype html>
 const TOKEN='__ONX_TOKEN__';
 const $=id=>document.getElementById(id);
 let slots=Array.from({length:10},()=>({entity:'',name:'',action:'',dirty:false})),active=0,mode='entity',domain='',next=-1,revision=0,debounce;
-const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['climate','Climate'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
+const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['climate','Climate'],['media_player','Media players'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
 function message(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error)}
 async function rpc(values){
  const response=await fetch('/knob/api',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','X-Onx-Token':TOKEN},body:new URLSearchParams(values)});
@@ -43,7 +43,7 @@ function render(){
 }
 function dirty(){slots[active].dirty=true;render();message('Changes not saved')}
 function choose(item){const slot=slots[active];if(mode==='entity'){slot.entity=item.entity;slot.name=item.name||item.entity}else{slot.action=item.entity;slot.actionName=item.name||actionLabel(item.entity)}dirty();search()}
-function isManualEntity(value){return /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value)&&value.length<=128&&/^(sensor|binary_sensor|light|switch|climate|timer|weather|cover|automation|script)\./.test(value)&&(mode!=='action'||/^(automation|script)\./.test(value))}
+function isManualEntity(value){return /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value)&&value.length<=128&&/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script)\./.test(value)&&(mode!=='action'||/^(automation|script)\./.test(value))}
 async function search(append=false){
  const mine=++revision;const offset=append?next:0;if(!append)$('results').replaceChildren(element('p','Searching…','empty'));$('more').hidden=true;$('manual').replaceChildren();
  const query=$('search').value.trim();

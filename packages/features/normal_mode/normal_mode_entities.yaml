@@ -1298,292 +1298,388 @@ globals:
     initial_value: '"unknown"'
 
 image:
-  - file: "../../../assets/guide_a.png"
+  - platform: file
+    file: "../../../assets/guide_a.png"
     id: guide_img_a
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/guide_b.png"
+  - platform: file
+    file: "../../../assets/guide_b.png"
     id: guide_img_b
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/wifi_ap.svg"
+  - platform: file
+    file: "../../../assets/wifi_ap.svg"
     id: wifi_ap_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/homeassistant.svg"
+  - platform: file
+    file: "../../../assets/homeassistant.svg"
     id: homeassistant_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/icons_wifi_online.svg"
+  - platform: file
+    file: "../../../assets/icons_wifi_online.svg"
     id: standby_wifi_online_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/icons_wifi_offline.svg"
+  - platform: file
+    file: "../../../assets/icons_wifi_offline.svg"
     id: standby_wifi_offline_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/icons_homeassistant_online.svg"
+  - platform: file
+    file: "../../../assets/icons_homeassistant_online.svg"
     id: standby_homeassistant_online_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/icons_homeassistant_offline.svg"
+  - platform: file
+    file: "../../../assets/icons_homeassistant_offline.svg"
     id: standby_homeassistant_offline_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/vector.svg"
+  - platform: file
+    file: "../../../assets/vector.svg"
     id: vector_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/icon_edit.svg"
+  - platform: file
+    file: "../../../assets/icon_edit.svg"
     id: icon_edit_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/emojione_monotone_digit_one.svg"
+  - platform: file
+    file: "../../../assets/emojione_monotone_digit_one.svg"
     id: emojione_monotone_digit_one_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/emojione_monotone_digit_three.svg"
+  - platform: file
+    file: "../../../assets/emojione_monotone_digit_three.svg"
     id: emojione_monotone_digit_three_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/emojione_monotone_digit_two.svg"
+  - platform: file
+    file: "../../../assets/emojione_monotone_digit_two.svg"
     id: emojione_monotone_digit_two_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_unknown.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_unknown.svg"
     id: standby_weather_icon_unknown_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_clear-night.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_clear-night.svg"
     id: standby_weather_icon_clear_night_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_cloudy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_cloudy.svg"
     id: standby_weather_icon_cloudy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_exceptional.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_exceptional.svg"
     id: standby_weather_icon_exceptional_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_fog.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_fog.svg"
     id: standby_weather_icon_fog_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_hail.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_hail.svg"
     id: standby_weather_icon_hail_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_lightning.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_lightning.svg"
     id: standby_weather_icon_lightning_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_lightning-rainy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_lightning-rainy.svg"
     id: standby_weather_icon_lightning_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_partlycloudy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_partlycloudy.svg"
     id: standby_weather_icon_partlycloudy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_pouring.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_pouring.svg"
     id: standby_weather_icon_pouring_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_rainy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_rainy.svg"
     id: standby_weather_icon_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_snowy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_snowy.svg"
     id: standby_weather_icon_snowy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_snowy-rainy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_snowy-rainy.svg"
     id: standby_weather_icon_snowy_rainy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_sunny.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_sunny.svg"
     id: standby_weather_icon_sunny_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_windy.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_windy.svg"
     id: standby_weather_icon_windy_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather/weather_windy-variant.svg"
+  - platform: file
+    file: "../../../assets/weather/weather_windy-variant.svg"
     id: standby_weather_icon_windy_variant_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather_icon_t.svg"
+  - platform: file
+    file: "../../../assets/weather_icon_t.svg"
     id: standby_weather_temp_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/weather_icon_h.svg"
+  - platform: file
+    file: "../../../assets/weather_icon_h.svg"
     id: standby_weather_humidity_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/plug_off.svg"
+  - platform: file
+    file: "../../../assets/plug_off.svg"
     id: normal_device_icon_plug_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_plug.svg"
+  - platform: file
+    file: "../../../assets/device_list_plug.svg"
     id: normal_device_icon_plug_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_plug_on.svg"
+  - platform: file
+    file: "../../../assets/device_list_plug_on.svg"
     id: normal_device_icon_plug_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/plug_det_off.svg"
+  - platform: file
+    file: "../../../assets/plug_det_off.svg"
     id: normal_device_detail_plug_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_light.svg"
+  - platform: file
+    file: "../../../assets/device_list_light.svg"
     id: normal_device_icon_light_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_light_on.svg"
+  - platform: file
+    file: "../../../assets/device_list_light_on.svg"
     id: normal_device_icon_light_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_curtain.svg"
+  - platform: file
+    file: "../../../assets/device_list_curtain.svg"
     id: normal_device_icon_curtain_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_curtain_open.svg"
+  - platform: file
+    file: "../../../assets/device_list_curtain_open.svg"
     id: normal_device_icon_curtain_open_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_curtain_closed.svg"
+  - platform: file
+    file: "../../../assets/device_list_curtain_closed.svg"
     id: normal_device_icon_curtain_closed_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/settings.svg"
+  - platform: file
+    file: "../../../assets/settings.svg"
     id: normal_device_icon_settings_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/ic_round-arrow-back-ios.svg"
+  - platform: file
+    file: "../../../assets/ic_round-arrow-back-ios.svg"
     id: normal_settings_arrow_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/ic_round_arrow_left.svg"
+  - platform: file
+    file: "../../../assets/ic_round_arrow_left.svg"
     id: normal_user_manual_arrow_left_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/ic_round_arrow_right.svg"
+  - platform: file
+    file: "../../../assets/ic_round_arrow_right.svg"
     id: normal_user_manual_arrow_right_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/UserManual_qrcode_1.png"
+  - platform: file
+    file: "../../../assets/UserManual_qrcode_1.png"
     id: normal_user_manual_qrcode_wiki_img
     type: RGB565
-  - file: "../../../assets/UserManual_qrcode_2.png"
+  - platform: file
+    file: "../../../assets/UserManual_qrcode_2.png"
     id: normal_user_manual_qrcode_device_github_img
     type: RGB565
-  - file: "../../../assets/UserManual_qrcode_3.png"
+  - platform: file
+    file: "../../../assets/UserManual_qrcode_3.png"
     id: normal_user_manual_qrcode_firmware_github_img
     type: RGB565
-  - file: "../../../assets/wifi_icon.svg"
+  - platform: file
+    file: "../../../assets/wifi_icon.svg"
     id: normal_settings_wifi_icon_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/wifi_lock.svg"
+  - platform: file
+    file: "../../../assets/wifi_lock.svg"
     id: normal_settings_wifi_lock_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/plug_det_on.svg"
+  - platform: file
+    file: "../../../assets/plug_det_on.svg"
     id: normal_device_detail_plug_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_switch.svg"
+  - platform: file
+    file: "../../../assets/device_list_switch.svg"
     id: normal_device_icon_switch_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/device_list_switch_on.svg"
+  - platform: file
+    file: "../../../assets/device_list_switch_on.svg"
     id: normal_device_icon_switch_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/automation.svg"
+  - platform: file
+    file: "../../../assets/automation.svg"
     id: normal_device_automation_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/automation_detail.svg"
+  - platform: file
+    file: "../../../assets/automation_detail.svg"
     id: normal_device_automation_detail_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/automation_detail_press.svg"
+  - platform: file
+    file: "../../../assets/automation_detail_press.svg"
     id: normal_device_automation_detail_press_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/switch_det_on.svg"
+  - platform: file
+    file: "../../../assets/switch_det_on.svg"
     id: normal_device_detail_switch_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/switch_det_off.svg"
+  - platform: file
+    file: "../../../assets/switch_det_off.svg"
     id: normal_device_detail_switch_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_det_on.svg"
+  - platform: file
+    file: "../../../assets/light_det_on.svg"
     id: normal_device_detail_light_on_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_det_off.svg"
+  - platform: file
+    file: "../../../assets/light_det_off.svg"
     id: normal_device_detail_light_off_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_cct_gradient.svg"
+  - platform: file
+    file: "../../../assets/light_cct_gradient.svg"
     id: normal_light_cct_gradient_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_rgb_gradient.svg"
+  - platform: file
+    file: "../../../assets/light_rgb_gradient.svg"
     id: normal_light_rgb_gradient_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_mode_icon_bright.svg"
+  - platform: file
+    file: "../../../assets/light_mode_icon_bright.svg"
     id: normal_light_mode_icon_bright_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_mode_icon_cct.svg"
+  - platform: file
+    file: "../../../assets/light_mode_icon_cct.svg"
     id: normal_light_mode_icon_cct_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/light_mode_icon_color.svg"
+  - platform: file
+    file: "../../../assets/light_mode_icon_color.svg"
     id: normal_light_mode_icon_color_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_0%.svg"
+  - platform: file
+    file: "../../../assets/curtain_0%.svg"
     id: normal_device_detail_curtain_0_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_100%.svg"
+  - platform: file
+    file: "../../../assets/curtain_100%.svg"
     id: normal_device_detail_curtain_100_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_x%.svg"
+  - platform: file
+    file: "../../../assets/curtain_x%.svg"
     id: normal_device_detail_curtain_x_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_opening.svg"
+  - platform: file
+    file: "../../../assets/curtain_opening.svg"
     id: normal_device_detail_curtain_opening_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_pause.svg"
+  - platform: file
+    file: "../../../assets/curtain_pause.svg"
     id: normal_device_detail_curtain_pause_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_closing.svg"
+  - platform: file
+    file: "../../../assets/curtain_closing.svg"
     id: normal_device_detail_curtain_closing_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_no_opening.svg"
+  - platform: file
+    file: "../../../assets/curtain_no_opening.svg"
     id: normal_device_detail_curtain_no_opening_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_no_pause.svg"
+  - platform: file
+    file: "../../../assets/curtain_no_pause.svg"
     id: normal_device_detail_curtain_no_pause_img
     type: RGB565
     transparency: alpha_channel
-  - file: "../../../assets/curtain_no_closing.svg"
+  - platform: file
+    file: "../../../assets/curtain_no_closing.svg"
     id: normal_device_detail_curtain_no_closing_img
     type: RGB565
     transparency: alpha_channel
+
+  - platform: online_image
+    id: media_cover_image
+    url: http://homeassistant.local:8123/
+    format: AUTO
+    type: RGB565
+    resize: 100x100
+    update_interval: never
+    request_headers:
+      Authorization: !lambda |-
+        // Never forward the HA credential to an external artwork host.
+        return onx_media::artwork_needs_auth() ? custom_logic::get_ha_authorization_header() : std::string("");
+    on_download_finished:
+      then:
+        - lambda: |-
+            onx_media::ready_url = onx_media::requested_url;
+            onx_media::downloading = false;
+        - script.execute: refresh_normal_automation_detail_page
+    on_error:
+      then:
+        - lambda: |-
+            onx_media::downloading = false;
+            onx_media::ready_url.clear();
