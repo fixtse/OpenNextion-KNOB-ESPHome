@@ -149,6 +149,7 @@ text:
     initial_value: "homeassistant.local"
 
 http_request:
+  id: onx_http_request
   # GitHub release downloads redirect to signed URLs with long response headers.
   buffer_size_rx: 4096
   buffer_size_tx: 2048
@@ -1379,15 +1380,25 @@ image:
     format: AUTO
     type: RGB565
     resize: 100x100
+    buffer_size: 8192
     update_interval: never
     on_download_finished:
       then:
         - lambda: |-
             onx_media::ready_url = onx_media::requested_url;
             onx_media::downloading = false;
-        - script.execute: refresh_normal_automation_detail_page
+            id(entity_icon_downloader)->set_artwork_busy(false);
+            onx_media::last_artwork_end_ms = millis();
+            onx_media::artwork_refresh_pending = true;
+            onx_runtime::record("artwork_ready");
+            // OnlineImage still owns its connection until this callback returns.
+            // Refresh only on the next interval, after its cleanup has finished.
     on_error:
       then:
         - lambda: |-
             onx_media::downloading = false;
+            id(entity_icon_downloader)->set_artwork_busy(false);
             onx_media::ready_url.clear();
+            onx_media::last_artwork_end_ms = millis();
+            onx_media::artwork_refresh_pending = true;
+            onx_runtime::record("artwork_error");

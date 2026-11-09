@@ -10,6 +10,7 @@ esphome:
     priority: -100
     then:
       - lambda: |-
+          onx_runtime::start();
           onx_entity_config::load_icons();
           onx_entity_config::load_display_settings();
           onx_entity_config::load_sensor_configs();

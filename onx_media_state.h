@@ -117,7 +117,9 @@ struct TransportFeedback {
 inline TransportFeedback transport;
 inline std::string requested_url, ready_url;
 inline uint32_t requested_ms{0};
-inline bool downloading{false};
+inline bool downloading{false}, artwork_refresh_pending{false};
+inline std::string candidate_url;
+inline uint32_t candidate_ms{0}, last_artwork_end_ms{0};
 inline std::string artwork_url(const std::string &origin, const std::string &picture) {
   if (picture.empty() || picture == "None" || picture == "unknown" || picture == "unavailable") return "";
   if (picture.rfind("http://", 0) == 0 || picture.rfind("https://", 0) == 0) return picture;

@@ -243,6 +243,20 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
     root["firmware"] = ESPHOME_PROJECT_VERSION;
 #endif
     root["uptime_ms"] = millis();
+    root["reset_reason_text"] = onx_runtime::reset_name();
+    auto previous=root["last_event_before_boot"].to<JsonObject>();
+    previous["available"]=onx_runtime::previous.magic==0x4F4E5852;
+    previous["name"]=onx_runtime::previous.name;
+    previous["entity"]=onx_runtime::previous.entity;
+    previous["uptime_ms"]=onx_runtime::previous.at_ms;
+    previous["internal_heap_free"]=onx_runtime::previous.free_heap;
+    root["artwork_status"]=onx_media::downloading?"downloading":!onx_media::ready_url.empty()?"ready":"not_loaded";
+#ifdef USE_ESP32
+    root["internal_heap_free"]=heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    root["internal_heap_minimum"]=heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    root["internal_heap_largest_block"]=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    root["psram_free"]=heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#endif
 #ifdef USE_ESP32
     root["reset_reason"] = static_cast<int>(esp_reset_reason());
 #endif

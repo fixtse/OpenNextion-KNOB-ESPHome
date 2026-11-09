@@ -628,11 +628,11 @@ script:
           if (title.empty()) {
             title = entity_id.empty() ? "Automation" : entity_id;
           }
-          lv_label_set_text(id(normal_automation_detail_title), title.c_str());
+          onx_render::label(id(normal_automation_detail_title), title.c_str());
           const bool timer_detail = custom_logic_entity_sub::is_timer_detail(entity_id);
           auto *timer_state = custom_logic_entity_sub::entity_detail(entity_id);
           if (timer_detail && timer_state != nullptr && !timer_state->timer_name.empty())
-            lv_label_set_text(id(normal_automation_detail_title), timer_state->timer_name.c_str());
+            onx_render::label(id(normal_automation_detail_title), timer_state->timer_name.c_str());
           if (timer_detail) {
             lv_obj_clear_flag(id(normal_timer_detail_arc), LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(normal_timer_detail_countdown), LV_OBJ_FLAG_HIDDEN);
@@ -689,7 +689,7 @@ script:
                 last_trigger_text = "Volume: " + last_trigger_text.substr(split + 1, value_end - split - 1);
                 lv_obj_set_y(id(normal_automation_detail_action), 166);
                 const auto feedback = onx_controls::feedback_text(entity_id);
-                lv_label_set_text(id(normal_media_artist),
+                onx_render::label(id(normal_media_artist),
                     feedback.empty() ? (onx_media::has_playback(detail->state) ? detail->media_artist.c_str() : "") : feedback.c_str());
               } else {
                 lv_obj_add_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
@@ -698,7 +698,7 @@ script:
               }
             }
           }
-          lv_label_set_text(id(normal_automation_detail_action), last_trigger_text.c_str());
+          onx_render::label(id(normal_automation_detail_action), last_trigger_text.c_str());
           id(apply_normal_entity_icon).execute(id(normal_automation_detail_icon), entity_id,
               id(ui_presenter)->get_normal_device_type(detail_index), false);
           if (entity_id.rfind("media_player.", 0) == 0) {
@@ -735,7 +735,7 @@ script:
             const auto view = onx_detail_view::build(entity_id, title);
             if(view.layout=="graph") onx_sensor_graph::render(lv_obj_get_parent(id(normal_automation_detail_action)),entity_id,id(ha_time).now().timestamp,onx_display_settings::current.media_color);
             auto line = [&](lv_obj_t *label, const onx_detail_view::Line &text) {
-              lv_label_set_text(label, text.text.c_str());
+              onx_render::label(label, text.text.c_str());
               lv_obj_set_x(label, text.x); lv_obj_set_y(label, text.y); lv_obj_set_width(label, text.width);
               lv_obj_set_style_text_color(label, lv_color_hex(text.color), 0);
               auto *font = text.size == 32 ? id(fonts_MiSans_Medium_32)->get_lv_font() :
@@ -784,7 +784,7 @@ script:
                                                 : (custom_logic_entity_sub::entity_detail(entity_id) == nullptr ||
                                                    !custom_logic_entity_sub::entity_detail(entity_id)->received
                                                        ? "Waiting for initial data\nPress to retry" : "Entity unavailable\nPress to retry"));
-          lv_label_set_text(id(normal_automation_detail_offline_text), offline_text);
+          onx_render::label(id(normal_automation_detail_offline_text), offline_text);
 
   - id: refresh_normal_light_detail_page
     mode: restart
@@ -2498,6 +2498,8 @@ script:
     parameters:
       detail_index: int
     then:
+      - lambda: |-
+          onx_runtime::record("media_idle_action", id(ui_presenter)->get_normal_device_entity_id(detail_index));
       - if:
           condition:
             lambda: return onx_entity_config::action_for_ui(detail_index).rfind("automation.", 0) == 0;
@@ -2572,9 +2574,11 @@ script:
           }
           auto *icon = overlay == onx_media::Overlay::PAUSE ? id(media_overlay_pause_img) :
                        overlay == onx_media::Overlay::PREVIOUS ? id(media_overlay_previous_img) : id(media_overlay_next_img);
-          lv_img_set_src(id(normal_media_transport_icon), icon->get_lv_image_dsc());
-          lv_obj_clear_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_move_foreground(id(normal_media_transport_overlay));
+          onx_render::image(id(normal_media_transport_icon), icon->get_lv_image_dsc());
+          if (lv_obj_has_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_clear_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(id(normal_media_transport_overlay));
+          }
 
   - id: refresh_normal_media_progress
     then:
@@ -2615,8 +2619,8 @@ script:
           if (path != std::string::npos) origin.resize(path);
           lv_obj_set_y(id(normal_automation_detail_icon), media ? 18 : 40);
           if (media) {
-            lv_label_set_text(id(normal_media_title), onx_media::display_text(onx_media::has_playback(detail->state) ? (detail->media_title.empty() ? detail->state : detail->media_title) : "Nothing playing").c_str());
-            lv_label_set_text(id(normal_media_artist), onx_media::display_text(onx_media::has_playback(detail->state) ? detail->media_artist : "").c_str());
+            onx_render::label(id(normal_media_title), onx_media::display_text(onx_media::has_playback(detail->state) ? (detail->media_title.empty() ? detail->state : detail->media_title) : "Nothing playing").c_str());
+            onx_render::label(id(normal_media_artist), onx_media::display_text(onx_media::has_playback(detail->state) ? detail->media_artist : "").c_str());
             lv_obj_clear_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
           } else {
@@ -2624,10 +2628,28 @@ script:
             lv_obj_add_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
           }
-          const std::string desired = media && onx_media::has_playback(detail->state) ? onx_media::artwork_url(origin, detail->picture) : "";
+          const bool playable = media && detail->available && id(normal_ha_api_connected) &&
+              id(normal_device_detail_online) && !id(screen_off_state) && !id(sleep_mode_state) &&
+              !id(ui_presenter)->is_standby_active() && onx_media::has_playback(detail->state);
+          const std::string desired = playable ? onx_media::artwork_url(origin, detail->picture) : "";
+          if (desired != onx_media::candidate_url) {
+            onx_media::candidate_url = desired; onx_media::candidate_ms = millis();
+          }
+          if (!playable && onx_media::downloading) {
+            // Detach the LVGL source before release invalidates the pixel buffer.
+            lv_obj_add_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
+            onx_render::image(id(normal_media_cover), id(fallback_music_note_img)->get_lv_image_dsc());
+            lv_image_cache_drop(id(media_cover_image)->get_lv_image_dsc());
+            lv_image_header_cache_drop(id(media_cover_image)->get_lv_image_dsc());
+            id(media_cover_image)->release();
+            onx_media::downloading = false; onx_media::ready_url.clear();
+            id(entity_icon_downloader)->set_artwork_busy(false);
+            onx_media::last_artwork_end_ms = millis();
+            onx_runtime::record("artwork_cancelled", entity);
+          }
           const bool ready = !desired.empty() && desired == onx_media::ready_url;
           if (ready) {
-            lv_img_set_src(id(normal_media_cover), id(media_cover_image)->get_lv_image_dsc());
+            onx_render::image(id(normal_media_cover), id(media_cover_image)->get_lv_image_dsc());
             lv_obj_clear_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
           } else {
@@ -2636,8 +2658,15 @@ script:
           if (desired.empty() || ready || onx_media::downloading ||
               !id(normal_ha_api_connected) || !id(normal_device_detail_online) ||
               id(screen_off_state) || id(ui_presenter)->is_standby_active()) return;
-          if (desired == onx_media::requested_url && millis() - onx_media::requested_ms < 30000) return;
-          // Hide the old descriptor before the downloader replaces its backing buffer.
+          // Wait for a stable URL and keep concurrent TLS clients off the small
+          // internal heap. Cosmetic artwork must not crowd out API/Wi-Fi buffers.
+          if (id(key_btn).state || millis() - onx_media::candidate_ms < 750 ||
+              millis() - onx_media::last_artwork_end_ms < 1000 || id(entity_icon_downloader)->busy()) return;
+          if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 65536 ||
+              heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 32768) return;
+          if (desired == onx_media::requested_url && millis() - onx_media::requested_ms < 60000) return;
+          // Hidden LVGL widgets still retain their source. Detach it explicitly.
+          onx_render::image(id(normal_media_cover), id(fallback_music_note_img)->get_lv_image_dsc());
           lv_image_cache_drop(id(media_cover_image)->get_lv_image_dsc());
           lv_image_header_cache_drop(id(media_cover_image)->get_lv_image_dsc());
           onx_media::ready_url.clear();
@@ -2645,7 +2674,14 @@ script:
           onx_media::requested_ms = millis();
           onx_media::downloading = true;
           id(media_cover_image)->set_url(desired);
+          onx_runtime::record("artwork_start", entity);
+          // The HTTP connection copies its timeout at creation. Restore the OTA
+          // client's generous timeout immediately after the artwork open call.
+          const auto previous_timeout = id(onx_http_request)->get_timeout();
+          id(entity_icon_downloader)->set_artwork_busy(true);
+          id(onx_http_request)->set_timeout(2500);
           id(media_cover_image)->update();
+          id(onx_http_request)->set_timeout(previous_timeout);
 
   - id: emit_normal_media_track
     parameters:
@@ -2719,8 +2755,10 @@ script:
           if (!active || (!browser.open && !holding)) {
             lv_obj_add_flag(id(normal_playlist_overlay), LV_OBJ_FLAG_HIDDEN); return;
           }
-          lv_obj_clear_flag(id(normal_playlist_overlay), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_move_foreground(id(normal_playlist_overlay));
+          if (lv_obj_has_flag(id(normal_playlist_overlay), LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_clear_flag(id(normal_playlist_overlay), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(id(normal_playlist_overlay));
+          }
           for (auto *widget : {id(normal_playlist_previous), id(normal_playlist_selected), id(normal_playlist_next)}) {
             if (holding) lv_obj_add_flag(widget, LV_OBJ_FLAG_HIDDEN);
             else lv_obj_clear_flag(widget, LV_OBJ_FLAG_HIDDEN);
@@ -2728,9 +2766,9 @@ script:
           if (holding) {
             lv_obj_clear_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
             const bool ready = held >= onx_playlist::OPEN_MS;
-            lv_label_set_text(id(normal_playlist_heading), ready ? "Release now" : "Keep holding");
-            lv_label_set_text(id(normal_playlist_rows), ready ? (browser.open ? "Return to player" : "Open playlists") : "Playlist menu");
-            lv_label_set_text(id(normal_playlist_hint), ready ? "Hold longer: back" : "Wait for the cue");
+            onx_render::label(id(normal_playlist_heading), ready ? "Release now" : "Keep holding");
+            onx_render::label(id(normal_playlist_rows), ready ? (browser.open ? "Return to player" : "Open playlists") : "Playlist menu");
+            onx_render::label(id(normal_playlist_hint), ready ? "Hold longer: back" : "Wait for the cue");
             lv_obj_clear_flag(id(normal_playlist_hold_bar), LV_OBJ_FLAG_HIDDEN);
             lv_bar_set_value(id(normal_playlist_hold_bar), std::min<uint32_t>(100, held * 100 / onx_playlist::OPEN_MS), LV_ANIM_OFF);
             lv_obj_set_style_bg_color(id(normal_playlist_hold_bar), lv_color_hex(ready ? 0x62D49B : 0x62B0FF), LV_PART_INDICATOR);
@@ -2740,11 +2778,11 @@ script:
             const auto row = [&](int index) { return index < 0 || index >= list->count ? std::string(" ") : onx_media::display_text(list->entries[index].name); };
             const auto heading = "Playlists " + std::to_string(i+1) + "/" + std::to_string(list->count);
 
-            lv_label_set_text(id(normal_playlist_heading), heading.c_str());
+            onx_render::label(id(normal_playlist_heading), heading.c_str());
             lv_obj_add_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(id(normal_playlist_previous), row(i-1).c_str());
-            lv_label_set_text(id(normal_playlist_selected), ("> " + row(i) + " <").c_str());
-            lv_label_set_text(id(normal_playlist_next), row(i+1).c_str());
-            lv_label_set_text(id(normal_playlist_hint), browser.sent && millis()-browser.sent_ms < 1500 ? "Action sent" : "Turn, then press");
+            onx_render::label(id(normal_playlist_previous), row(i-1).c_str());
+            onx_render::label(id(normal_playlist_selected), ("> " + row(i) + " <").c_str());
+            onx_render::label(id(normal_playlist_next), row(i+1).c_str());
+            onx_render::label(id(normal_playlist_hint), browser.sent && millis()-browser.sent_ms < 1500 ? "Action sent" : "Turn, then press");
             lv_obj_add_flag(id(normal_playlist_hold_bar), LV_OBJ_FLAG_HIDDEN);
           }

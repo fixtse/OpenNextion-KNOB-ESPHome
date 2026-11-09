@@ -11,6 +11,9 @@ namespace esphome::onx_icons {
 class IconDownloader : public Component {
  public:
   void loop() override;
+  bool busy() const { return busy_; }
+  void set_artwork_busy(bool value) { artwork_busy_ = value; }
+  void prefetch(const std::string &icon) { if (cache_.find(icon) == cache_.end()) request_(icon); }
   void retry() { failures_.clear(); errors_.clear(); }
   std::string status(const std::string &icon) const;
   std::string error(const std::string &icon) const {
@@ -31,11 +34,16 @@ class IconDownloader : public Component {
   static void download_task_(void *arg);
   void request_(const std::string &icon);
   std::map<std::string, std::shared_ptr<Bitmap>> cache_;
-  std::map<lv_obj_t *, std::shared_ptr<Bitmap>> bindings_;
+  struct Binding {
+    std::shared_ptr<Bitmap> bitmap;
+    const void *source{nullptr};
+    bool active{false}, styled{false};
+  };
+  std::map<lv_obj_t *, Binding> bindings_;
   std::map<std::string, ::onx_icon_state::Retry> failures_;
   std::map<std::string, std::string> errors_;
   Mutex mutex_;
-  bool busy_{false}, completed_{false};
+  bool busy_{false}, completed_{false}, artwork_busy_{false};
   std::string completed_icon_, completed_error_;
   uint8_t *completed_pixels_{nullptr};
 };

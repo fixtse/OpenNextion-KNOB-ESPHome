@@ -10,6 +10,14 @@ interval:
   - interval: 1s
     then:
       - lambda: |-
+          // Warm configured icons in the background after input has settled.
+          // RAM caching remains bounded and does not write icons into NVS.
+          if (id(ui_presenter)->is_normal_mode_active() && !id(sleep_mode_state) &&
+              id(ui_presenter)->user_idle_ms() > 2000 && !onx_media::downloading) {
+            for (const auto &meta : onx_icon_state::metadata)
+              id(entity_icon_downloader)->prefetch(meta.chosen());
+          }
+      - lambda: |-
           const auto now=id(ha_time).now();
           if(now.is_valid() && id(normal_ha_api_connected)) custom_logic_entity_sub::sample_sensor_history(now.timestamp);
       - script.execute: check_normal_timer_popup
@@ -269,7 +277,11 @@ interval:
                      id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
                      !id(ui_presenter)->is_standby_active();
           then:
-            - lvgl.page.show: normal_automation_page
+            - if:
+                condition:
+                  lambda: return lv_scr_act() != id(normal_automation_page)->obj;
+                then:
+                  - lvgl.page.show: normal_automation_page
             - script.execute: refresh_normal_automation_detail_page
       - if:
           condition:
@@ -306,6 +318,23 @@ interval:
   - interval: 100ms
     then:
       - script.execute: refresh_normal_timer_detail
+      - lambda: |-
+          if (onx_media::downloading && millis() - onx_media::requested_ms >= 15000) {
+            lv_obj_add_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
+            onx_render::image(id(normal_media_cover), id(fallback_music_note_img)->get_lv_image_dsc());
+            lv_image_cache_drop(id(media_cover_image)->get_lv_image_dsc());
+            lv_image_header_cache_drop(id(media_cover_image)->get_lv_image_dsc());
+            id(media_cover_image)->release();
+            onx_media::downloading = false; onx_media::ready_url.clear();
+            id(entity_icon_downloader)->set_artwork_busy(false);
+            onx_media::last_artwork_end_ms = millis();
+            onx_media::artwork_refresh_pending = true;
+            onx_runtime::record("artwork_timeout");
+          }
+          if (onx_media::artwork_refresh_pending) {
+            onx_media::artwork_refresh_pending = false;
+            id(refresh_normal_automation_detail_page).execute();
+          }
       - script.execute: refresh_normal_media_progress
       - script.execute: refresh_normal_media_overlay
       - script.execute: refresh_normal_playlist

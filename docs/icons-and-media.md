@@ -45,3 +45,30 @@ Upgrading from older firmware removes its token entry, token-status sensor,
 “How to use” sensor, and QR-code menus, and deletes the old saved device token.
 Home Assistant may retain old unavailable entity-registry entries after removal
 from firmware; those entries can be deleted from the device's entity list.
+
+## Performance and reset diagnostics
+
+Icon bindings reuse unchanged LVGL descriptors and tint styles. After two seconds
+without knob input, configured icons prefetch one at a time into the existing
+12-entry RAM cache. Icons still download again after reboot: no flash partition
+or NVS space is consumed for bitmap storage.
+
+Artwork remains provider-independent: Home Assistant's supplied URL is fetched,
+and the final display buffer is resized to fit 100x100. This does not shrink the
+original network file; JPEG requires the complete compressed download and still
+has decode cost for the source dimensions. Artwork is postponed until its URL
+has settled, while icons are downloading, and when internal memory is low.
+Artwork uses a 2.5-second HTTP timeout and a 15-second overall deadline; failed
+URLs back off for a minute. Its initial receive buffer is 8 KB, but JPEG downloads
+can grow it to the compressed file size. Existing OTA request timeouts are kept.
+
+Download completion refreshes on the next interval, after downloader cleanup.
+Unavailable players cancel in-progress artwork and discard stale progress.
+Unchanged media/playlist labels and image sources avoid repeated redraws.
+
+The configuration webpage and diagnostic download include readable reset reason,
+free/minimum/largest internal heap, free PSRAM, and artwork status. An RTC RAM
+breadcrumb can preserve the last media action or artwork event across a crash or
+software reset. It is the last observed event, not a crash backtrace or proof of
+cause; power-on and brownout discard it. No continuous log or flash writes are
+required. Hardware crash reproduction remains unverified without a reset log.

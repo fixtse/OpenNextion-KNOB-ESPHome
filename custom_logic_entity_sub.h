@@ -492,6 +492,7 @@ class DeviceSlotStateUpdater {
       detail.state = detail.google_timer ? detail.google_state : value;
       if (!online && control_entity == this->entity_id_) cancel_controls();
       if (!online) {
+        if (has_prefix(this->entity_id_, "media_player.")) detail.progress.set_state(value, millis());
         return;
       }
     }

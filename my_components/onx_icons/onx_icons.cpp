@@ -144,12 +144,17 @@ std::string IconDownloader::status(const std::string &icon) const {
   return busy_ ? "download_busy" : "awaiting_display";
 }
 void IconDownloader::request_(const std::string &icon) {
-  if (busy_ || !::onx_icon_state::valid_icon(icon) || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return;
+  if (busy_ || artwork_busy_ || !::onx_icon_state::valid_icon(icon) || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return;
   // Starting before wall-clock synchronization can make certificate validation fail.
   // Wait instead of poisoning the icon retry cache during normal boot.
   if (std::time(nullptr) < 1577836800) return;
   auto failed = failures_.find(icon);
   if (failed != failures_.end() && !failed->second.due(millis())) return;
+#ifdef USE_ESP32
+  // TLS plus a worker stack must not consume the last API/Wi-Fi allocation block.
+  if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 65536 ||
+      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 32768) return;
+#endif
   auto *work = new (std::nothrow) Work{this, icon};
   if (!work) return;
   busy_ = true;
@@ -194,10 +199,18 @@ void IconDownloader::bind(lv_obj_t *widget, const std::string &icon, image::Imag
   auto bitmap = found == cache_.end() ? std::shared_ptr<Bitmap>{} : found->second;
   if (bitmap) bitmap->used = millis();
   // Assign the descriptor before releasing the previous widget's backing bitmap.
-  lv_img_set_src(widget, bitmap ? bitmap->image.get_lv_image_dsc() : fallback->get_lv_image_dsc());
-  bindings_[widget] = bitmap;
-  lv_obj_set_style_image_recolor(widget, lv_color_hex(active ? 0x62B0FF : 0xFFFFFF), 0);
-  lv_obj_set_style_image_recolor_opa(widget, LV_OPA_COVER, 0);
+  auto &binding = bindings_[widget];
+  const auto *source = bitmap ? bitmap->image.get_lv_image_dsc() : fallback->get_lv_image_dsc();
+  if (binding.source != source || lv_img_get_src(widget) != source) {
+    lv_img_set_src(widget, source);
+    binding.source = source;
+    binding.bitmap = bitmap;
+  }
+  if (!binding.styled || binding.active != active) {
+    lv_obj_set_style_image_recolor(widget, lv_color_hex(active ? 0x62B0FF : 0xFFFFFF), 0);
+    lv_obj_set_style_image_recolor_opa(widget, LV_OPA_COVER, 0);
+    binding.active = active; binding.styled = true;
+  }
   if (!bitmap) request_(icon);
 }
 }  // namespace esphome::onx_icons
