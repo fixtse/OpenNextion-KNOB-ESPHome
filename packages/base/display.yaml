@@ -25,6 +25,7 @@ font:
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_12
     size: 12
+    glyphs: ["●"]
     bpp: 8
     glyphsets: &text_glyphsets
       - GF_Latin_Kernel

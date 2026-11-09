@@ -39,6 +39,7 @@ inline std::string selected_setting(const custom_logic_entity_sub::EntityDetailS
 inline View build(const std::string &entity, const std::string &name) {
   using namespace custom_logic_entity_sub;
   View v; v.badge.x = 16; v.name.text = onx_media::display_text(name); v.icon = onx_icon_state::selected_icon(entity);
+  if (v.icon.empty()) v.icon = "mdi:" + onx_icon_state::fallback(entity);
   const auto *d = entity_detail(entity);
   if (!d || !d->received || !d->available) {
     v.context.text = !d || !d->received ? "Waiting for initial data" : "Entity unavailable";
@@ -83,7 +84,8 @@ inline View build(const std::string &entity, const std::string &name) {
     else v.badge.text = has_prefix(entity,"binary_sensor.") ? "Status" : "Sensor";
     if (has_prefix(entity,"binary_sensor.")) v.value.text = d->state == "on" ? "On" : d->state == "off" ? "Off" : d->state;
     v.value.size = v.value.text.size() > 12 ? 24 : 32;
-    v.value.y = 84;
+    v.value.y = 84; v.badge.x = 0;
+    v.icon_x = 0; v.icon_y = 134; v.icon_size = 40;
   } else if (has_prefix(entity,"media_player.")) {
     v.layout = "media"; v.icon_x=0; v.icon_y=18; v.icon_size=80;
     const float volume = onx_control::number(onx_controls::effective(*d,"volume_level"));
@@ -107,9 +109,9 @@ inline View carousel(const std::string &entity, const std::string &name) {
   auto v = build(entity, name); v.layout = "carousel";
   const auto badge = v.badge.text;
   v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
-  v.icon_x = 0; v.icon_y = 38; v.icon_size = 28;
+  v.icon_x = 0; v.icon_y = 34; v.icon_size = 28;
   v.value.y = 84; v.value.size = 32;
-  v.name.y = 144; v.name.width = 184; v.name.size = 18;
+  v.name.y = 145; v.name.width = 184; v.name.size = 16;
   const auto *d = entity_detail(entity);
   if (!d || !d->received || !d->available) return v;
   const auto domain = entity.substr(0,entity.find('.'));
@@ -141,5 +143,14 @@ inline View carousel(const std::string &entity, const std::string &name) {
   if (!v.context.text.empty()) { v.context.y = 124; v.context.size = 14; v.name.y = 151; }
   if (v.value.text.size() > 14) v.value.size = 24;
   return v;
+}
+// LVGL keeps the unscaled object box and scales about its center.
+inline int image_object_y(int visible_top, int size, int source_size = 80) {
+  return visible_top - (source_size - size) / 2;
+}
+inline std::string pagination(int selected, int count) {
+  std::string out;
+  for (int i = 0; i < count; ++i) { if (i) out += " "; out += i == selected ? "●" : "·"; }
+  return out;
 }
 }  // namespace onx_detail_view

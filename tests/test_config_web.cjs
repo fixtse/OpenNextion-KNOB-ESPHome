@@ -39,13 +39,20 @@ const { chromium } = require('playwright');
     if(values.get('op')==='state')result={count:0,slots,weather:'',ha_url:'http://ha.test:8123'};
     else if(values.get('op')==='preview')result={slots:slots.filter(s=>s.entity&&s.entity===values.get('entity')).map(s=>{
      const media=s.entity.startsWith('media_player.'),climate=s.entity.startsWith('climate.');
-     return {entity:s.entity,layout:media?'media':'value',available:true,icon:'mdi:thermometer',icon_x:media?0:-62,icon_y:media?18:32,icon_size:media?80:28,progress:media?470:-1,playing:media,artwork:media?'http://ha.test/artwork.svg':'',lines:[
-      {text:media?'':climate?'🔥 Heat':'🌡 Temperature',y:36,size:16,width:156,x:16,color:climate?0xffaa66:0x62b0ff},
+     const detail={entity:s.entity,layout:media?'media':'value',available:true,icon:'mdi:thermometer',icon_x:media||!climate?0:-62,icon_y:media?18:climate?32:134,icon_size:media?80:climate?28:40,progress:media?470:-1,playing:media,artwork:media?'http://ha.test/artwork.svg':'',lines:[
+      {text:media?'':climate?'🔥 Heat':'🌡 Temperature',y:36,size:16,width:156,x:climate?16:0,color:climate?0xffaa66:0x62b0ff},
       {text:media?'Volume: 50%':climate?'21.5°':'16.63 °C',y:media?166:climate?75:84,size:media?18:32,width:208},
       {text:media?'Silent Night / Noche de Paz':climate?'Now 23°':'',y:media?122:119,size:16,width:196},
       {text:media?'Christina Aguilera':climate?'Press: mode\nHold + turn: setting':'',y:media?144:147,size:media?16:14,width:198},
       {text:s.name||s.entity,y:media?192:185,size:16,width:180}
      ]};
+     detail.carousel={layout:'carousel',available:true,icon:'mdi:thermometer',icon_x:0,icon_y:34,icon_size:28,pagination:'· · · · ● · ·',lines:[
+      {text:'',y:36,size:16,width:156},
+      {text:media?'Playing':climate?'21.5°':'16.63 °C',y:84,size:32,width:216},
+      {text:media?'Silent Night':climate?'🔥 Heat':'',y:124,size:14,width:198},
+      {text:'',y:147,size:14,width:198},
+      {text:s.name||s.entity,y:145,size:16,width:184}]};
+     return detail;
     })};
     else if(values.get('op')==='icon'){iconUpdates.push(Object.fromEntries(values));Object.assign(slots[Number(values.get('slot'))],{icon:values.get('icon'),iconOverride:values.get('icon_override')});result={ok:true}}
     else if(values.get('op')==='settings'){savedSettings.push(Object.fromEntries(values));result={ok:true}}
@@ -76,6 +83,10 @@ const { chromium } = require('playwright');
   assert.equal(saved[0].action,'script.comfort');assert.equal(saved[0].entity,'sensor.living_room_temperature');
   await page.locator('#device-preview text').filter({hasText:'16.63 °C'}).waitFor();
   assert.equal(await page.locator('#device-preview text').filter({hasText:'16.63 °C'}).getAttribute('font-size'),'32');
+  await page.locator('#preview-screen').selectOption('main');
+  assert.match(await page.locator('#device-preview').textContent(),/●/);
+  assert.equal(await page.locator('#device-preview text').filter({hasText:'●'}).getAttribute('font-size'),'12');
+  await page.locator('#preview-screen').selectOption('detail');
   await page.getByRole('button',{name:'Slot 2: Empty',exact:true}).click();
   await page.locator('#choose-entity').click();
   await page.getByRole('button',{name:'Front door'}).click();

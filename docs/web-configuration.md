@@ -111,3 +111,9 @@ chunked response without copying the full page into internal RAM. Live previews
 request only the selected entity. Configuration JSON is measured and serialized
 completely (up to 16 KB), so large configurations never receive a truncated JSON
 response from ESPHome's generic serializer.
+
+Carousel readings, context, names and dot pagination are children of each page,
+so they move together during rotary navigation. Compact dots replace the numeric
+page counter. Names have a separate bottom margin, and scaled icon coordinates
+account for LVGL's center pivot. Sensor detail icons sit below the reading while
+the sensor heading remains centered.

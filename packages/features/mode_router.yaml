@@ -67,8 +67,7 @@ onx_config_web:
           slot["entity"] = entity; encode(slot, view);
           JsonObject carousel = slot["carousel"].to<JsonObject>();
           encode(carousel, onx_detail_view::carousel(entity, title));
-          carousel["counter"] = std::to_string(custom_logic::normal_ui_slot_for_device_config_slot(i) + 1) +
-              "/" + std::to_string(id(normal_device_count));
+          carousel["pagination"] = onx_detail_view::pagination(custom_logic::normal_ui_slot_for_device_config_slot(i), id(normal_device_count) + 1);
           if (const auto *detail = custom_logic_entity_sub::entity_detail(entity)) {
             const auto now = id(ha_time).now();
             auto projection = detail->progress;

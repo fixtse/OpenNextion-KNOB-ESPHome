@@ -63,10 +63,16 @@ int main() {
     sensor.entity_id="sensor.madrid_piso_temperature"; sensor.state="16.63";sensor.unit="°C";sensor.received=sensor.available=true;
     onx_icon_state::metadata[1].bind(sensor.entity_id);onx_icon_state::metadata[1].device_class="temperature";
     auto view=onx_detail_view::build(sensor.entity_id,"Madrid Piso Temperature");
-    assert(view.value.text=="16.63 °C"&&view.value.size==32&&view.icon_size==28);
+    assert(view.value.text=="16.63 °C"&&view.value.size==32&&view.icon_size==40);
     assert(view.badge.text=="🌡 Temperature"&&view.name.width==180);
     const auto main_view=onx_detail_view::carousel(sensor.entity_id,"Madrid Piso Temperature");
-    assert(main_view.value.text=="16.63 °C"&&main_view.icon_size==28&&main_view.name.y==144);
+    assert(main_view.value.text=="16.63 °C"&&main_view.icon_size==28&&main_view.name.y==145);
+    assert(view.badge.x==0&&view.icon_x==0);
+    assert(view.icon_y>=view.value.y+view.value.size+16);
+    assert(onx_detail_view::image_object_y(view.icon_y,view.icon_size)+40-view.icon_size/2==view.icon_y);
+    assert(main_view.icon_y+main_view.icon_size+16<=main_view.value.y);
+    assert(main_view.name.y+2*(main_view.name.size+2)+24<=212);
+    assert(onx_detail_view::pagination(4,7)=="· · · · ● · ·");
     auto &climate=entity_details[2];climate.entity_id="climate.heater";climate.received=climate.available=true;
     climate.features=1;climate.state="heat";climate.target="21.5";climate.current="23.0";
     control_entity="climate.heater";control_setting="temperature";

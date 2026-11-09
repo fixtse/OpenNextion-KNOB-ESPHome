@@ -30,41 +30,6 @@ lvgl:
           align: TOP_MID
           src: standby_homeassistant_offline_img
           hidden: true
-      - label:
-          id: normal_device_index_text
-          x: 0
-          y: 196
-          align: top_mid
-          text_font: fonts_MiSans_Medium_24
-          text_color: 0xFFFFFF
-          text: "0/0"
-          hidden: true
-      - label:
-          id: normal_device_sensor_value
-          x: 0
-          y: 84
-          align: top_mid
-          width: 216
-          height: 44
-          long_mode: dot
-          text_align: CENTER
-          text_font: fonts_MiSans_Medium_32
-          text_color: 0xFFFFFF
-          text: ""
-          hidden: true
-      - label:
-          id: normal_device_state_context
-          x: 0
-          y: 124
-          align: top_mid
-          width: 198
-          height: 20
-          long_mode: dot
-          text_align: CENTER
-          text_font: fonts_MiSans_Medium_14
-          text_color: 0xD2D2D2
-          text: ""
-          hidden: true
   pages:
     - id: device_empty
       bg_color: 0x000000
@@ -208,6 +173,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_0_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_0_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_0_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_0_index_icon
                   x: 0
@@ -304,6 +303,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_1_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_1_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_1_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_1_index_icon
                   x: 0
@@ -400,6 +433,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_2_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_2_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_2_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_2_index_icon
                   x: 0
@@ -496,6 +563,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_3_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_3_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_3_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_3_index_icon
                   x: 0
@@ -592,6 +693,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_4_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_4_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_4_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_4_index_icon
                   x: 0
@@ -688,6 +823,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_5_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_5_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_5_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_5_index_icon
                   x: 0
@@ -784,6 +953,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_6_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_6_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_6_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_6_index_icon
                   x: 0
@@ -880,6 +1083,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_7_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_7_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_7_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_7_index_icon
                   x: 0
@@ -976,6 +1213,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_8_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_8_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_8_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_8_index_icon
                   x: 0
@@ -1072,6 +1343,40 @@ lvgl:
                   long_mode: dot
                   text_align: CENTER
                   text: "Plug"
+              - label:
+                  id: normal_device_9_value
+                  align: top_mid
+                  y: 84
+                  width: 216
+                  height: 44
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_32
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_9_context
+                  align: top_mid
+                  y: 124
+                  width: 198
+                  height: 20
+                  long_mode: dot
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_device_9_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_9_index_icon
                   x: 0
@@ -1164,6 +1469,16 @@ lvgl:
                   text_font: fonts_MiSans_Medium_18
                   text_color: 0xFFFFFF
                   text: "Plug"
+              - label:
+                  id: normal_device_settings_pagination
+                  align: top_mid
+                  y: 212
+                  width: 120
+                  height: 16
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Bold_12
+                  text_color: 0xD2D2D2
+                  text: ""
               - image:
                   id: normal_device_settings_index_icon
                   x: 0

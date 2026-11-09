@@ -25,6 +25,7 @@ on:
       - 'onx_display_settings.h'
       - 'tests/test_display_settings.cpp'
       - 'tests/test_standby_scope.py'
+      - 'tests/test_carousel_layout.py'
       - 'my_components/onx_ui/**'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
@@ -70,6 +71,7 @@ jobs:
           python3 tests/test_entity_controls.py
           python3 tests/test_input_routing.py
           python3 tests/test_standby_scope.py
+          python3 tests/test_carousel_layout.py
           python3 tests/test_entity_recovery.py
           python3 tests/test_legacy_cleanup.py
           c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state

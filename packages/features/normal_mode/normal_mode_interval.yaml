@@ -149,7 +149,6 @@ interval:
                 lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
             - lvgl.page.show: standby_page
             - lvgl.widget.refresh: standby_time_widget
             - lvgl.widget.refresh: standby_date_widget

@@ -58,7 +58,7 @@ function drawPreview(slot){
   const icon=svgNode('image',{href:'https://api.iconify.design/mdi/'+view.icon.slice(4)+'.svg?color=%23ffffff',x:120+(view.icon_x||0)-size/2,y:view.icon_y,width:size,height:size});svg.append(icon);
  }
  if(view.layout==='media'&&view.artwork){try{const url=new URL(view.artwork);if(['http:','https:'].includes(url.protocol))svg.append(svgNode('image',{href:url.href,x:70,y:18,width:100,height:100,preserveAspectRatio:'xMidYMid slice'}))}catch{}}
- if(view.layout==='carousel'&&view.counter)text(view.counter,196,24);
+ if(view.layout==='carousel'&&view.pagination)text(view.pagination,212,12,120,0xd2d2d2);
  for(const [i,line] of (view.lines||[]).entries()){const name=i===4;text(name?(slot.name||line.text):line.text,line.y,line.size,line.width,line.color,line.x||0,name&&view.layout!=='media')}
  $('preview-status').textContent=view.available?'Live device view':'Device view · waiting for entity data';
 }

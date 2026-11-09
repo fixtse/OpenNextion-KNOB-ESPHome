@@ -81,14 +81,9 @@ script:
             lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
             return;
           }
 
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           int total = id(normal_device_count);
           if (total < 0) total = 0;
           if (total > 10) total = 10;
@@ -110,6 +105,9 @@ script:
             lv_obj_t *icon_settings;
             lv_obj_t *title;
             lv_obj_t *index_icon;
+            lv_obj_t *value;
+            lv_obj_t *context;
+            lv_obj_t *pagination;
           };
 
           auto set_hidden = [](lv_obj_t *obj, bool hidden) {
@@ -256,27 +254,24 @@ script:
             const auto entity = settings_entry ? std::string("") : id(ui_presenter)->get_normal_device_entity_id(entry_index);
             if (!settings_entry) {
               const auto view = onx_detail_view::carousel(entity, device_title);
-              lv_label_set_text(id(normal_device_sensor_value), view.value.text.c_str());
-              lv_obj_set_style_text_font(id(normal_device_sensor_value),
+              lv_label_set_text(w.value, view.value.text.c_str());
+              lv_obj_set_style_text_font(w.value,
                   view.value.size == 32 ? id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Medium_24)->get_lv_font(), 0);
-              set_hidden(id(normal_device_sensor_value), false);
-              lv_obj_set_y(w.icon_switch, 38); lv_image_set_scale(w.icon_switch, 90);
+              set_hidden(w.value, false);
+              lv_obj_set_y(w.icon_switch, onx_detail_view::image_object_y(view.icon_y, view.icon_size));
+              lv_image_set_scale(w.icon_switch, view.icon_size * 256 / 80);
               lv_obj_set_y(w.title, view.name.y); lv_obj_set_width(w.title, 184); lv_obj_set_height(w.title, 40);
-              lv_label_set_text(id(normal_device_state_context), view.context.text.c_str());
-              set_hidden(id(normal_device_state_context), view.context.text.empty());
+              lv_obj_set_style_text_font(w.title, id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
+              lv_label_set_text(w.context, view.context.text.c_str());
+              set_hidden(w.context, view.context.text.empty());
               lv_label_set_long_mode(w.title, LV_LABEL_LONG_WRAP);
             }
+            lv_obj_set_style_text_align(w.title, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_align(w.title, LV_ALIGN_TOP_MID, 0, settings_entry ? 151 : onx_detail_view::carousel(entity, device_title).name.y);
             lv_label_set_text(w.title, device_title.c_str());
-            if (settings_entry) {
-              set_hidden(id(normal_device_index_text), true);
-              set_hidden(w.index_icon, false);
-            } else {
-              char index_text[16];
-              snprintf(index_text, sizeof(index_text), "%d/%d", entry_index + 1, total);
-              lv_label_set_text(id(normal_device_index_text), index_text);
-              set_hidden(id(normal_device_index_text), false);
-              set_hidden(w.index_icon, true);
-            }
+            set_hidden(w.index_icon, true);
+            const auto dots = onx_detail_view::pagination(entry_index, total + 1);
+            lv_label_set_text(w.pagination, dots.c_str());
           };
 
           if (total == 0 && selected == 0) {
@@ -284,7 +279,6 @@ script:
             set_hidden(id(normal_device_wifi_offline_widget), true);
             set_hidden(id(normal_device_homeassistant_online_widget), true);
             set_hidden(id(normal_device_homeassistant_offline_widget), true);
-            set_hidden(id(normal_device_index_text), true);
             return;
           }
           set_hidden(id(normal_device_wifi_online_widget), !id(normal_wifi_connected));
@@ -292,38 +286,38 @@ script:
           set_hidden(id(normal_device_homeassistant_online_widget), !id(normal_ha_api_connected));
           set_hidden(id(normal_device_homeassistant_offline_widget), id(normal_ha_api_connected));
           if (selected >= total) {
-            render_entry({id(normal_device_settings_icon_switch), id(normal_device_settings_icon_switch_on), id(normal_device_settings_icon_plug), id(normal_device_settings_icon_plug_on), id(normal_device_settings_icon_light), id(normal_device_settings_icon_light_on), id(normal_device_settings_icon_curtain), id(normal_device_settings_icon_settings), id(normal_device_settings_title), id(normal_device_settings_index_icon)}, selected);
+            render_entry({id(normal_device_settings_icon_switch), id(normal_device_settings_icon_switch_on), id(normal_device_settings_icon_plug), id(normal_device_settings_icon_plug_on), id(normal_device_settings_icon_light), id(normal_device_settings_icon_light_on), id(normal_device_settings_icon_curtain), id(normal_device_settings_icon_settings), id(normal_device_settings_title), id(normal_device_settings_index_icon), nullptr, nullptr, id(normal_device_settings_pagination)}, selected);
           } else {
             switch (selected) {
               case 0:
-                render_entry({id(normal_device_0_icon_switch), id(normal_device_0_icon_switch_on), id(normal_device_0_icon_plug), id(normal_device_0_icon_plug_on), id(normal_device_0_icon_light), id(normal_device_0_icon_light_on), id(normal_device_0_icon_curtain), id(normal_device_0_icon_settings), id(normal_device_0_title), id(normal_device_0_index_icon)}, 0);
+                render_entry({id(normal_device_0_icon_switch), id(normal_device_0_icon_switch_on), id(normal_device_0_icon_plug), id(normal_device_0_icon_plug_on), id(normal_device_0_icon_light), id(normal_device_0_icon_light_on), id(normal_device_0_icon_curtain), id(normal_device_0_icon_settings), id(normal_device_0_title), id(normal_device_0_index_icon), id(normal_device_0_value), id(normal_device_0_context), id(normal_device_0_pagination)}, 0);
                 break;
               case 1:
-                render_entry({id(normal_device_1_icon_switch), id(normal_device_1_icon_switch_on), id(normal_device_1_icon_plug), id(normal_device_1_icon_plug_on), id(normal_device_1_icon_light), id(normal_device_1_icon_light_on), id(normal_device_1_icon_curtain), id(normal_device_1_icon_settings), id(normal_device_1_title), id(normal_device_1_index_icon)}, 1);
+                render_entry({id(normal_device_1_icon_switch), id(normal_device_1_icon_switch_on), id(normal_device_1_icon_plug), id(normal_device_1_icon_plug_on), id(normal_device_1_icon_light), id(normal_device_1_icon_light_on), id(normal_device_1_icon_curtain), id(normal_device_1_icon_settings), id(normal_device_1_title), id(normal_device_1_index_icon), id(normal_device_1_value), id(normal_device_1_context), id(normal_device_1_pagination)}, 1);
                 break;
               case 2:
-                render_entry({id(normal_device_2_icon_switch), id(normal_device_2_icon_switch_on), id(normal_device_2_icon_plug), id(normal_device_2_icon_plug_on), id(normal_device_2_icon_light), id(normal_device_2_icon_light_on), id(normal_device_2_icon_curtain), id(normal_device_2_icon_settings), id(normal_device_2_title), id(normal_device_2_index_icon)}, 2);
+                render_entry({id(normal_device_2_icon_switch), id(normal_device_2_icon_switch_on), id(normal_device_2_icon_plug), id(normal_device_2_icon_plug_on), id(normal_device_2_icon_light), id(normal_device_2_icon_light_on), id(normal_device_2_icon_curtain), id(normal_device_2_icon_settings), id(normal_device_2_title), id(normal_device_2_index_icon), id(normal_device_2_value), id(normal_device_2_context), id(normal_device_2_pagination)}, 2);
                 break;
               case 3:
-                render_entry({id(normal_device_3_icon_switch), id(normal_device_3_icon_switch_on), id(normal_device_3_icon_plug), id(normal_device_3_icon_plug_on), id(normal_device_3_icon_light), id(normal_device_3_icon_light_on), id(normal_device_3_icon_curtain), id(normal_device_3_icon_settings), id(normal_device_3_title), id(normal_device_3_index_icon)}, 3);
+                render_entry({id(normal_device_3_icon_switch), id(normal_device_3_icon_switch_on), id(normal_device_3_icon_plug), id(normal_device_3_icon_plug_on), id(normal_device_3_icon_light), id(normal_device_3_icon_light_on), id(normal_device_3_icon_curtain), id(normal_device_3_icon_settings), id(normal_device_3_title), id(normal_device_3_index_icon), id(normal_device_3_value), id(normal_device_3_context), id(normal_device_3_pagination)}, 3);
                 break;
               case 4:
-                render_entry({id(normal_device_4_icon_switch), id(normal_device_4_icon_switch_on), id(normal_device_4_icon_plug), id(normal_device_4_icon_plug_on), id(normal_device_4_icon_light), id(normal_device_4_icon_light_on), id(normal_device_4_icon_curtain), id(normal_device_4_icon_settings), id(normal_device_4_title), id(normal_device_4_index_icon)}, 4);
+                render_entry({id(normal_device_4_icon_switch), id(normal_device_4_icon_switch_on), id(normal_device_4_icon_plug), id(normal_device_4_icon_plug_on), id(normal_device_4_icon_light), id(normal_device_4_icon_light_on), id(normal_device_4_icon_curtain), id(normal_device_4_icon_settings), id(normal_device_4_title), id(normal_device_4_index_icon), id(normal_device_4_value), id(normal_device_4_context), id(normal_device_4_pagination)}, 4);
                 break;
               case 5:
-                render_entry({id(normal_device_5_icon_switch), id(normal_device_5_icon_switch_on), id(normal_device_5_icon_plug), id(normal_device_5_icon_plug_on), id(normal_device_5_icon_light), id(normal_device_5_icon_light_on), id(normal_device_5_icon_curtain), id(normal_device_5_icon_settings), id(normal_device_5_title), id(normal_device_5_index_icon)}, 5);
+                render_entry({id(normal_device_5_icon_switch), id(normal_device_5_icon_switch_on), id(normal_device_5_icon_plug), id(normal_device_5_icon_plug_on), id(normal_device_5_icon_light), id(normal_device_5_icon_light_on), id(normal_device_5_icon_curtain), id(normal_device_5_icon_settings), id(normal_device_5_title), id(normal_device_5_index_icon), id(normal_device_5_value), id(normal_device_5_context), id(normal_device_5_pagination)}, 5);
                 break;
               case 6:
-                render_entry({id(normal_device_6_icon_switch), id(normal_device_6_icon_switch_on), id(normal_device_6_icon_plug), id(normal_device_6_icon_plug_on), id(normal_device_6_icon_light), id(normal_device_6_icon_light_on), id(normal_device_6_icon_curtain), id(normal_device_6_icon_settings), id(normal_device_6_title), id(normal_device_6_index_icon)}, 6);
+                render_entry({id(normal_device_6_icon_switch), id(normal_device_6_icon_switch_on), id(normal_device_6_icon_plug), id(normal_device_6_icon_plug_on), id(normal_device_6_icon_light), id(normal_device_6_icon_light_on), id(normal_device_6_icon_curtain), id(normal_device_6_icon_settings), id(normal_device_6_title), id(normal_device_6_index_icon), id(normal_device_6_value), id(normal_device_6_context), id(normal_device_6_pagination)}, 6);
                 break;
               case 7:
-                render_entry({id(normal_device_7_icon_switch), id(normal_device_7_icon_switch_on), id(normal_device_7_icon_plug), id(normal_device_7_icon_plug_on), id(normal_device_7_icon_light), id(normal_device_7_icon_light_on), id(normal_device_7_icon_curtain), id(normal_device_7_icon_settings), id(normal_device_7_title), id(normal_device_7_index_icon)}, 7);
+                render_entry({id(normal_device_7_icon_switch), id(normal_device_7_icon_switch_on), id(normal_device_7_icon_plug), id(normal_device_7_icon_plug_on), id(normal_device_7_icon_light), id(normal_device_7_icon_light_on), id(normal_device_7_icon_curtain), id(normal_device_7_icon_settings), id(normal_device_7_title), id(normal_device_7_index_icon), id(normal_device_7_value), id(normal_device_7_context), id(normal_device_7_pagination)}, 7);
                 break;
               case 8:
-                render_entry({id(normal_device_8_icon_switch), id(normal_device_8_icon_switch_on), id(normal_device_8_icon_plug), id(normal_device_8_icon_plug_on), id(normal_device_8_icon_light), id(normal_device_8_icon_light_on), id(normal_device_8_icon_curtain), id(normal_device_8_icon_settings), id(normal_device_8_title), id(normal_device_8_index_icon)}, 8);
+                render_entry({id(normal_device_8_icon_switch), id(normal_device_8_icon_switch_on), id(normal_device_8_icon_plug), id(normal_device_8_icon_plug_on), id(normal_device_8_icon_light), id(normal_device_8_icon_light_on), id(normal_device_8_icon_curtain), id(normal_device_8_icon_settings), id(normal_device_8_title), id(normal_device_8_index_icon), id(normal_device_8_value), id(normal_device_8_context), id(normal_device_8_pagination)}, 8);
                 break;
               default:
-                render_entry({id(normal_device_9_icon_switch), id(normal_device_9_icon_switch_on), id(normal_device_9_icon_plug), id(normal_device_9_icon_plug_on), id(normal_device_9_icon_light), id(normal_device_9_icon_light_on), id(normal_device_9_icon_curtain), id(normal_device_9_icon_settings), id(normal_device_9_title), id(normal_device_9_index_icon)}, 9);
+                render_entry({id(normal_device_9_icon_switch), id(normal_device_9_icon_switch_on), id(normal_device_9_icon_plug), id(normal_device_9_icon_plug_on), id(normal_device_9_icon_light), id(normal_device_9_icon_light_on), id(normal_device_9_icon_curtain), id(normal_device_9_icon_settings), id(normal_device_9_title), id(normal_device_9_index_icon), id(normal_device_9_value), id(normal_device_9_context), id(normal_device_9_pagination)}, 9);
                 break;
             }
           }
@@ -391,7 +385,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           int detail_index = id(normal_device_detail_index);
@@ -525,7 +518,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
           int detail_index = std::clamp(id(normal_device_detail_index), 0, 9);
           const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
@@ -660,7 +652,7 @@ script:
             lv_obj_set_height(id(normal_automation_detail_title), 40);
             lv_label_set_long_mode(id(normal_automation_detail_title), LV_LABEL_LONG_WRAP);
             lv_obj_set_x(id(normal_automation_detail_icon), view.icon_x);
-            lv_obj_set_y(id(normal_automation_detail_icon), view.icon_y);
+            lv_obj_set_y(id(normal_automation_detail_icon), onx_detail_view::image_object_y(view.icon_y, view.icon_size));
             lv_image_set_scale(id(normal_automation_detail_icon), view.icon_size * 256 / 80);
           } else {
             lv_label_set_long_mode(id(normal_automation_detail_title), LV_LABEL_LONG_DOT);
@@ -703,7 +695,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           int detail_index = id(normal_device_detail_index);
@@ -990,7 +981,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           int detail_index = id(normal_device_detail_index);
@@ -1122,7 +1112,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           int selected = id(normal_settings_selected_index);
@@ -1173,7 +1162,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           auto set_text = [](lv_obj_t *obj, const std::string &text) {
@@ -1239,7 +1227,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           int pct = id(normal_brightness_value);
@@ -1272,7 +1259,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
 
           lv_obj_set_style_bg_color(id(normal_settings_knob_page)->obj, lv_color_hex(0x1A1A1A), 0);
@@ -1357,7 +1343,6 @@ script:
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_index_text), LV_OBJ_FLAG_HIDDEN);
 
           auto set_text = [](lv_obj_t *obj, const std::string &text) {
             lv_label_set_text(obj, text.c_str());
@@ -1574,8 +1559,6 @@ script:
             return;
           }
           id(normal_device_detail_active) = true;
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1598,8 +1581,6 @@ script:
             return;
           }
           id(normal_device_detail_active) = true;
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1622,8 +1603,6 @@ script:
             return;
           }
           id(normal_device_detail_active) = true;
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1647,8 +1626,6 @@ script:
             return;
           }
           id(normal_device_detail_active) = true;
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
@@ -1899,8 +1876,6 @@ script:
 
           id(normal_device_detail_index) = (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS) ? -1 : detail_index;
           id(normal_device_detail_active) = true;
-          lv_obj_add_flag(id(normal_device_sensor_value), LV_OBJ_FLAG_HIDDEN);
-          lv_obj_add_flag(id(normal_device_state_context), LV_OBJ_FLAG_HIDDEN);
           id(normal_device_detail_kind) = detail_kind;
           id(normal_page_index) = 1;
           id(key_long_press_handled) = true;
