@@ -4,7 +4,12 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
 (()=>{
  const supported=/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\./;
  const local=()=>[10,11,17,18].map(pin=>({entity:'[Local] HMI IO'+pin,name:'HMI IO'+pin,area:'On this knob'}));
- function catalogue(states,registry=[],areas=[],devices=[]){
+ const validIcon=value=>typeof value==='string'&&/^mdi:[a-z0-9-]{1,76}$/.test(value);
+ function translatedIcon(definition,state){
+  const exact=definition?.state?.[state];
+  return validIcon(exact)?exact:validIcon(definition?.default)?definition.default:'';
+ }
+ function catalogue(states,registry=[],areas=[],devices=[],icons={}){
   const records=new Map((Array.isArray(registry)?registry:registry.entities||[]).map(e=>[e.entity_id||e.ei,e]));
   const rooms=new Map(areas.map(a=>[a.area_id,a.name]));const deviceRooms=new Map(devices.map(d=>[d.id,d.area_id]));
   return states.filter(s=>supported.test(s.entity_id)).map(s=>{
@@ -18,7 +23,11 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
    }else if(s.entity_id.startsWith('cover.')){types.push('Cover (Preset Off)');if((Number(a.supported_features)||0)&4)types.push('Cover (Preset On)');}
    const type=types.at(-1)||'';
    const registryIcon=r.ic||r.icon||'';
-   const icon=/^mdi:[a-z0-9-]{1,76}$/.test(registryIcon)?registryIcon:/^mdi:[a-z0-9-]{1,76}$/.test(a.icon||'')?a.icon:'';
+   const domain=s.entity_id.split('.')[0],platform=r.pl||r.platform,key=r.tk||r.translation_key;
+   const component=icons.entity_component?.[domain];
+   const inferred=translatedIcon(icons.entity?.[platform]?.[domain]?.[key],s.state)||
+    translatedIcon(component?.[a.device_class]||component?._,s.state);
+   const icon=validIcon(registryIcon)?registryIcon:validIcon(a.icon)?a.icon:inferred;
    return {entity:s.entity_id,icon,iconOverride:icon&&icon===registryIcon?'1':'0',name:a.friendly_name||r.en||r.name||s.entity_id,area:rooms.get(r.ai||r.area_id||deviceRooms.get(r.di||r.device_id))||'',type,types:types.length?types:undefined};
   }).concat(local()).sort((a,b)=>(a.area+' '+a.name+' '+a.entity).localeCompare(b.area+' '+b.name+' '+b.entity));
  }
@@ -54,7 +63,7 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
   async load(){
    const auth=await this.token();const url=new URL(auth.base+'/api/websocket');url.protocol=url.protocol==='https:'?'wss:':'ws:';
    this.ready=false;const socket=new WebSocket(url);let id=0;const requests=new Map();
-   const call=type=>new Promise((resolve,reject)=>{const key=++id;requests.set(key,{resolve,reject});socket.send(JSON.stringify({id:key,type}));});
+   const call=(type,params={})=>new Promise((resolve,reject)=>{const key=++id;requests.set(key,{resolve,reject});socket.send(JSON.stringify({id:key,type,...params}));});
    try{
     await new Promise((resolve,reject)=>{
      const timer=setTimeout(()=>reject(Error('Home Assistant connection timed out')),15000);
@@ -69,7 +78,12 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
     socket.onmessage=event=>{let data;try{data=JSON.parse(event.data)}catch{for(const p of requests.values())p.reject(Error('Invalid Home Assistant response'));requests.clear();socket.close();return}const pending=requests.get(data.id);if(!pending)return;requests.delete(data.id);data.success?pending.resolve(data.result):pending.reject(Error(data.error?.message||'Home Assistant request failed'));};
     socket.onclose=()=>{for(const p of requests.values())p.reject(Error('Home Assistant disconnected'));requests.clear();};
     const timeout=setTimeout(()=>socket.close(),30000);
-    try{const [states,registry,areas,devices]=await Promise.all([call('get_states'),call('config/entity_registry/list_for_display').catch(()=>[]),call('config/area_registry/list').catch(()=>[]),call('config/device_registry/list').catch(()=>[])]);this.items=catalogue(states,registry,areas,devices);this.ready=true;return this.items;}finally{clearTimeout(timeout)}
+    try{const [states,registry,areas,devices]=await Promise.all([call('get_states'),call('config/entity_registry/list_for_display').catch(()=>[]),call('config/area_registry/list').catch(()=>[]),call('config/device_registry/list').catch(()=>[])]);const records=Array.isArray(registry)?registry:registry.entities||[];
+     const platforms=[...new Set(records.filter(r=>r.tk||r.translation_key).map(r=>r.pl||r.platform).filter(Boolean))];
+     const [entity,component]=await Promise.all([
+      platforms.length?call('frontend/get_icons',{category:'entity',integration:platforms}).catch(()=>({})):Promise.resolve({}),
+      call('frontend/get_icons',{category:'entity_component'}).catch(()=>({}))]);
+     this.items=catalogue(states,registry,areas,devices,{entity:entity.resources,entity_component:component.resources});this.ready=true;return this.items;}finally{clearTimeout(timeout)}
    }finally{socket.close();}
   }
   disconnect(){this.storage.removeItem('onx.ha.auth');this.items=local();this.ready=false;}

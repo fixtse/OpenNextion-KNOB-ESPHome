@@ -12,7 +12,7 @@ class Socket {
  constructor(url){urls.push(String(url));queueMicrotask(()=>this.onmessage({data:JSON.stringify({type:'auth_required'})}))}
  send(text){const request=JSON.parse(text);commands.push(request.type);
   if(request.type==='auth'){assert.equal(request.access_token,'browser-secret');queueMicrotask(()=>this.onmessage({data:JSON.stringify({type:'auth_ok'})}));return}
-  const result=request.type==='get_states'?states:request.type==='config/entity_registry/list_for_display'?{entities:[{ei:'climate.calentador',di:'heater',ic:'mdi:radiator'}]}:request.type==='config/device_registry/list'?[{id:'heater',area_id:'kitchen'}]:[{area_id:'kitchen',name:'Kitchen'}];
+  const result=request.type==='frontend/get_icons'?{resources:request.category==='entity'?{weather_provider:{sensor:{temperature:{default:'mdi:weather-fog'}}}}:{sensor:{temperature:{default:'mdi:thermometer'}}}}:request.type==='get_states'?states:request.type==='config/entity_registry/list_for_display'?{entities:[{ei:'climate.calentador',di:'heater',ic:'mdi:radiator'},{ei:'sensor.test_0',pl:'weather_provider',tk:'temperature'}]}:request.type==='config/device_registry/list'?[{id:'heater',area_id:'kitchen'}]:[{area_id:'kitchen',name:'Kitchen'}];
   queueMicrotask(()=>this.onmessage({data:JSON.stringify({id:request.id,type:'result',success:true,result})}));
  }
  close(){this.onclose?.()}
@@ -24,6 +24,18 @@ vm.runInNewContext(js,context);const {catalogue,search,Client,baseUrl}=context.O
  const items=await client.load();assert.equal(items.length,12016);assert(client.ready);assert.equal(http.length,0);assert(urls.every(u=>u.startsWith('ws://ha.local:8123/')));
  for(const domain of knobDomains)assert.equal(search(items,'',domain).total,1);
  const match=search(items,'calentador','climate');assert.equal(match.total,1);assert.equal(match.items[0].area,'Kitchen');assert.equal(match.items[0].icon,'mdi:radiator');assert.equal(match.items[0].iconOverride,'1');
+ // HA can render an integration icon without either an icon state attribute or registry override.
+ assert.equal(items.find(i=>i.entity==='sensor.test_0').icon,'mdi:weather-fog');
+ assert(commands.includes('frontend/get_icons'));
+ const madrid=catalogue([{entity_id:'sensor.madrid_piso_temperature',state:'16.63',attributes:{device_class:'temperature'}}],
+  {entities:[{ei:'sensor.madrid_piso_temperature',ic:'mdi:weather-fog'}]},[],[],
+  {entity_component:{sensor:{temperature:{default:'mdi:thermometer'}}}});
+ assert.equal(madrid[0].icon,'mdi:weather-fog');assert.equal(madrid[0].iconOverride,'1');
+ const inferred=catalogue([{entity_id:'sensor.temperature',state:'16',attributes:{device_class:'temperature'}},
+  {entity_id:'binary_sensor.door',state:'on',attributes:{device_class:'door'}}],[],[],[],
+  {entity_component:{sensor:{temperature:{default:'mdi:thermometer'}},binary_sensor:{door:{default:'mdi:door-closed',state:{on:'mdi:door-open'}}}}});
+ assert.equal(inferred.find(i=>i.entity==='sensor.temperature').icon,'mdi:thermometer');
+ assert.equal(inferred.find(i=>i.entity==='binary_sensor.door').icon,'mdi:door-open');
  const icons=catalogue([{entity_id:'fan.test',attributes:{icon:'mdi:fan'}},{entity_id:'light.test',attributes:{icon:'javascript:bad'}}]);assert.equal(icons.find(i=>i.entity==='fan.test').icon,'mdi:fan');assert.equal(icons.find(i=>i.entity==='fan.test').iconOverride,'0');assert.equal(icons.find(i=>i.entity==='light.test').icon,'');
  assert.equal(search(items,'','sensor').total,12000);assert.equal(search(items,'','sensor',30).items.length,30);
  assert.equal(search(items,'','light').items[0].type,'RGB Light');

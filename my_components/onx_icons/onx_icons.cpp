@@ -15,10 +15,20 @@
 #include <cstring>
 #include <new>
 #include <ctime>
+// NanoSVG's parser alone requires a large contiguous allocation. Keep all SVG
+// working memory in external RAM rather than the constrained internal/DMA heap.
+static void *onx_svg_malloc(size_t size) { return heap_caps_malloc(size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); }
+static void *onx_svg_realloc(void *p, size_t size) { return heap_caps_realloc(p, size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT); }
+#define NSVG_MALLOC onx_svg_malloc
+#define NSVG_REALLOC onx_svg_realloc
+#define NSVG_FREE heap_caps_free
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg.h"
 #define NANOSVGRAST_IMPLEMENTATION
 #include "nanosvgrast.h"
+#undef NSVG_MALLOC
+#undef NSVG_REALLOC
+#undef NSVG_FREE
 
 namespace esphome::onx_icons {
 static constexpr size_t SIZE = 80;
@@ -67,7 +77,7 @@ static bool fetch_svg(const std::string &url, std::string &svg, std::string &err
 static uint8_t *raster_bitmap(std::string svg, std::string &error) {
   svg.push_back('\0');
   auto *parsed = nsvgParse(svg.data(), "px", 96);
-  if (!parsed) { error = "SVG parse failed"; return nullptr; }
+  if (!parsed) { error = "SVG parser PSRAM allocation failed"; return nullptr; }
   uint8_t *pixels = nullptr;
   if (parsed->shapes && std::isfinite(parsed->width) && std::isfinite(parsed->height) &&
       parsed->width > 0 && parsed->height > 0 && parsed->width <= 4096 && parsed->height <= 4096) {
@@ -125,6 +135,14 @@ void IconDownloader::download_task_(void *arg) {
   work.reset();
   vTaskDelete(nullptr);
 }
+std::string IconDownloader::status(const std::string &icon) const {
+  if (!::onx_icon_state::valid_icon(icon)) return "missing_icon_metadata";
+  if (cache_.find(icon) != cache_.end()) return "ready";
+  if (failures_.find(icon) != failures_.end()) return "retry_wait";
+  if (wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return "waiting_for_wifi";
+  if (std::time(nullptr) < 1577836800) return "waiting_for_clock";
+  return busy_ ? "download_busy" : "awaiting_display";
+}
 void IconDownloader::request_(const std::string &icon) {
   if (busy_ || !::onx_icon_state::valid_icon(icon) || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return;
   // Starting before wall-clock synchronization can make certificate validation fail.
@@ -160,10 +178,11 @@ void IconDownloader::loop() {
       cache_.erase(oldest); // Existing widgets retain their shared ownership.
     }
     auto bitmap = std::make_shared<Bitmap>(pixels);
-    bitmap->used = millis(); cache_[icon] = std::move(bitmap); failures_.erase(icon);
+    bitmap->used = millis(); cache_[icon] = std::move(bitmap); failures_.erase(icon); errors_.erase(icon);
     ESP_LOGI(TAG, "Downloaded and rendered %s", icon.c_str());
   } else {
-    if (failures_.size() >= 16) failures_.erase(failures_.begin());
+    if (failures_.size() >= 16) { errors_.erase(failures_.begin()->first); failures_.erase(failures_.begin()); }
+    errors_[icon] = error;
     failures_[icon].fail(millis());
     ESP_LOGW(TAG, "%s unavailable (%s); retaining fallback, retry in %ums",
              icon.c_str(), error.c_str(), static_cast<unsigned>(failures_[icon].delay));

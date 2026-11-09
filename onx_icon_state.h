@@ -47,14 +47,25 @@ inline std::string fallback(const std::string &entity, const std::string &type =
   return "toggle-switch";
 }
 struct Metadata {
-  std::string entity, configured, runtime;
+  std::string entity, configured, runtime, device_class;
   bool registry_override{false};
   void bind(const std::string &id) {
     if (entity != id) { *this = Metadata{}; entity = id; }
   }
   std::string chosen() const {
     if (registry_override && valid_icon(configured)) return configured;
-    return valid_icon(runtime) ? runtime : valid_icon(configured) ? configured : "";
+    if (valid_icon(runtime)) return runtime;
+    if (valid_icon(configured)) return configured;
+    if (entity.rfind("sensor.", 0) == 0) {
+      if (device_class == "temperature") return "mdi:thermometer";
+      if (device_class == "humidity") return "mdi:water-percent";
+      if (device_class == "illuminance") return "mdi:brightness-5";
+      if (device_class == "battery") return "mdi:battery";
+      if (device_class == "power") return "mdi:flash";
+      if (device_class == "energy") return "mdi:lightning-bolt";
+      if (device_class == "pressure" || device_class == "atmospheric_pressure") return "mdi:gauge";
+    }
+    return "";
   }
 };
 inline std::array<Metadata, 10> metadata;

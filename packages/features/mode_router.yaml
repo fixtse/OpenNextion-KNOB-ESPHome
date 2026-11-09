@@ -44,6 +44,25 @@ onx_config_web:
   id: entity_config_web
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "icon_status") {
+      return esphome::json::build_json([&](JsonObject root) {
+        JsonArray slots = root["slots"].to<JsonArray>();
+        for (size_t i = 0; i < 10; ++i) {
+          const auto entity = custom_logic::cached_device_entity_id(i);
+          if (entity.empty()) continue;
+          const auto &meta = onx_icon_state::metadata[i];
+          const auto icon = onx_icon_state::selected_icon(entity);
+          auto slot = slots.add<JsonObject>();
+          slot["slot"] = i + 1;
+          slot["configured"] = meta.entity == entity ? meta.configured : "";
+          slot["runtime"] = meta.entity == entity ? meta.runtime : "";
+          slot["device_class"] = meta.entity == entity ? meta.device_class : "";
+          slot["selected"] = icon;
+          slot["status"] = id(entity_icon_downloader)->status(icon);
+          slot["error"] = id(entity_icon_downloader)->error(icon);
+        }
+      });
+    }
     if (query.op == "icon") {
       if (query.slot < 0 || query.slot >= 10 || query.entity != custom_logic::cached_device_entity_id(query.slot) ||
           (!query.icon.empty() && !onx_icon_state::valid_icon(query.icon)) ||

@@ -62,3 +62,16 @@ preserved. The device downloads MDI icons after its clock has synchronized, retr
 failed downloads with backoff, and tries a second HTTPS source if needed. Built-in
 entity icons remain visible while downloading or when an icon is unavailable. The
 browser connection retry also clears failed icon download delays.
+
+Icon selection also reads Home Assistant's integration icon resources and
+device-class definitions, which can supply the dashboard icon even when no
+explicit `icon` attribute exists. Native sensor device-class updates provide a
+useful default without browser sign-in. Explicit Home Assistant overrides take
+priority. **Download diagnostics** includes per-slot configured, runtime and
+selected MDI names, download status and the last download error; entity names and
+IDs remain excluded. Registry and integration icons sync when the signed-in
+browser catalogue loads or refreshes.
+
+SVG parsing, rasterizer scratch space, and cached pixels all use PSRAM. This avoids
+large parser allocations failing in the device's constrained internal heap even
+when the icon has downloaded successfully.

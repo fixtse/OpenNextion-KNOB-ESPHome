@@ -9,11 +9,17 @@ int main(){
  esphome::image::Image fallback(fallback_pixels,1,1,esphome::image::IMAGE_TYPE_RGB,esphome::image::TRANSPARENCY_ALPHA_CHANNEL);
  lv_obj_t widget;
  Downloader download;
+ assert(download.status("") == "missing_icon_metadata");
+ assert(download.status("mdi:weather-fog") == "awaiting_display");
  stall_once=true;
  download.bind(&widget,"mdi:ceiling-fan",&fallback);
  assert(download.busy()&&widget.source==fallback.get_lv_image_dsc());
  finish_icon_task();download.loop();
  assert(download.cached()==1&&!download.busy());
+ // The parser scratch allocation exceeds the typical available internal block.
+ assert(largest_external_allocation > 32768);
+ assert(external_allocations.size()==1); // Only the cached RGBA bitmap survives.
+ assert(download.status("mdi:ceiling-fan") == "ready");
  download.bind(&widget,"mdi:ceiling-fan",&fallback);
  assert(widget.source!=fallback.get_lv_image_dsc());
  const auto count=requested_icon_urls.size();
@@ -24,6 +30,7 @@ int main(){
  assert(requested_icon_urls.back()==onx_icon_state::backup_url("mdi:radiator"));
  fail_all=true;
  download.bind(&widget,"mdi:music",&fallback);finish_icon_task();download.loop();
+ assert(download.status("mdi:music") == "retry_wait"&&!download.error("mdi:music").empty());
  const auto failures=requested_icon_urls.size();
  download.bind(&widget,"mdi:music",&fallback);assert(!download.busy()&&requested_icon_urls.size()==failures);
  download.retry();download.bind(&widget,"mdi:music",&fallback);assert(download.busy());

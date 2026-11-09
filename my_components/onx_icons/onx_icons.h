@@ -11,7 +11,11 @@ namespace esphome::onx_icons {
 class IconDownloader : public Component {
  public:
   void loop() override;
-  void retry() { failures_.clear(); }
+  void retry() { failures_.clear(); errors_.clear(); }
+  std::string status(const std::string &icon) const;
+  std::string error(const std::string &icon) const {
+    auto found = errors_.find(icon); return found == errors_.end() ? "" : found->second;
+  }
 
   // Stable per-widget ownership keeps LVGL descriptors alive across cache eviction.
   void bind(lv_obj_t *widget, const std::string &icon, image::Image *fallback, bool active = false);
@@ -29,6 +33,7 @@ class IconDownloader : public Component {
   std::map<std::string, std::shared_ptr<Bitmap>> cache_;
   std::map<lv_obj_t *, std::shared_ptr<Bitmap>> bindings_;
   std::map<std::string, ::onx_icon_state::Retry> failures_;
+  std::map<std::string, std::string> errors_;
   Mutex mutex_;
   bool busy_{false}, completed_{false};
   std::string completed_icon_, completed_error_;

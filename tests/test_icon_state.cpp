@@ -23,6 +23,10 @@ int main() {
   meta.runtime = "mdi:fan"; assert(meta.chosen() == "mdi:ceiling-fan");
   meta.registry_override = false; assert(meta.chosen() == "mdi:fan");
   meta.runtime = "None"; assert(meta.chosen() == "mdi:ceiling-fan");
+  meta.bind("sensor.madrid_piso_temperature"); meta.device_class = "temperature";
+  assert(meta.chosen() == "mdi:thermometer");
+  meta.configured = "mdi:weather-fog"; meta.registry_override = true;
+  meta.runtime = "mdi:thermometer"; assert(meta.chosen() == "mdi:weather-fog");
   meta.bind("light.office"); assert(meta.chosen().empty());
   onx_recovery::Retry retry;
   assert(!retry.due("sensor.later", false, 100));

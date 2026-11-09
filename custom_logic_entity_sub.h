@@ -449,10 +449,11 @@ class DeviceSlotStateUpdater {
       return;
     }
     if (custom_logic::cached_device_entity_id(this->slot_) != this->entity_id_) return;
-    if (field == "icon") {
+    if (field == "icon" || field == "device_class") {
       auto &icon = onx_icon_state::metadata[this->slot_];
       icon.bind(this->entity_id_);
-      icon.runtime = onx_icon_state::valid_icon(value) ? value : "";
+      if (field == "icon") icon.runtime = onx_icon_state::valid_icon(value) ? value : "";
+      else icon.device_class = value;
       return;
     }
     const size_t ui_slot = this->ui_slot_();
@@ -1040,6 +1041,7 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
 
   subscribe_field(api_server, slot, entity_id, "state", "");
   subscribe_field(api_server, slot, entity_id, "icon", "icon");
+  subscribe_field(api_server, slot, entity_id, "device_class", "device_class");
 
   if (has_prefix(entity_id, "sensor.") || has_prefix(entity_id, "binary_sensor.")) {
     subscribe_field(api_server, slot, entity_id, "unit_of_measurement", "unit_of_measurement");
