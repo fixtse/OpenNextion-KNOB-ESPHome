@@ -4,6 +4,13 @@
 using namespace onx_control;
 int main() {
   assert(options("['off', 'heat', 'cool']") == (std::vector<std::string>{"off", "heat", "cool"}));
+  assert(options("[<HVACMode.OFF: 'off'>, <HVACMode.HEAT: 'heat'>]") ==
+         (std::vector<std::string>{"off", "heat"}));
+  assert(options("[<HVACMode.OFF: 'off'>, \"heat\", 'cool']") ==
+         (std::vector<std::string>{"off", "heat", "cool"}));
+  for (const auto &raw : {"[<HVACMode.HEAT: 'heat']", "[<HVACMode.HEAT 'heat'>]",
+                          "[<.HEAT: 'heat'>]", "[<HVACMode.: 'heat'>]", "[<HVACMode.HEAT: heat>]"})
+    assert(options(raw).empty());
   assert(options("[\"Eco, quiet\", \"Owner's preset\"]")[1] == "Owner's preset");
   assert(options("['Owner\\'s preset', 'auto']")[0] == "Owner's preset");
   for (const auto &raw : {"None", "unknown", "[heat]", "['heat'", "['heat'] garbage"}) assert(options(raw).empty());

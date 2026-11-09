@@ -23,6 +23,8 @@ class EntityControls(unittest.TestCase):
 uint32_t clock_ms = 100;
 uint32_t millis() { return clock_ms; }
 namespace custom_logic { constexpr size_t CONFIGURABLE_DEVICE_SLOT_COUNT = 10; }
+#define ESP_LOGW(...) ((void)0)
+#define ESP_LOGI(...) ((void)0)
 #define USE_API_HOMEASSISTANT_SERVICES
 namespace esphome {
 // Mirror ESPHome 2026.10's explicit construction so implicit assignments fail here too.
@@ -74,6 +76,27 @@ int main() {
   clock_ms += 5000; tick(&api, d.entity_id, true);
   assert(effective(d, "temperature") == "20.5");
   assert(text(d.entity_id).find("No confirmation") != std::string::npos);
+  // A real HA climate list can contain StrEnum repr wrappers. An off thermostat
+  // must queue and transmit the mode even with no temperature capability/target.
+  for (const auto &modes : {"[<HVACMode.OFF: 'off'>, <HVACMode.HEAT: 'heat'>]",
+                            "['off', 'heat']", "[\"off\", \"heat\"]"}) {
+    cancel_controls(); d.state = "off"; d.modes = modes; d.features = 0; d.target = "None";
+    press(d.entity_id);
+    assert(control_commands.size() == 1);
+    assert(effective(d, "state") == "heat");
+    const auto before = api.sent.size(); clock_ms += 100; tick(&api, d.entity_id, true);
+    assert(api.sent.size() == before + 1);
+    const auto &call = api.sent.back();
+    assert(call.service == "climate.set_hvac_mode" && call.data.size() == 2);
+    assert(call.data[1].key == "hvac_mode" && call.data[1].value == "heat");
+    // Cached off feedback must not replace the requested heat display.
+    for (auto &c : control_commands) c.feedback("state", "off");
+    assert(effective(d, "state") == "heat");
+    d.state = "heat";
+    for (auto &c : control_commands) c.feedback("state", d.state);
+    assert(!control_commands[0].active);
+    press(d.entity_id); assert(effective(d, "state") == "off");
+  }
   cancel_controls(); d.features = 2; d.target = "None"; d.low = "19"; d.high = "23";
   rotate(d.entity_id, 1);
   assert(effective(d, "target_temp_low") == "19.500000");

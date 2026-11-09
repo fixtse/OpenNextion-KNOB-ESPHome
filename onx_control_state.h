@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <string>
@@ -9,7 +10,8 @@
 
 namespace onx_control {
 // HA Native API attributes are Python repr strings, not necessarily JSON.
-// Parse quoted lists without splitting options containing commas or apostrophes.
+// Lists can contain StrEnum repr values, e.g. <HVACMode.HEAT: 'heat'>.
+// Parse quoted values without splitting options containing commas or apostrophes.
 inline std::vector<std::string> options(const std::string &raw) {
   std::vector<std::string> result;
   size_t i = raw.find_first_not_of(" \r\n\t");
@@ -18,6 +20,23 @@ inline std::vector<std::string> options(const std::string &raw) {
     i = raw.find_first_not_of(" \r\n\t", i);
     if (i == std::string::npos) return {};
     if (raw[i] == ']') return raw.find_first_not_of(" \r\n\t", i + 1) == std::string::npos ? result : std::vector<std::string>{};
+    const bool enum_value = raw[i] == '<';
+    if (enum_value) {
+      // Accept an enum identifier followed by its quoted value, never arbitrary
+      // unquoted expressions. HA forwards str(attribute), which preserves repr
+      // wrappers for enums inside lists even though the state itself is "off".
+      ++i;
+      bool segment_start = true, qualified = false;
+      for (; i < raw.size() && raw[i] != ':'; ++i) {
+        const unsigned char c = raw[i];
+        if (c == '.' && !segment_start) { qualified = true; segment_start = true; }
+        else if (c == '_' || std::isalpha(c) || (!segment_start && std::isdigit(c))) segment_start = false;
+        else return {};
+      }
+      if (i == raw.size() || !qualified || segment_start) return {};
+      i = raw.find_first_not_of(" \r\n\t", i + 1);
+      if (i == std::string::npos) return {};
+    }
     const char quote = raw[i++];
     if (quote != '\'' && quote != '"') return {};
     std::string value;
@@ -38,6 +57,11 @@ inline std::vector<std::string> options(const std::string &raw) {
     result.push_back(value);
     i = raw.find_first_not_of(" \r\n\t", i);
     if (i == std::string::npos) return {};
+    if (enum_value) {
+      if (raw[i] != '>') return {};
+      i = raw.find_first_not_of(" \r\n\t", i + 1);
+      if (i == std::string::npos) return {};
+    }
     if (raw[i] == ',') { ++i; continue; }
     if (raw[i] != ']') return {};
   }

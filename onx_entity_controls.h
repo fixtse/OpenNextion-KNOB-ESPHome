@@ -144,7 +144,15 @@ inline void press(const std::string &id) {
       request(*d, action(*d, key), key, key == "state" ? "option" : key == "is_volume_muted" ? "is_volume_muted" : key, control_preview);
     control_preview.clear();
   } else if (has_prefix(id, "climate.")) {
-    request(*d, "climate.set_hvac_mode", "state", "hvac_mode", next_climate_mode(id));
+    const auto mode = next_climate_mode(id);
+    if (mode.empty()) {
+      ESP_LOGW("onx_controls", "Cannot cycle HVAC mode: entity=%s state=%s hvac_modes=%s",
+               id.c_str(), d->state.c_str(), d->modes.c_str());
+      return;
+    }
+    ESP_LOGI("onx_controls", "HVAC mode requested: entity=%s from=%s to=%s",
+             id.c_str(), effective(*d, "state").c_str(), mode.c_str());
+    request(*d, "climate.set_hvac_mode", "state", "hvac_mode", mode);
   } else if (has_prefix(id, "fan.")) {
     const bool on = effective(*d, "state") == "on";
     // Fans predating TURN_ON/TURN_OFF flags still support these standard actions.
@@ -173,6 +181,7 @@ inline void tick(esphome::api::APIServer *api, const std::string &selected, bool
       item.key = esphome::StringRef(value.parameter); item.value = esphome::StringRef(value.requested); call.data.push_back(item);
     }
     api->send_homeassistant_action(call);
+    ESP_LOGI("onx_controls", "HA action sent: service=%s entity=%s", command.service.c_str(), selected.c_str());
     command.mark_sent(now);
     // Stateless actions have no predictable target state to acknowledge.
     if (has_prefix(selected, "scene.") || has_prefix(selected, "button.") || has_prefix(selected, "input_button."))
