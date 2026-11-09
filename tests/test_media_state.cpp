@@ -12,6 +12,20 @@ int main() {
   assert(can_skip("playing",32,false)&&!can_skip("playing",32,true));
   assert(can_skip("paused",16,true)&&!can_skip("idle",48,false));
 
+  TransportFeedback feedback;
+  assert(feedback.view("media_player.room","paused",100)==Overlay::PAUSE);
+  feedback.show("media_player.room",false,100);
+  assert(feedback.view("media_player.room","paused",1099)==Overlay::NEXT);
+  assert(feedback.view("media_player.room","paused",1100)==Overlay::PAUSE);
+  feedback.show("media_player.room",true,2000);
+  assert(feedback.view("media_player.room","playing",2000)==Overlay::PREVIOUS);
+  assert(feedback.view("media_player.room","playing",3000)==Overlay::NONE);
+  feedback.show("media_player.room",false,4000);feedback.observe("media_player.other",true);
+  assert(feedback.view("media_player.room","playing",4001)==Overlay::NONE);
+  feedback.show("media_player.room",false,0xffffff00u);
+  assert(feedback.remaining_ms("media_player.room",0x100u)==488);
+  feedback.observe("media_player.room",false);assert(feedback.view("media_player.room","playing",0x101u)==Overlay::NONE);
+
   const std::string origin="http://ha.local:8123";
   assert(artwork_url(origin,"/api/media_player_proxy/player?token=example") == origin+"/api/media_player_proxy/player?token=example");
   assert(artwork_url(origin,"https://art.example/album.png")=="https://art.example/album.png");

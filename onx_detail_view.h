@@ -58,6 +58,7 @@ inline View build(const std::string &entity, const std::string &name) {
     else if (mode == "dry") { v.symbol = "💧"; mode_label = "Dry"; }
     else if (mode == "fan_only") { v.symbol = "🌀"; mode_label = "Fan"; }
     else { v.symbol = "⏸"; mode_label = mode == "off" ? "Off" : mode; v.accent = 0xAAAAAA; }
+    v.icon.clear(); v.badge.x = 0; v.badge.size = 24; v.badge.width = 196; v.badge.y = 30;
     v.badge.text = v.symbol + " " + mode_label;
     const auto key = selected_setting(*d);
     const auto unit = d->unit.empty() ? "°" : d->unit;
@@ -66,7 +67,12 @@ inline View build(const std::string &entity, const std::string &name) {
     if (key == "range") v.value.text = compact(onx_controls::effective(*d,"target_temp_low")) + "–" + compact(onx_controls::effective(*d,"target_temp_high")) + unit;
     v.context.text = "Now " + compact(d->current) + unit;
     if (key != "temperature" && key != "range") v.context.text = label(key) + " · " + v.context.text;
-    if (v.hint.text.empty()) v.hint.text = "Press: mode\nHold + turn: setting";
+    if (v.hint.text.empty()) {
+      const bool option = !onx_controls::choices(*d, key).empty();
+      const bool temperature = key == "temperature" || key == "range" || key == "target_temp_low" || key == "target_temp_high" || key == "state";
+      v.hint.text = option ? "Press: next " + label(key) : temperature ? "Press: HVAC mode" : "Turn to adjust " + label(key);
+      v.hint.text += "\nHold + turn: setting";
+    }
   } else if (has_prefix(entity, "fan.")) {
     const auto state = onx_controls::effective(*d,"state");
     v.symbol = state == "off" ? "⏸" : "🌀";
@@ -140,7 +146,11 @@ inline View carousel(const std::string &entity, const std::string &name) {
   } else if (domain == "timer") {
     v.value.text = label(d->state); v.context.text = d->timer_remaining;
   }
-  if (!v.context.text.empty()) { v.context.y = 124; v.context.size = 14; v.name.y = 151; }
+  if (!v.context.text.empty()) {
+    v.context.y = domain == "climate" ? 30 : 124;
+    v.context.size = domain == "climate" ? 24 : 14;
+    v.name.y = domain == "climate" ? 145 : 151;
+  }
   if (v.value.text.size() > 14) v.value.size = 24;
   return v;
 }

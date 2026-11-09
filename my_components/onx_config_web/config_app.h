@@ -7,7 +7,7 @@ const $=id=>document.getElementById(id),ha=new OnxHA.Client(),DRAFT='onx.config.
 const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['fan','Fan'],['number','Number'],['input_number','Input Number'],['select','Select'],['input_select','Input Select'],['scene','Scene'],['button','Button'],['input_button','Input Button'],['climate','Climate'],['media_player','Media players'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
 const copy=value=>JSON.parse(JSON.stringify(value));
 const empty=()=>({entity:'',name:'',area:'',action:'',actionName:'',typeOption:'',icon:'',iconOverride:'0'});
-let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[];
+let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[],overlayTimer=0,lastPreviewAt=0;
 function element(tag,text,className){const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e}
 function message(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error)}
 function safeRead(key){try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}}
@@ -38,6 +38,7 @@ const svgNS='http://www.w3.org/2000/svg',measure=document.createElement('canvas'
 function svgNode(tag,attrs={}){const node=document.createElementNS(svgNS,tag);for(const [key,value] of Object.entries(attrs))node.setAttribute(key,String(value));return node}
 function fitted(text,size,width){measure.font=size+'px Arial';let out=String(text);if(measure.measureText(out).width<=width)return out;while(out&&measure.measureText(out+'…').width>width)out=out.slice(0,-1);return out+'…'}
 function drawPreview(slot){
+ clearTimeout(overlayTimer);
  const svg=$('device-preview');let view=liveViews.find(item=>item.entity===slot.entity);
  if(view&&$('preview-screen').value==='main')view={...view,...view.carousel};
  svg.replaceChildren(svgNode('circle',{cx:120,cy:120,r:120,fill:'#000'}));
@@ -58,11 +59,16 @@ function drawPreview(slot){
   const icon=svgNode('image',{href:'https://api.iconify.design/mdi/'+view.icon.slice(4)+'.svg?color=%23ffffff',x:120+(view.icon_x||0)-size/2,y:view.icon_y,width:size,height:size});svg.append(icon);
  }
  if(view.layout==='media'&&view.artwork){try{const url=new URL(view.artwork);if(['http:','https:'].includes(url.protocol))svg.append(svgNode('image',{href:url.href,x:70,y:18,width:100,height:100,preserveAspectRatio:'xMidYMid slice'}))}catch{}}
+ if(view.layout==='media'&&view.overlay&&view.overlay_path){
+  const paint=(kind,path)=>{const group=svgNode('g',{'data-transport-overlay':kind});group.append(svgNode('circle',{cx:120,cy:68,r:24,fill:'#000',opacity:.7}),svgNode('path',{d:path,transform:'translate(104 52)',fill:'#fff'}));svg.append(group);return group};
+  const group=paint(view.overlay,view.overlay_path);
+  if(view.overlay!=='pause'&&view.overlay_ms>0)overlayTimer=setTimeout(()=>{if(!group.isConnected)return;group.remove();if(view.paused&&view.pause_path)paint('pause',view.pause_path)},view.overlay_ms);
+ }
  if(view.layout==='carousel'&&view.pagination)text(view.pagination,212,12,120,0xd2d2d2);
  for(const [i,line] of (view.lines||[]).entries()){const name=i===4;text(name?(slot.name||line.text):line.text,line.y,line.size,line.width,line.color,line.x||0,name&&view.layout!=='media')}
  $('preview-status').textContent=view.available?'Live device view':'Device view · waiting for entity data';
 }
-async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden)return;previewBusy=true;try{const data=await rpc({op:'preview',entity:slots[active].entity});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
+async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden)return;previewBusy=true;lastPreviewAt=Date.now();try{const data=await rpc({op:'preview',entity:slots[active].entity});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
 function preview(){const s=slots[active],d=s.entity.split('.')[0];drawPreview(s);
  const rotates={light:'Adjust the selected light control',cover:'Browse; hold and rotate to adjust position',climate:'Adjust the selected setting; hold and turn to choose a setting',fan:'Adjust speed; hold and turn for presets, oscillation or direction',number:'Adjust value within minimum, maximum and step',input_number:'Adjust value within minimum, maximum and step',select:'Choose an option',input_select:'Choose an option',media_player:'Adjust volume; press + turn for next/previous track'};
  $('rotate-hint').textContent=s.entity?(rotates[d]||'No adjustment; hold to return'):'Browse your devices';
@@ -160,7 +166,7 @@ $('theme').onchange=()=>{const theme=$('theme').value;if(theme==='system')delete
  const draft=safeRead(DRAFT);if(draft){try{recovery=validateDocument(draft);$('draft-notice').hidden=false}catch{message('An older recovery draft could not be read. Your saved configuration is unchanged.',true)}}
  await ha.finishLogin();const auth=ha.read('onx.ha.auth');if(auth)$('ha-url').value=auth.base;browserStatus();render();search();if(auth)await refreshCatalogue();else message('Knob settings loaded. Sign in to Home Assistant to browse entities.');await refreshPreview();
  }catch(error){if(!initialized)deviceStatus(false);message(error.message,true);render();browserStatus()}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshStatus();refreshPreview()}});setInterval(refreshPreview,2000);setInterval(()=>{if(!document.hidden)refreshStatus()},30000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshStatus();refreshPreview()}});setInterval(()=>{if(slots[active].entity.startsWith('media_player.')||Date.now()-lastPreviewAt>=2000)refreshPreview()},500);setInterval(()=>{if(!document.hidden)refreshStatus()},30000);
 })();
 })();
 )ONXJS";

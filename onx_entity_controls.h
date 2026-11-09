@@ -148,6 +148,11 @@ inline void press(const std::string &id) {
       request(*d, action(*d, key), key, key == "state" ? "option" : key == "is_volume_muted" ? "is_volume_muted" : key, control_preview);
     control_preview.clear();
   } else if (has_prefix(id, "climate.")) {
+    if (key != "temperature" && key != "range" && key != "target_temp_low" && key != "target_temp_high" && key != "state") {
+      const auto next = next_option(choices(*d, key), effective(*d, key));
+      if (!next.empty()) request(*d, action(*d, key), key, key, next);
+      return;
+    }
     const auto mode = next_climate_mode(id);
     if (mode.empty()) {
       ESP_LOGW("onx_controls", "Cannot cycle HVAC mode: entity=%s state=%s hvac_modes=%s",

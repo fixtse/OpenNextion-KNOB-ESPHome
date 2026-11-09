@@ -263,6 +263,10 @@ script:
               lv_obj_set_y(w.title, view.name.y); lv_obj_set_width(w.title, 184); lv_obj_set_height(w.title, 40);
               lv_obj_set_style_text_font(w.title, id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
               lv_label_set_text(w.context, view.context.text.c_str());
+              lv_obj_set_y(w.context, view.context.y);
+              lv_obj_set_style_text_font(w.context, view.context.size == 24 ? id(fonts_MiSans_Medium_24)->get_lv_font() : id(fonts_MiSans_Medium_14)->get_lv_font(), 0);
+              lv_obj_set_height(w.context, view.context.size == 24 ? 30 : 20);
+              if (view.icon.empty()) set_hidden(w.icon_switch, true);
               set_hidden(w.context, view.context.text.empty());
               lv_label_set_long_mode(w.title, LV_LABEL_LONG_WRAP);
             }
@@ -649,6 +653,8 @@ script:
             line(id(normal_detail_context), view.context);
             line(id(normal_detail_hint), view.hint);
             line(id(normal_automation_detail_title), view.name);
+            lv_obj_set_height(id(normal_detail_badge), view.badge.size + 6);
+            if (view.icon.empty()) lv_obj_add_flag(id(normal_automation_detail_icon), LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_height(id(normal_automation_detail_title), 40);
             lv_label_set_long_mode(id(normal_automation_detail_title), LV_LABEL_LONG_WRAP);
             lv_obj_set_x(id(normal_automation_detail_icon), view.icon_x);
@@ -2357,6 +2363,29 @@ script:
           if (name == "toggle-switch") fallback = id(fallback_toggle_switch_img);
           id(entity_icon_downloader)->bind(widget, onx_icon_state::selected_icon(entity), fallback, active);
 
+  - id: refresh_normal_media_overlay
+    then:
+      - lambda: |-
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          const auto *detail = custom_logic_entity_sub::entity_detail(entity);
+          const bool active = id(normal_device_detail_active) &&
+              id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
+              entity.rfind("media_player.", 0) == 0 && detail != nullptr && detail->available &&
+              onx_media::has_playback(detail->state) && id(normal_ha_api_connected) &&
+              id(normal_device_detail_online) && !id(screen_off_state) &&
+              id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() &&
+              !lv_obj_has_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
+          onx_media::transport.observe(entity, active);
+          const auto overlay = active ? onx_media::transport.view(entity, detail->state, millis()) : onx_media::Overlay::NONE;
+          if (overlay == onx_media::Overlay::NONE) {
+            lv_obj_add_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN); return;
+          }
+          auto *icon = overlay == onx_media::Overlay::PAUSE ? id(media_overlay_pause_img) :
+                       overlay == onx_media::Overlay::PREVIOUS ? id(media_overlay_previous_img) : id(media_overlay_next_img);
+          lv_img_set_src(id(normal_media_transport_icon), icon->get_lv_image_dsc());
+          lv_obj_clear_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(id(normal_media_transport_overlay));
+
   - id: refresh_normal_media_progress
     then:
       - lambda: |-
@@ -2401,6 +2430,7 @@ script:
             lv_obj_clear_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
           } else {
+            lv_obj_add_flag(id(normal_media_transport_overlay), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
           }
@@ -2456,3 +2486,6 @@ script:
                       service: media_player.media_next_track
                       data:
                         entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+            - lambda: |-
+                onx_media::transport.show(id(ui_presenter)->get_normal_device_entity_id(detail_index), previous, millis());
+            - script.execute: refresh_normal_media_overlay

@@ -129,3 +129,11 @@ Press and turn clockwise for the next track, counterclockwise for the previous
 track. Releasing after that gesture sends no additional action. Long press still
 returns to the main screen. Playback/track actions respect Home Assistant's
 advertised capabilities.
+
+Paused playback displays a pause badge over the cover. Sending a next/previous
+track action shows its badge for one second, then restores the pause badge if
+still paused. The badge clears on leaving the media view or losing its connection.
+
+Climate views use a larger centered HVAC emoji/mode heading without a separate
+entity icon. With preset, fan or swing mode selected, pressing cycles that selected
+feature; temperature controls retain the HVAC-mode press action.

@@ -1759,6 +1759,25 @@ lvgl:
                   y: 40
                   align: top_mid
                   src: normal_device_automation_detail_img
+              - obj:
+                  id: normal_media_transport_overlay
+                  align: top_mid
+                  y: 44
+                  width: 48
+                  height: 48
+                  radius: 24
+                  bg_color: 0x000000
+                  bg_opa: 70%
+                  border_width: 0
+                  pad_all: 0
+                  clickable: false
+                  scrollable: false
+                  hidden: true
+                  widgets:
+                    - image:
+                        id: normal_media_transport_icon
+                        align: center
+                        src: media_overlay_pause_img
               - label:
                   id: normal_automation_detail_action
                   x: 0

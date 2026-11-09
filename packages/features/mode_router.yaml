@@ -75,6 +75,12 @@ onx_config_web:
                 id(normal_ha_api_connected) && detail->available);
             slot["progress"] = progress.visible ? progress.permille : -1;
             slot["playing"] = detail->state == "playing";
+            slot["paused"] = detail->state == "paused";
+            const auto overlay = onx_media::transport.view(entity, detail->state, millis());
+            slot["overlay"] = onx_media::overlay_name(overlay);
+            slot["overlay_path"] = onx_media::overlay_path(overlay);
+            slot["pause_path"] = onx_media::overlay_path(onx_media::Overlay::PAUSE);
+            slot["overlay_ms"] = onx_media::transport.remaining_ms(entity, millis());
             slot["ring_color"] = onx_display_settings::current.media_color;
             slot["artwork"] = onx_media::has_playback(detail->state) ? onx_media::artwork_url(id(ha_host).state, detail->picture) : "";
           }

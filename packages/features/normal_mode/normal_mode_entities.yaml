@@ -1354,6 +1354,25 @@ image:
     type: RGB565
     transparency: alpha_channel
 
+  - platform: file
+    file: "../../../assets/media_controls/pause.svg"
+    id: media_overlay_pause_img
+    resize: 32x32
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/media_controls/next.svg"
+    id: media_overlay_next_img
+    resize: 32x32
+    type: RGB565
+    transparency: alpha_channel
+  - platform: file
+    file: "../../../assets/media_controls/previous.svg"
+    id: media_overlay_previous_img
+    resize: 32x32
+    type: RGB565
+    transparency: alpha_channel
+
   - platform: online_image
     id: media_cover_image
     url: http://homeassistant.local:8123/

@@ -77,7 +77,7 @@ int main() {
     climate.features=1;climate.state="heat";climate.target="21.5";climate.current="23.0";
     control_entity="climate.heater";control_setting="temperature";
     view=onx_detail_view::build(climate.entity_id,"Calentador");
-    assert(view.badge.text=="🔥 Heat"&&view.value.text=="21.5°"&&view.context.text=="Now 23°");
+    assert(view.badge.text=="🔥 Heat"&&view.badge.size==24&&view.badge.x==0&&view.icon.empty()&&view.value.text=="21.5°"&&view.context.text=="Now 23°");
     climate.state="cool";view=onx_detail_view::build(climate.entity_id,"Calentador");assert(view.badge.text=="❄ Cool");
     // Rendering a different slot must not change the setting being adjusted on the device.
     onx_detail_view::build(sensor.entity_id,"Temperature");assert(control_setting=="temperature");
@@ -154,6 +154,14 @@ int main() {
   cancel_controls(); select_control_entity(d.entity_id); control_setting = "target_temp_low";
   rotate(d.entity_id, 1); clock_ms += 100; tick(&api, d.entity_id, true);
   control_commands[0].feedback("target_temp_low", "19.5"); assert(!control_commands[0].active);
+  d.features=16|8|32;d.presets="['Eco', 'Comfort']";d.preset="Eco";
+  d.fan_modes="['low', 'high']";d.fan_mode="low";d.swing_modes="['off', 'both']";d.swing_mode="off";
+  for(const auto &key : {std::string("preset_mode"),std::string("fan_mode"),std::string("swing_mode")}) {
+    cancel_controls();select_control_entity(d.entity_id);control_setting=key;
+    press(d.entity_id);clock_ms+=100;tick(&api,d.entity_id,true);
+    assert(api.sent.back().service.value=="climate.set_"+key);
+    assert(api.sent.back().data[1].key.value==key);
+  }
   cancel_controls(); d = EntityDetailState{}; d.entity_id = "fan.test";
   d.available = d.received = true; d.state = "on"; d.percentage = "33";
   d.features = 1; d.step = 100.0f / 3;

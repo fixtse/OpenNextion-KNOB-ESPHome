@@ -83,6 +83,37 @@ inline bool has_playback(const std::string &state) {
 inline bool can_skip(const std::string &state, uint32_t features, bool previous) {
   return has_playback(state) && (features & (previous ? 16U : 32U));
 }
+enum class Overlay { NONE, PAUSE, NEXT, PREVIOUS };
+inline const char *overlay_name(Overlay overlay) {
+  return overlay == Overlay::PAUSE ? "pause" : overlay == Overlay::NEXT ? "next" : overlay == Overlay::PREVIOUS ? "previous" : "";
+}
+inline const char *overlay_path(Overlay overlay) {
+  return overlay == Overlay::PAUSE ? "M8 6h6v20H8zM18 6h6v20h-6z" :
+         overlay == Overlay::NEXT ? "M7 6v20l14-10zM23 6h3v20h-3z" :
+         overlay == Overlay::PREVIOUS ? "M25 6v20L11 16zM6 6h3v20H6z" : "";
+}
+struct TransportFeedback {
+  std::string entity;
+  uint32_t sent_ms{0};
+  Overlay action{Overlay::NONE};
+  void clear() { entity.clear(); action = Overlay::NONE; }
+  void observe(const std::string &selected, bool active) {
+    if (!active || entity != selected) clear();
+  }
+  void show(const std::string &selected, bool previous, uint32_t now) {
+    entity = selected; sent_ms = now; action = previous ? Overlay::PREVIOUS : Overlay::NEXT;
+  }
+  uint32_t remaining_ms(const std::string &selected, uint32_t now) const {
+    const uint32_t elapsed = now - sent_ms;
+    return entity == selected && action != Overlay::NONE && elapsed < 1000 ? 1000 - elapsed : 0;
+  }
+  Overlay view(const std::string &selected, const std::string &state, uint32_t now) const {
+    if (!has_playback(state)) return Overlay::NONE;
+    if (remaining_ms(selected, now)) return action;
+    return state == "paused" ? Overlay::PAUSE : Overlay::NONE;
+  }
+};
+inline TransportFeedback transport;
 inline std::string requested_url, ready_url;
 inline uint32_t requested_ms{0};
 inline bool downloading{false};
