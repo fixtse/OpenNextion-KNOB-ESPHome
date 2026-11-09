@@ -18,32 +18,52 @@ light:
     flash_transition_length: 0s
     internal: true
 
-# Font paths are relative to the main ESPHome config directory.
+# Font paths are relative to this package. Include Latin accents explicitly;
+# ESPHome's default GF_Latin_Kernel omits characters such as the é in Beyoncé.
+# Only text-sized fonts get the extended set; large clock fonts remain compact.
 font:
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_12
     size: 12
     bpp: 8
+    glyphsets: &text_glyphsets
+      - GF_Latin_Kernel
+      - GF_Latin_Core
+    extras: &text_emoji
+      - file: "../../fonts/NotoEmoji.ttf"
+        # Single-codepoint monochrome emoji; keep the subset bounded for flash.
+        glyphs:
+          - "❤☀☁☂☕❄⚡✅❌⭐🌙🌞🌧🌡🌈🎵🎶🎧🎤🎸🎹🎷🎺🎻🥁📻💿📀🔊🔇🔔🔥💡🏠😀😊😂😍😎😢😭👍👏💙💚💛💜🎉"
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_14
     size: 14
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_16
     size: 16
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_18
     size: 18
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_22
     size: 22
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_24
     size: 24
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_60
     size: 60
@@ -56,26 +76,38 @@ font:
     id: fonts_MiSans_Medium_14
     size: 14
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_15
     size: 15
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_12
     size: 12
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_16
     size: 16
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_18
     size: 18
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_20
     size: 20
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_64
     size: 64
@@ -84,10 +116,14 @@ font:
     id: fonts_MiSans_Medium_24
     size: 24
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   - file: "../../fonts/MiSans-Medium.ttf"
     id: fonts_MiSans_Medium_32
     size: 32
     bpp: 8
+    glyphsets: *text_glyphsets
+    extras: *text_emoji
   
 
 display:

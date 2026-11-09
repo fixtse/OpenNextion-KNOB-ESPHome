@@ -2348,8 +2348,8 @@ script:
           if (path != std::string::npos) origin.resize(path);
           lv_obj_set_y(id(normal_automation_detail_icon), media ? 18 : 40);
           if (media) {
-            lv_label_set_text(id(normal_media_title), (detail->media_title.empty() ? detail->state : detail->media_title).c_str());
-            lv_label_set_text(id(normal_media_artist), detail->media_artist.c_str());
+            lv_label_set_text(id(normal_media_title), onx_media::display_text(detail->media_title.empty() ? detail->state : detail->media_title).c_str());
+            lv_label_set_text(id(normal_media_artist), onx_media::display_text(detail->media_artist).c_str());
             lv_obj_clear_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(normal_media_artist), LV_OBJ_FLAG_HIDDEN);
           } else {

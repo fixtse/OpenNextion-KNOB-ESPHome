@@ -4,6 +4,16 @@
 #include <algorithm>
 #include <cmath>
 namespace onx_media {
+// Bitmap label fonts render the selected emoji as monochrome glyphs. Their
+// optional text/emoji presentation selectors have no visible glyph of their own.
+inline std::string display_text(std::string value) {
+  for (const char *selector : {"\xEF\xB8\x8E", "\xEF\xB8\x8F"}) {
+    size_t at = 0;
+    while ((at = value.find(selector, at)) != std::string::npos) value.erase(at, 3);
+  }
+  return value;
+}
+
 struct ProgressView {
   bool visible{false};
   float seconds{0}, duration{0};
