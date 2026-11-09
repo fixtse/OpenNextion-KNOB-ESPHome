@@ -53,6 +53,7 @@ jobs:
       - name: Test browser-only Home Assistant discovery and authentication
         run: node tests/test_browser_catalogue.cjs
       - name: Test command feedback, option parsing, numeric limits and media state
+        if: ${{ always() }}
         run: |
           c++ -std=c++17 tests/test_control_state.cpp -o /tmp/test_control_state
           /tmp/test_control_state
@@ -66,6 +67,7 @@ jobs:
           c++ -std=c++17 tests/test_icon_raster.cpp -o /tmp/test_icon_raster
           /tmp/test_icon_raster
       - name: Test registry thread handoff and bounded preference memory
+        if: ${{ always() }}
         run: |
           c++ -std=c++17 -pthread tests/test_registry_queue.cpp -o /tmp/test_registry_queue
           /tmp/test_registry_queue
@@ -74,6 +76,7 @@ jobs:
           c++ -std=c++20 -pthread -Itests/http_stubs tests/test_config_http.cpp my_components/onx_config_web/onx_config_web.cpp -o /tmp/test_config_http
           /tmp/test_config_http
       - name: Test web picker saves, actions and mobile layout
+        if: ${{ always() }}
         run: bash scripts/test_config_web.sh
       - name: Resume validation thread
         if: ${{ always() }}
