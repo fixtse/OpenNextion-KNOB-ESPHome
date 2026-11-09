@@ -1,5 +1,7 @@
 #pragma once
 #include <algorithm>
+#include <atomic>
+#include "onx_registry_queue.h"
 #include <array>
 #include <cctype>
 #include <cstring>
@@ -17,6 +19,7 @@
 
 #ifdef USE_ESP32
 #include "esp_err.h"
+#include "esp_system.h"
 #include "esp_heap_caps.h"
 #include "esp_websocket_client.h"
 #include "nvs.h"
@@ -86,6 +89,7 @@ static constexpr size_t HA_WS_RX_RESERVE_SIZE = HA_WS_CLIENT_BUFFER_SIZE * 2;
 static constexpr size_t MAX_HA_WS_TEXT_MESSAGE_LENGTH = 2 * 1024 * 1024;
 static constexpr int HA_WS_NETWORK_TIMEOUT_MS = 30000;
 using PsramString = std::basic_string<char, std::char_traits<char>, esphome::RAMAllocator<char>>;
+using DeviceConfigOptionArray = std::array<std::string, 6>;
 using HaEntityOptionArray = std::array<std::string, MAX_HA_ENTITY_OPTION_COUNT>;
 template<typename T> struct RamAllocatedDeleter {
   void operator()(T *ptr) const {
@@ -315,8 +319,8 @@ static HaTokenStatus cached_ha_token_status = HaTokenStatus::NOT_CONFIGURED;
 static RamAllocatedPtr<StoredHaEntities> cached_ha_entities_storage;
 static StoredHaAreas cached_ha_areas{};
 static std::string cached_ha_auth_header;
-static RamAllocatedPtr<HaEntityOptionArray> device1_config_option_strings_storage;
-static RamAllocatedPtr<HaEntityOptionArray> staged_device1_config_option_strings_storage;
+static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> device_config_options;
+static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> staged_device_config_options;
 static RamAllocatedPtr<HaEntityOptionArray> standby_weather_config_option_strings_storage;
 static RamAllocatedPtr<HaEntityOptionArray> staged_standby_weather_config_option_strings_storage;
 static std::string cached_provisioning_ap_ssid;
@@ -468,6 +472,8 @@ static esphome::select::Select *ha_ws_device10_entity_select = nullptr;
 static esphome::select::Select *ha_ws_standby_weather_entity_select = nullptr;
 static esphome::api::APIServer *ha_ws_entity_api_server = nullptr;
 static PsramString ha_ws_rx_text_buffer;
+static onx_registry::PayloadQueue<PsramString, esphome::Mutex> ha_ws_payloads;
+static std::atomic<bool> ha_ws_rx_failed{false};
 #ifdef USE_PSRAM
 static esphome::json::SpiRamAllocator ha_json_allocator;
 #endif
@@ -476,14 +482,12 @@ inline void log_ha_registry_memory(const char *stage) {
   const char *label = stage != nullptr ? stage : "unknown";
   ESP_LOGI(TAG,
            "HA registry memory [%s]: internal_free=%u internal_largest=%u psram_free=%u psram_largest=%u "
-           "rx_size=%u rx_capacity=%u task=%s stack_high_water_words=%u",
+           "task=%s stack_high_water_words=%u",
            label,
            static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
            static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
            static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
            static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)),
-           static_cast<unsigned>(ha_ws_rx_text_buffer.size()),
-           static_cast<unsigned>(ha_ws_rx_text_buffer.capacity()),
            pcTaskGetName(nullptr),
            static_cast<unsigned>(uxTaskGetStackHighWaterMark(nullptr)));
 }
@@ -1041,14 +1045,12 @@ inline InferredNormalDeviceConfig &device_inferred_config(size_t slot) {
   }
 }
 
-inline HaEntityOptionArray &device_config_option_strings(size_t slot) {
-  (void) slot;
-  return ha_entity_option_array(device1_config_option_strings_storage, "device config");
+inline DeviceConfigOptionArray &device_config_option_strings(size_t slot) {
+  return device_config_options[slot];
 }
 
-inline HaEntityOptionArray &staged_device_config_option_strings(size_t slot) {
-  (void) slot;
-  return ha_entity_option_array(staged_device1_config_option_strings_storage, "staged device config");
+inline DeviceConfigOptionArray &staged_device_config_option_strings(size_t slot) {
+  return staged_device_config_options[slot];
 }
 
 inline void load_standby_weather_config_if_needed() {
@@ -1101,14 +1103,16 @@ inline void load_ha_areas_if_needed() {
     return;
   }
   ha_areas_loaded = true;
-  cached_ha_areas = {};
+  memset(&cached_ha_areas, 0, sizeof(cached_ha_areas));
   cached_ha_areas.magic = HA_AREAS_MAGIC;
   ensure_ha_areas_pref_ready();
   if (!ha_areas_pref_ready) {
     return;
   }
 
-  StoredHaAreas stored{};
+  auto storage = make_ram_allocated<StoredHaAreas>();
+  if (!storage) return;
+  auto &stored = *storage;
   if (!ha_areas_pref.load(&stored) || stored.magic != HA_AREAS_MAGIC) {
     return;
   }
@@ -1127,7 +1131,7 @@ inline void load_ha_entities_if_needed() {
     return;
   }
   ha_entities_loaded = true;
-  cached_ha_entities() = {};
+  memset(&cached_ha_entities(), 0, sizeof(StoredHaEntities));
   cached_ha_entities().magic = HA_ENTITIES_MAGIC;
   ensure_ha_entity_chunk_prefs_ready();
   if (!ha_entity_chunk_prefs_ready) {
@@ -1174,7 +1178,7 @@ inline void load_ha_entities_if_needed() {
     if (loaded_from_chunks) {
       return;
     }
-    cached = {};
+    memset(&cached, 0, sizeof(cached));
     cached.magic = HA_ENTITIES_MAGIC;
   }
 }
@@ -1885,6 +1889,10 @@ inline void ha_ws_destroy_client() {
     }
     esp_websocket_client_destroy(ha_ws_client);
   }
+  ha_ws_payloads.clear();
+  PsramString empty;
+  ha_ws_rx_text_buffer.swap(empty);
+  ha_ws_rx_failed.store(false);
   ha_ws_client = nullptr;
   ha_ws_started = false;
   ha_ws_authenticated = false;
@@ -1916,7 +1924,6 @@ inline void ha_ws_finish_registry_fetch(const char *reason) {
   ha_ws_entity_list_send_pending = false;
   ha_ws_area_list_request_id = 0;
   ha_ws_entity_list_request_id = 0;
-  ha_ws_release_rx_text_buffer();
   ha_ws_stop_requested = true;
   ha_ws_set_connected(false, nullptr);
 }
@@ -3291,7 +3298,7 @@ inline void ha_ws_handle_text_event(const esp_websocket_event_data_t *data) {
     ESP_LOGW(TAG, "HA websocket payload too large; drop message len=%d offset=%d total=%d", data->data_len,
              data->payload_offset, data->payload_len);
     ha_ws_release_rx_text_buffer();
-    ha_ws_finish_registry_fetch("payload too large");
+    ha_ws_rx_failed.store(true);
     return;
   }
   ha_ws_rx_text_buffer.append(data->data_ptr, data->data_len);
@@ -3299,7 +3306,7 @@ inline void ha_ws_handle_text_event(const esp_websocket_event_data_t *data) {
   if (received_end < static_cast<size_t>(data->payload_len)) {
     return;
   }
-  ha_ws_handle_text_payload(ha_ws_rx_text_buffer.data(), ha_ws_rx_text_buffer.size());
+  if (!ha_ws_payloads.put(ha_ws_rx_text_buffer)) ha_ws_rx_failed.store(true);
   ha_ws_release_rx_text_buffer();
 }
 
@@ -3411,6 +3418,13 @@ inline bool start_ha_websocket_client(const std::string &uri) {
 }
 
 inline bool maintain_ha_websocket(const std::string &host, bool wifi_connected, bool *connected_out) {
+  if (ha_ws_rx_failed.exchange(false)) ha_ws_finish_registry_fetch("receive queue overflow or oversized payload");
+  PsramString payload;
+  while (ha_ws_registry_fetch_active && ha_ws_payloads.take(payload)) {
+    ha_ws_handle_text_payload(payload.data(), payload.size());
+    PsramString empty;
+    payload.swap(empty);
+  }
   process_pending_api_client_refresh();
 
   const bool previous_connected = ha_ws_reported_connected;
@@ -3668,7 +3682,7 @@ inline bool save_ha_entities(const StoredHaEntities &entities) {
   }
   const size_t used_chunks = std::max<size_t>(1, (total_count + HA_ENTITY_PREF_CHUNK_SIZE - 1) / HA_ENTITY_PREF_CHUNK_SIZE);
   for (size_t chunk_index = 0; chunk_index < used_chunks; chunk_index++) {
-    *chunk = {};
+    memset(chunk.get(), 0, sizeof(*chunk));
     chunk->magic = HA_ENTITY_CHUNK_MAGIC;
     chunk->total_count = total_count;
     chunk->chunk_index = static_cast<uint16_t>(chunk_index);
@@ -3686,7 +3700,11 @@ inline bool save_ha_entities(const StoredHaEntities &entities) {
     const bool chunk_saved = ha_entity_chunk_prefs[chunk_index].save(chunk.get());
     ESP_LOGI(TAG, "HA entity flash chunk write end: chunk=%u result=%s",
              static_cast<unsigned>(chunk_index + 1), chunk_saved ? "OK" : "FAILED");
-    saved = chunk_saved && saved;
+    // ESPHome queues an internal-heap copy until sync(). Drain each chunk rather
+    // than retaining the entire catalogue (up to 270 KB) in scarce internal RAM.
+    const bool synced = esphome::global_preferences != nullptr && esphome::global_preferences->sync();
+    saved = chunk_saved && synced && saved;
+    esphome::App.feed_wdt();
   }
   if (saved && esphome::global_preferences != nullptr) {
     ESP_LOGI(TAG, "HA entity flash sync begin");
@@ -3978,12 +3996,12 @@ inline void clear_custom_logic_normal_mode_ram_state() {
   cached_ha_token_status = HaTokenStatus::NOT_CONFIGURED;
   ha_token_loaded = true;
 
-  cached_ha_entities() = {};
+  memset(&cached_ha_entities(), 0, sizeof(StoredHaEntities));
   cached_ha_entities().magic = HA_ENTITIES_MAGIC;
   ha_entities_loaded = true;
   ha_entities_changed_since_last_parse_flag = false;
 
-  cached_ha_areas = {};
+  memset(&cached_ha_areas, 0, sizeof(cached_ha_areas));
   cached_ha_areas.magic = HA_AREAS_MAGIC;
   ha_areas_loaded = true;
 
@@ -4140,7 +4158,9 @@ inline bool parse_and_store_ha_areas(JsonArrayConst array) {
   ESP_LOGI(TAG, "HA area processing begin: response_count=%u storage_limit=%u",
            static_cast<unsigned>(array.size()), static_cast<unsigned>(MAX_HA_AREA_COUNT));
   log_ha_registry_memory("before area processing");
-  StoredHaAreas areas{};
+  auto storage = make_ram_allocated<StoredHaAreas>();
+  if (!storage) return false;
+  auto &areas = *storage;
   areas.magic = HA_AREAS_MAGIC;
 
   size_t scanned_count = 0;
@@ -4361,9 +4381,9 @@ inline size_t build_standby_weather_config_options(HaEntityOptionArray &options)
   return build_filtered_config_options(options, is_supported_standby_weather_entity_id);
 }
 
-template<typename Options>
+template<typename Options, typename NewOptions>
 inline bool select_options_match(const Options &current_options,
-                                 const HaEntityOptionArray &new_options, size_t count) {
+                                 const NewOptions &new_options, size_t count) {
   if (current_options.size() != count) {
     return false;
   }
@@ -4386,7 +4406,14 @@ inline bool apply_device_config_options(size_t slot, esphome::select::Select *my
   // log_ha_registry_memory("before device select options");
   auto &staged_options = staged_device_config_option_strings(slot);
   auto &stable_options = device_config_option_strings(slot);
-  const size_t option_count = build_device1_config_options(staged_options);
+  load_device_config_if_needed(slot);
+  const std::string configured = cached_device_entity_id(slot);
+  staged_options[0] = "none";
+  size_t option_count = 1;
+  for (const char *preset : LOCAL_HMI_GPIO_SWITCH_PRESET_OPTIONS) staged_options[option_count++] = preset;
+  if (!configured.empty() && !is_local_hmi_gpio_switch_preset_option(configured.c_str())) {
+    staged_options[option_count++] = ha_entity_title_from_registry_cache(configured) + " / " + configured;
+  }
   const auto &current_options = my_select->traits.get_options();
   // ESP_LOGI(TAG, "HA entity select options built: slot=%u current=%u new=%u",
   //          static_cast<unsigned>(slot + 1), static_cast<unsigned>(current_options.size()),
@@ -4397,19 +4424,11 @@ inline bool apply_device_config_options(size_t slot, esphome::select::Select *my
     return false;
   }
 
-  std::string selected_option;
-  const auto active_index = my_select->active_index();
-  if (active_index.has_value() && active_index.value() < current_options.size() &&
-      current_options[active_index.value()] != nullptr) {
-    selected_option = current_options[active_index.value()];
-  }
-  if (selected_option.empty() || selected_option == "none") {
-    load_device_config_if_needed(slot);
-    for (size_t i = 0; i < option_count; i++) {
-      if (extract_entity_id_from_device1_option(staged_options[i]) == cached_device_entity_id(slot)) {
-        selected_option = staged_options[i];
-        break;
-      }
+  std::string selected_option = "none";
+  for (size_t i = 0; i < option_count; i++) {
+    if (extract_entity_id_from_device1_option(staged_options[i]) == configured) {
+      selected_option = staged_options[i];
+      break;
     }
   }
 

@@ -12,6 +12,9 @@ on:
       - 'tests/test_control_templates.py'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
+      - 'onx_registry_queue.h'
+      - 'tests/test_registry_queue.cpp'
+      - 'tests/test_registry_persistence.py'
       - 'packages/features/normal_mode/normal_mode_scripts.yaml'
       - '.github/workflows/wifi-lifecycle.yml'
   workflow_dispatch:
@@ -42,6 +45,11 @@ jobs:
           /tmp/onx-control-tests/bin/python tests/test_control_templates.py
           c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state
           /tmp/test_media_state
+      - name: Test registry thread handoff and bounded preference memory
+        run: |
+          c++ -std=c++17 -pthread tests/test_registry_queue.cpp -o /tmp/test_registry_queue
+          /tmp/test_registry_queue
+          python3 tests/test_registry_persistence.py
       - name: Resume validation thread
         if: ${{ always() }}
         env:

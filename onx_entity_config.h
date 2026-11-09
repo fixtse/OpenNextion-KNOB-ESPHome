@@ -60,6 +60,13 @@ inline std::string state() {
   return esphome::json::build_json([&](JsonObject root) {
     root["count"] = custom_logic::cached_ha_entities().count;
     root["capacity"] = custom_logic::MAX_HA_ENTITY_COUNT;
+#ifdef ESPHOME_PROJECT_VERSION
+    root["firmware"] = ESPHOME_PROJECT_VERSION;
+#endif
+    root["uptime_ms"] = millis();
+#ifdef USE_ESP32
+    root["reset_reason"] = static_cast<int>(esp_reset_reason());
+#endif
     JsonArray slots = root["slots"].to<JsonArray>();
     for (size_t i = 0; i < 10; ++i) {
       custom_logic::load_device_config_if_needed(i);
