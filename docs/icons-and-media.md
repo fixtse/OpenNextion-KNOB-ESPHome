@@ -95,3 +95,9 @@ TLS allocation failures (`mbedtls_ssl_setup -0x7F00`) were observed during the
 GitHub OTA manifest check on live firmware `.25`. The ESP-IDF build now allocates
 mbedTLS memory from PSRAM. This covers icon/artwork HTTPS and OTA checks/downloads;
 UI/worker stacks and DMA retain their normal internal-memory placement.
+
+Artwork uses its own memory gate: 32 KB total internal free RAM and a 14 KB
+contiguous block for its 12 KB worker stack. The icon worker retains its separate
+48 KB/20 KB check. Sharing the icon gate incorrectly deferred artwork on a live
+unit with a 16 KB block. JPEG decoder objects (including MCU/Huffman workspaces)
+now use checked PSRAM allocation rather than the fragmented internal heap.

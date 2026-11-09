@@ -2673,7 +2673,7 @@ script:
           // internal heap. Cosmetic artwork must not crowd out API/Wi-Fi buffers.
           if (id(media_cover_image)->is_busy() || id(key_btn).state || millis() - onx_media::candidate_ms < 750 ||
               millis() - onx_media::last_artwork_end_ms < 1000 || id(entity_icon_downloader)->busy()) return;
-          if (!id(entity_icon_downloader)->memory_ready()) {
+          if (!id(media_cover_image)->memory_ready()) {
             onx_media::artwork_wait_reason = "waiting_for_memory";
             return;
           }

@@ -21,6 +21,7 @@ class OnlineImage final : public PollingComponent,
   void set_url(const std::string &url) { if (validate_url_(url)) url_=url; }
   void release();
   bool is_busy() const { return busy_; }
+  static bool memory_ready();
   const std::string &last_error() const { return last_error_; }
   template<typename V> void add_request_header(const std::string &header,V value) {
     request_headers_.emplace_back(header,value);

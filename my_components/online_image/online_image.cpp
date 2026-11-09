@@ -2,6 +2,9 @@
 #include "online_image.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#ifdef USE_RUNTIME_IMAGE_JPEG
+#include "esphome/components/runtime_image/jpeg_decoder.h"
+#endif
 #include "esp_crt_bundle.h"
 #include "esp_http_client.h"
 #include "esp_heap_caps.h"
@@ -15,6 +18,26 @@
 namespace esphome::online_image {
 static const char *const TAG="online_image";
 static constexpr size_t MAX_BYTES=512*1024;
+static constexpr uint32_t WORKER_STACK_BYTES=12*1024;
+#ifdef USE_RUNTIME_IMAGE_JPEG
+// JPEGDEC embeds its MCU/Huffman workspaces in the decoder object. Keep that
+// large object out of the fragmented internal heap; default delete must match.
+class PsramJpegDecoder final : public runtime_image::JpegDecoder {
+ public:
+  using runtime_image::JpegDecoder::JpegDecoder;
+  static void *operator new(size_t size,const std::nothrow_t &) noexcept {
+    return heap_caps_malloc(size,MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  }
+  static void operator delete(void *p) noexcept { heap_caps_free(p); }
+  static void operator delete(void *p,const std::nothrow_t &) noexcept { heap_caps_free(p); }
+};
+#endif
+bool OnlineImage::memory_ready() {
+  // Artwork has a 12 KB worker, unlike the icon rasterizer's 16 KB worker.
+  // Compressed data, decoded pixels, JPEG workspace and TLS use PSRAM.
+  return heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)>=32*1024 &&
+      heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)>=WORKER_STACK_BYTES+2048;
+}
 OnlineImage::OnlineImage(const std::string &url,int width,int height,runtime_image::ImageFormat format,
                          image::ImageType type,image::Transparency transparency,image::Image *placeholder,
                          uint32_t buffer_size,bool is_big_endian)
@@ -32,6 +55,7 @@ bool OnlineImage::cancelled_(uint32_t generation) {
 void OnlineImage::update() {
   if(busy_ || is_decoding()) return;
   last_error_.clear();
+  if(!memory_ready()) {last_error_="Waiting for artwork worker memory";failed_.call();return;}
   if(!validate_url_(url_)) { last_error_="Invalid artwork URL";failed_.call(); return; }
   auto *work=new(std::nothrow) Work{this,url_,{},generation_,2500};
   if(!work) { last_error_="Request allocation failed";failed_.call(); return; }
@@ -39,7 +63,7 @@ void OnlineImage::update() {
   for(auto &header:request_headers_) work->headers.push_back({header.first,header.second.value()});
   busy_=true;
   // All DNS, TCP, TLS, redirects and body reads happen off the ESPHome/UI task.
-  if(xTaskCreate(fetch_task_,"onx_artwork",12288,work,1,nullptr)!=pdPASS) {
+  if(xTaskCreate(fetch_task_,"onx_artwork",WORKER_STACK_BYTES,work,1,nullptr)!=pdPASS) {
     busy_=false;delete work;last_error_="Worker allocation failed";failed_.call();
   }
 }
@@ -138,6 +162,16 @@ void OnlineImage::loop() {
     else if(size>=8 && std::memcmp(data,"\x89PNG\r\n\x1a\n",8)==0) format=runtime_image::PNG;
     else if(size>=2 && data[0]=='B' && data[1]=='M') format=runtime_image::BMP;
   }
+#ifdef USE_RUNTIME_IMAGE_JPEG
+  if(format==runtime_image::JPEG && (!decoder_ || decoder_->get_format()!=runtime_image::JPEG)) {
+    auto *jpeg=new(std::nothrow) PsramJpegDecoder(this);
+    if(!jpeg) {
+      heap_caps_free(data);last_error_="JPEG workspace PSRAM allocation failed";
+      failed_.call();return;
+    }
+    decoder_.reset(jpeg);
+  }
+#endif
   bool okay=false;
   if(format!=runtime_image::AUTO && begin_decode(size,format)) {
     size_t offset=0;
