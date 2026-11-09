@@ -759,6 +759,11 @@ sensor:
     on_clockwise:
       then:
         - lambda: |-
+            if (onx_timer::popup.visible) {
+              onx_timer::popup.visible=false;onx_timer::popup.dismissed=true;
+              id(normal_device_selected_index)=onx_timer::popup.previous_index;
+              id(exit_normal_switch_detail).execute();
+            }
             int threshold = id(normal_knob_applied_value);
             if (threshold != 1 && threshold != 2 && threshold != 4) {
               threshold = 1;
@@ -1170,6 +1175,11 @@ sensor:
     on_anticlockwise:
       then:
         - lambda: |-
+            if (onx_timer::popup.visible) {
+              onx_timer::popup.visible=false;onx_timer::popup.dismissed=true;
+              id(normal_device_selected_index)=onx_timer::popup.previous_index;
+              id(exit_normal_switch_detail).execute();
+            }
             int threshold = id(normal_knob_applied_value);
             if (threshold != 1 && threshold != 2 && threshold != 4) {
               threshold = 1;

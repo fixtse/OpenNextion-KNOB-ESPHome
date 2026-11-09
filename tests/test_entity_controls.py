@@ -19,6 +19,7 @@ class EntityControls(unittest.TestCase):
 #include "onx_media_state.h"
 #include "onx_icon_state.h"
 #include "onx_display_settings.h"
+#include "onx_timer_state.h"
 #include <array>
 #include <cstdio>
 #include <cassert>

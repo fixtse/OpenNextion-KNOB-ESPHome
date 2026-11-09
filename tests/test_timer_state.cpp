@@ -3,6 +3,11 @@
 
 int main() {
   using namespace onx_timer;
+  assert(!popup_due(9999,true,true));assert(popup_due(10000,true,true));
+  assert(!popup_due(1500,false,true));assert(popup_due(1500,false,false));
+  assert(attribute_json("[{'status': 'set', 'remaining': None}]")=="[{\"status\": \"set\", \"remaining\": null}]");
+  assert(attribute_json("{'name': 'bad").empty());
+  assert(attribute_json(std::string(8193,'x')).empty());
   assert(duration_seconds("1:02:03") == 3723);
   assert(duration_seconds("100:00:00") == 360000);
   for (auto bad : {"", "unknown", "None", "-1:00:00", "0:60:00", "0:00:99", "1:2", "999999999999999999:00:00"})

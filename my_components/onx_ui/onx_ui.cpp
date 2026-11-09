@@ -38,6 +38,8 @@ static bool parse_time_to_minutes_(const std::string &value, uint16_t *minutes) 
   return true;
 }
 
+uint32_t OnxUi::user_idle_ms() const { return millis() - this->last_user_activity_ms_; }
+
 void OnxUi::setup() {
   this->last_user_activity_ms_ = millis();
   if (this->storage_ != nullptr) {

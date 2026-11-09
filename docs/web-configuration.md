@@ -162,3 +162,19 @@ its existing times regardless of the display clock format.
 The weather carousel shows Home Assistant's icon when supplied, otherwise the
 current condition's MDI icon (sun, partly cloudy, rain, night, etc.). A manually
 selected icon override takes priority. Download failures retain a built-in icon.
+
+### Automatic timer display
+
+Add a native Home Assistant `timer.*`, a Voice PE/SoundSense `Voice timer`
+sensor (`onx.timer.v1`), or a Google Home integration timers sensor to a display
+slot. Configured timers are monitored automatically; unrelated sensor states
+are not treated as timers. The nearest running timer is preferred, with ringing
+first and paused timers after running timers. Google Home's `timers` attribute
+supplies duration, finish time, paused remaining time and status.
+
+An active timer opens automatically while browsing or after ten seconds without
+input on an entity page. Turn the dial to dismiss it and resume browsing. After
+ten idle seconds it returns if still active. Settings, scheduled sleep and an
+explicitly switched-off screen are not interrupted. Timer rings use the selected
+media progress color and flash at completion. Timer control stays in Home
+Assistant or on the originating voice/speaker device.

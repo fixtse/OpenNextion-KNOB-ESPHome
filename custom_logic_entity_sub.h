@@ -356,8 +356,9 @@ struct EntityDetailState {
   std::string percentage, oscillating, direction, sources, source, muted;
   uint32_t features{0}, received_ms{0};
   bool received{false}, available{false};
-  std::string timer_duration, timer_remaining, timer_finishes_at, timer_name;
-  bool voice_timer{false};
+  std::string timer_duration, timer_remaining, timer_finishes_at, timer_name, timer_last_finish;
+  bool voice_timer{false}, google_timer{false};
+  std::string google_state;
   double voice_duration{NAN}, voice_remaining{NAN};
   uint32_t timer_received_ms{0};
   float minimum{NAN}, maximum{NAN}, step{NAN}, humidity_min{NAN}, humidity_max{NAN};
@@ -384,7 +385,7 @@ inline const char *entity_offline_text(const std::string &entity_id) {
 
 inline bool is_timer_detail(const std::string &entity_id) {
   const auto *detail = entity_detail(entity_id);
-  return has_prefix(entity_id, "timer.") || (detail != nullptr && detail->voice_timer);
+  return has_prefix(entity_id, "timer.") || (detail != nullptr && (detail->voice_timer || detail->google_timer));
 }
 
 inline std::vector<onx_control::Command> control_commands;
@@ -486,7 +487,7 @@ class DeviceSlotStateUpdater {
       auto &detail = entity_details[this->slot_];
       if (detail.entity_id != this->entity_id_) { detail = EntityDetailState{}; detail.entity_id = this->entity_id_; }
       detail.received = true; detail.available = online; detail.received_ms = millis();
-      detail.state = value;
+      detail.state = detail.google_timer ? detail.google_state : value;
       if (!online && control_entity == this->entity_id_) cancel_controls();
       if (!online) {
         return;
@@ -509,7 +510,7 @@ class DeviceSlotStateUpdater {
       }
       if (field == "state") {
         if (has_prefix(this->entity_id_, "media_player.")) detail.progress.set_state(value, millis());
-        detail.state = value;
+        detail.state = detail.google_timer ? detail.google_state : value;
         detail.voice_timer = false;
         if (has_prefix(this->entity_id_, "sensor.") && value.size() <= 255) {
           JsonDocument doc = custom_logic::make_psram_json_document();
@@ -531,9 +532,33 @@ class DeviceSlotStateUpdater {
           }
         }
       }
+      else if (field == "timers") {
+        const auto json = onx_timer::attribute_json(value);
+        JsonDocument doc = custom_logic::make_psram_json_document();
+        if (json.empty() || deserializeJson(doc, json) != DeserializationError::Ok || !doc.is<JsonArray>()) return;
+        // Prefer ringing, then earliest running, then paused timers.
+        JsonObjectConst best;
+        int best_rank=99; double best_finish=INFINITY;
+        for (JsonObjectConst timer : doc.as<JsonArrayConst>()) {
+          const std::string status = timer["status"] | "";
+          const int rank = status == "ringing" ? 0 : (status == "set" || status == "running" || status == "active") ? 1 : status == "paused" ? 2 : 99;
+          const double finish = timer["fire_time"].is<double>() ? timer["fire_time"].as<double>() : INFINITY;
+          if (rank < best_rank || (rank == best_rank && finish < best_finish)) {best=timer;best_rank=rank;best_finish=finish;}
+        }
+        detail.google_timer = true;
+        detail.google_state = best_rank == 0 ? "ringing" : best_rank == 1 ? "active" : best_rank == 2 ? "paused" : "idle";
+        detail.state = detail.google_state;
+        detail.timer_duration = best["duration"] | "";
+        detail.timer_remaining = best["remaining"] | "";
+        detail.timer_finishes_at = best["local_time_iso"] | "";
+        detail.timer_name = std::string(best["label"] | "").substr(0,80);
+        detail.available = detail.received = true;
+        detail.timer_received_ms = millis();
+        custom_logic::set_normal_ui_device_online_state(ui_slot, true);
+      }
       else if (field == "duration") detail.timer_duration = value;
       else if (field == "remaining") detail.timer_remaining = value;
-      else if (field == "finishes_at") detail.timer_finishes_at = value;
+      else if (field == "finishes_at") { detail.timer_finishes_at = value; if (!value.empty() && value != "None") detail.timer_last_finish = value; }
       else if (field == "unit_of_measurement") detail.unit = value;
       else if (field == "media_duration") detail.progress.set_duration(detail_number(value));
       else if (field == "media_position") detail.progress.set_position(detail_number(value), millis());
@@ -1071,6 +1096,7 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
 
   if (has_prefix(entity_id, "sensor.") || has_prefix(entity_id, "binary_sensor.")) {
     subscribe_field(api_server, slot, entity_id, "unit_of_measurement", "unit_of_measurement");
+    if (has_prefix(entity_id, "sensor.")) subscribe_field(api_server, slot, entity_id, "timers", "timers");
   } else if (has_prefix(entity_id, "timer.")) {
     for (const char *attribute : {"duration", "remaining", "finishes_at"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);

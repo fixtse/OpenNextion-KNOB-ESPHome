@@ -29,6 +29,8 @@ on:
       - 'my_components/onx_ui/**'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
+      - 'onx_timer_state.h'
+      - 'tests/test_timer_state.cpp'
       - 'onx_icon_state.h'
       - 'onx_recovery_state.h'
       - 'my_components/onx_icons/**'
@@ -56,6 +58,10 @@ jobs:
             my_components/onx_mode_manager/onx_mode_manager.cpp \
             my_components/onx_app_state/onx_app_state.cpp -o /tmp/test_wifi_lifecycle
           /tmp/test_wifi_lifecycle
+      - name: Test timer countdown, popup dismissal and attribute parsing
+        run: |
+          c++ -std=c++17 tests/test_timer_state.cpp -o /tmp/test_timer_state
+          /tmp/test_timer_state
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

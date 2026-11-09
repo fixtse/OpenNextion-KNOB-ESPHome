@@ -2267,6 +2267,7 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if (onx_timer::popup.visible) {onx_timer::popup.visible=false;onx_timer::popup.dismissed=true;}
           if (!id(normal_device_detail_active)) {
             return;
           }
@@ -2327,6 +2328,54 @@ script:
           id(ui_presenter)->notify_user_activity();
           id(refresh_normal_automation_detail_page).execute();
 
+  - id: check_normal_timer_popup
+    then:
+      - lambda: |-
+          if (onx_timer::popup.visible && !id(normal_ha_api_connected)) {
+            onx_timer::popup.visible=false;
+            id(normal_device_selected_index)=onx_timer::popup.previous_index;
+            id(exit_normal_switch_detail).execute();
+          }
+          if (!id(ui_presenter)->is_normal_mode_active() || !id(normal_ha_api_connected) ||
+              id(mode_manager)->is_provisioning_mode_enabled() || id(sleep_mode_state) || id(screen_off_state)) return;
+          int candidate=-1; double soonest=INFINITY;
+          const auto now = id(ha_time).now();
+          bool popup_still_active=false;
+          for (int i=0;i<id(normal_device_count) && i<10;++i) {
+            const auto entity=id(ui_presenter)->get_normal_device_entity_id(i);
+            auto *d=custom_logic_entity_sub::entity_detail(entity);
+            if (!d || !d->received || !d->available || !custom_logic_entity_sub::is_timer_detail(entity)) continue;
+            if (d->voice_timer && d->state=="active" && millis()-d->timer_received_ms>=5000) continue;
+            time_t finish=0;
+            const bool has_finish=custom_logic_entity_sub::parse_ha_datetime_epoch(d->timer_finishes_at, &finish) ||
+                (d->state=="idle" && custom_logic_entity_sub::parse_ha_datetime_epoch(d->timer_last_finish, &finish));
+            if (d->state=="idle" && has_finish && now.is_valid() && now.timestamp<finish) d->timer_last_finish.clear();
+            const bool completed=d->state=="idle" && has_finish && now.is_valid() && now.timestamp>=finish && now.timestamp-finish<10;
+            if (d->state!="active" && d->state!="paused" && d->state!="ringing" && !completed) continue;
+            if (onx_timer::popup.entity==entity) popup_still_active=true;
+            const double left=(d->state=="ringing" || completed) ? -1 : d->state=="paused" ? 1e12 :
+                d->voice_timer ? std::max(0.0, d->voice_remaining-(millis()-d->timer_received_ms)/1000.0) : has_finish && now.is_valid() ? double(finish)-now.timestamp : 1e11;
+            if (left<soonest) {soonest=left;candidate=i;}
+          }
+          if (onx_timer::popup.visible) {
+            if (!popup_still_active) {
+              onx_timer::popup.visible=false;
+              id(normal_device_selected_index)=onx_timer::popup.previous_index;
+              id(exit_normal_switch_detail).execute();
+            }
+            return;
+          }
+          if (candidate<0) {onx_timer::popup.dismissed=false;return;}
+          if (!onx_timer::popup_due(id(ui_presenter)->user_idle_ms(), id(normal_device_detail_active), onx_timer::popup.dismissed)) return;
+          // Never replace a settings page or an explicitly sleeping screen.
+          if (id(normal_device_detail_active) && id(normal_device_detail_kind)!=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) return;
+          onx_timer::popup.previous_index=id(normal_device_selected_index);
+          onx_timer::popup.entity=id(ui_presenter)->get_normal_device_entity_id(candidate);
+          onx_timer::popup.visible=true;
+          if (id(ui_presenter)->is_standby_active()) id(exit_standby_mode).execute();
+          id(normal_device_selected_index)=candidate;
+          id(enter_normal_switch_detail).execute();
+
   - id: refresh_normal_timer_detail
     mode: restart
     then:
@@ -2347,7 +2396,8 @@ script:
           } else {
             const auto now = id(ha_time).now();
             time_t finish = 0;
-            const bool has_finish = custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_finishes_at, &finish);
+            const bool has_finish = custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_finishes_at, &finish) ||
+                (detail->state == "idle" && custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_last_finish, &finish));
             // Interpolate between HA clock seconds for a smoothly shrinking ring.
             static time_t last_epoch = 0;
             static uint32_t clock_tick_ms = 0;
@@ -2367,8 +2417,16 @@ script:
                                view.seconds_left <= 0 ? "Time is up" : "Running";
           lv_label_set_text(id(normal_timer_detail_status), status);
           lv_arc_set_value(id(normal_timer_detail_arc), view.ready ? static_cast<int>(view.fraction * 1000) : 0);
-          const bool finished = view.ready && (detail->state == "ringing" || (detail->state == "active" && view.seconds_left <= 0));
-          const auto color = detail->state == "paused" ? 0xFFBC66 : finished ? 0xFF855E : 0x62B0FF;
+          time_t completed_at=0;
+          const auto current_time=id(ha_time).now();
+          const bool just_completed=detail->state=="idle" && current_time.is_valid() &&
+              custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_last_finish, &completed_at) &&
+              current_time.timestamp>=completed_at && current_time.timestamp-completed_at<10;
+          const bool finished = view.ready && (just_completed || detail->state == "ringing" || (detail->state == "active" && view.seconds_left <= 0));
+          if (finished) lv_label_set_text(id(normal_timer_detail_status), "Time is up");
+          const auto color = onx_display_settings::current.media_color;
+          if (finished) lv_arc_set_value(id(normal_timer_detail_arc), 1000);
+          lv_obj_set_style_arc_opa(id(normal_timer_detail_arc), finished && (millis()/350)%2 ? 60 : LV_OPA_COVER, LV_PART_INDICATOR);
           lv_obj_set_style_arc_color(id(normal_timer_detail_arc), lv_color_hex(color), LV_PART_INDICATOR);
           lv_obj_set_style_text_opa(id(normal_timer_detail_countdown),
               finished ? static_cast<lv_opa_t>(160 + 95 * (0.5 + 0.5 * sin(millis() / 250.0))) : LV_OPA_COVER, 0);

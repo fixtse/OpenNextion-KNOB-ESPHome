@@ -9,6 +9,34 @@
 
 namespace onx_timer {
 
+struct Popup { bool visible{false}, dismissed{false}; int previous_index{0}; std::string entity; };
+inline Popup popup;
+inline bool popup_due(uint32_t idle_ms, bool detail_active, bool dismissed=false) {
+  return idle_ms >= 10000 || (!dismissed && !detail_active && idle_ms >= 1500);
+}
+// Native API serializes list attributes as Python literals. Convert only the
+// JSON-compatible subset; never evaluate input or accept unbounded payloads.
+inline std::string attribute_json(const std::string &input) {
+  if (input.size() > 8192) return "";
+  std::string out; out.reserve(input.size()); char quote=0;
+  for (size_t i=0;i<input.size();++i) {
+    char c=input[i];
+    if (quote) {
+      if (c==quote) {out+='"';quote=0;}
+      else if (c=='\\' && i+1<input.size()) {
+        char next=input[++i];
+        if (next==39) out+=39;
+        else {out+='\\';out+=next;}
+      } else {if(c=='"')out+='\\';out+=c;}
+    } else if (c==39 || c=='"') {quote=c;out+='"';}
+    else if (input.compare(i,4,"None")==0) {out+="null";i+=3;}
+    else if (input.compare(i,4,"True")==0) {out+="true";i+=3;}
+    else if (input.compare(i,5,"False")==0) {out+="false";i+=4;}
+    else out+=c;
+  }
+  return quote ? "" : out;
+}
+
 // HA timers use H:MM:SS, including durations longer than 24 hours.
 inline double duration_seconds(const std::string &value) {
   uint64_t parts[3]{};
