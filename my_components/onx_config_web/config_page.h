@@ -62,7 +62,7 @@ $('clear').onclick=()=>{slots[active]={entity:'',name:'',action:'',dirty:true};r
 $('search').oninput=()=>{clearTimeout(debounce);++revision;debounce=setTimeout(()=>search(),250)};$('more').onclick=()=>search(true);
 $('save').onclick=async()=>{const index=active,slot={...slots[active]};$('save').disabled=true;message('Saving…');try{await rpc({op:'save',slot:index,entity:slot.entity,action:slot.action});if(slots[index].entity===slot.entity&&slots[index].action===slot.action)slots[index].dirty=false;render();message('Slot '+(index+1)+' saved. Home Assistant may reconnect briefly.')}catch(error){render();message(error.message,true)}};
 $('refresh').onclick=async()=>{const button=$('refresh');button.disabled=true;try{await rpc({op:'refresh'});message('Refresh requested. Search again after Home Assistant reconnects.');setTimeout(()=>search(),3000)}catch(error){message(error.message,true)}finally{button.disabled=false}};
-(async()=>{try{const data=await rpc({op:'state'});slots=data.slots.map(slot=>({...slot,dirty:false}));render();message(data.count?'Select a slot to configure.':'No entities cached yet. Refresh from Home Assistant to begin.');search()}catch(error){render();message(error.message,true)}})();
+(async()=>{try{const data=await rpc({op:'state'});slots=data.slots.map(slot=>({...slot,dirty:false}));render();message(data.count>=data.capacity?'The entity catalogue is full ('+data.capacity+'). Missing entities can still be entered by ID.':data.count?'Select a slot to configure.':'No entities cached yet. Refresh from Home Assistant to begin.',data.count>=data.capacity);search()}catch(error){render();message(error.message,true)}})();
 </script></html>
 )ONXHTML";
 }

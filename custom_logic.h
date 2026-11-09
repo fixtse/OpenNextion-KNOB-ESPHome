@@ -26,7 +26,7 @@ namespace custom_logic {
 
 static const char *const TAG = "CustomLogic";
 static constexpr size_t MAX_HA_TOKEN_LENGTH = 255;
-static constexpr size_t MAX_HA_ENTITY_COUNT = 200;
+static constexpr size_t MAX_HA_ENTITY_COUNT = 1024;
 static constexpr size_t LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT = 4;
 static constexpr size_t MAX_HA_ENTITY_OPTION_COUNT =
     MAX_HA_ENTITY_COUNT + 1 + LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT;
@@ -434,6 +434,8 @@ static bool ha_ws_disconnected_seen = false;
 static bool ha_ws_stop_requested = false;
 static bool ha_ws_reported_connected = false;
 static bool ha_ws_entity_list_pending = false;
+// Registry metadata first, then live states (also includes YAML-only entities).
+static bool ha_ws_fetching_states = false;
 static bool ha_ws_entity_list_send_pending = false;
 static bool ha_ws_registry_fetch_active = false;
 static uint32_t ha_ws_registry_fetch_started_ms = 0;
@@ -1470,6 +1472,7 @@ inline bool apply_device1_config_options(esphome::select::Select *my_select);
 inline bool apply_device2_config_options(esphome::select::Select *my_select);
 inline bool parse_and_store_ha_areas(JsonArrayConst array);
 inline bool parse_and_store_ha_entity_registry_entities(JsonArrayConst array);
+inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array, bool merge = false);
 inline bool save_device1_config_entity_id(const std::string &entity_id);
 inline bool save_device2_config_entity_id(const std::string &entity_id);
 inline bool is_supported_ha_entity_id(const char *entity_id);
@@ -1510,8 +1513,9 @@ inline bool ha_ws_send_entity_list_request() {
   }
   const uint32_t request_id = ha_ws_next_request_id();
   char request[96];
-  snprintf(request, sizeof(request), "{\"id\":%u,\"type\":\"config/entity_registry/list_for_display\"}",
-           static_cast<unsigned>(request_id));
+  snprintf(request, sizeof(request), "{\"id\":%u,\"type\":\"%s\"}",
+           static_cast<unsigned>(request_id),
+           ha_ws_fetching_states ? "get_states" : "config/entity_registry/list_for_display");
   const int sent = esp_websocket_client_send_text(ha_ws_client, request, strlen(request), pdMS_TO_TICKS(1000));
   if (sent < 0 || static_cast<size_t>(sent) != strlen(request)) {
     ESP_LOGW(TAG, "failed to request HA entity list over websocket: result_bytes=%d expected_bytes=%u",
@@ -3176,7 +3180,15 @@ inline void ha_ws_handle_text_payload(const char *data, int len) {
              static_cast<unsigned>(ha_ws_entity_list_request_id));
     log_ha_registry_memory("before result JSON parse");
     JsonDocument doc = make_psram_json_document();
-    DeserializationError error = deserializeJson(doc, data, static_cast<size_t>(len));
+    // Large state attributes (forecast, media metadata, etc.) are irrelevant to discovery.
+    JsonDocument filter = make_psram_json_document();
+    filter["id"] = true;
+    filter["success"] = true;
+    filter["result"][0]["entity_id"] = true;
+    filter["result"][0]["attributes"]["friendly_name"] = true;
+    DeserializationError error = ha_ws_fetching_states
+        ? deserializeJson(doc, data, static_cast<size_t>(len), DeserializationOption::Filter(filter))
+        : deserializeJson(doc, data, static_cast<size_t>(len));
     if (error) {
       ESP_LOGE(TAG, "HA websocket result JSON parse failed: %s", error.c_str());
       ha_ws_finish_registry_fetch("result JSON parse failed");
@@ -3227,7 +3239,16 @@ inline void ha_ws_handle_text_payload(const char *data, int len) {
       return;
     }
     ESP_LOGI(TAG, "HA websocket entity list response has %u display item(s)", static_cast<unsigned>(result.size()));
-    if (parse_and_store_ha_entity_registry_entities(result)) {
+    if (!ha_ws_fetching_states) {
+      if (!parse_and_store_ha_entity_registry_entities(result)) {
+        ha_ws_finish_registry_fetch("registry storage failed");
+        return;
+      }
+      ha_ws_fetching_states = true;
+      ha_ws_entity_list_send_pending = true;
+      return;
+    }
+    if (store_ha_entities_from_entity_registry_array(result, true)) {
       ESP_LOGI(TAG, "HA entity select refresh sequence begin: device_slots=%u",
                static_cast<unsigned>(CONFIGURABLE_DEVICE_SLOT_COUNT));
       log_ha_registry_memory("before all select refreshes");
@@ -3496,6 +3517,7 @@ inline bool request_ha_entity_list_over_websocket(const std::string &host,
   ha_ws_auth_required_ms = ha_ws_registry_fetch_started_ms;
   ha_ws_registry_fetch_attempt++;
   ha_ws_entity_list_pending = true;
+  ha_ws_fetching_states = false;
   ha_ws_entity_list_send_pending = false;
   ha_ws_area_list_request_id = 0;
   ha_ws_entity_list_request_id = 0;
@@ -3642,7 +3664,8 @@ inline bool save_ha_entities(const StoredHaEntities &entities) {
     ESP_LOGE(TAG, "failed to allocate HA entity chunk save buffer (%zu bytes)", sizeof(StoredHaEntityChunk));
     return false;
   }
-  for (size_t chunk_index = 0; chunk_index < HA_ENTITY_PREF_CHUNK_COUNT; chunk_index++) {
+  const size_t used_chunks = std::max<size_t>(1, (total_count + HA_ENTITY_PREF_CHUNK_SIZE - 1) / HA_ENTITY_PREF_CHUNK_SIZE);
+  for (size_t chunk_index = 0; chunk_index < used_chunks; chunk_index++) {
     *chunk = {};
     chunk->magic = HA_ENTITY_CHUNK_MAGIC;
     chunk->total_count = total_count;
@@ -4069,8 +4092,10 @@ inline bool has_same_ha_entities(const StoredHaEntities &lhs, const StoredHaEnti
     return false;
   }
 
-  std::array<uint16_t, MAX_HA_ENTITY_COUNT> lhs_indexes{};
-  std::array<uint16_t, MAX_HA_ENTITY_COUNT> rhs_indexes{};
+  auto indexes = make_ram_allocated<std::array<std::array<uint16_t, MAX_HA_ENTITY_COUNT>, 2>>();
+  if (!indexes) return false;
+  auto &lhs_indexes = (*indexes)[0];
+  auto &rhs_indexes = (*indexes)[1];
   for (size_t i = 0; i < lhs.count; i++) {
     lhs_indexes[i] = static_cast<uint16_t>(i);
     rhs_indexes[i] = static_cast<uint16_t>(i);
@@ -4160,7 +4185,7 @@ inline bool parse_and_store_ha_areas(JsonArrayConst array) {
   return true;
 }
 
-inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array) {
+inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array, bool merge) {
   ESP_LOGI(TAG, "HA entity processing begin: response_count=%u storage_limit=%u stored_struct_bytes=%u",
            static_cast<unsigned>(array.size()), static_cast<unsigned>(MAX_HA_ENTITY_COUNT),
            static_cast<unsigned>(sizeof(StoredHaEntities)));
@@ -4171,6 +4196,10 @@ inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array) {
     return false;
   }
   entities->magic = HA_ENTITIES_MAGIC;
+  if (merge) {
+    load_ha_entities_if_needed();
+    *entities = cached_ha_entities();
+  }
 
   size_t scanned_count = 0;
   size_t missing_id_count = 0;
@@ -4195,23 +4224,28 @@ inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array) {
       }
       continue;
     }
-    if (entities->count >= MAX_HA_ENTITY_COUNT) {
+    // Merge states by ID: preserve registry room/name and append unregistered entities.
+    size_t index = entities->count;
+    for (size_t i = 0; i < entities->count; ++i) {
+      if (entity_id == entities->entities[i].entity_id) { index = i; break; }
+    }
+    if (index == entities->count && entities->count >= MAX_HA_ENTITY_COUNT) {
       ESP_LOGW(TAG, "HA entity storage limit reached: %u", static_cast<unsigned>(entities->count));
-      break;
+      continue;
     }
 
-    JsonVariantConst entity_name_variant = elem["en"];
+    JsonVariantConst entity_name_variant = merge ? elem["attributes"]["friendly_name"] : elem["en"];
     std::string entity_name_json;
     serializeJson(entity_name_variant, entity_name_json);
     const std::string entity_name = ha_json_variant_to_string(entity_name_variant);
     const std::string area_id = ha_json_variant_to_string(elem["ai"]);
     const char *area_name = get_ha_area_name_by_id(area_id.empty() ? nullptr : area_id.c_str());
 
-    StoredHaEntity &target = entities->entities[entities->count];
+    StoredHaEntity &target = entities->entities[index];
     copy_string_to_fixed_buffer(entity_id, target.entity_id);
-    copy_string_to_fixed_buffer(entity_name, target.friendly_name);
-    copy_string_to_fixed_buffer(std::string(area_name != nullptr ? area_name : ""), target.area_name);
-    entities->count++;
+    if (!entity_name.empty()) copy_string_to_fixed_buffer(entity_name, target.friendly_name);
+    if (!merge) copy_string_to_fixed_buffer(std::string(area_name != nullptr ? area_name : ""), target.area_name);
+    if (index == entities->count) entities->count++;
     if (entities->count % 50 == 0) {
       ESP_LOGI(TAG, "HA entity processing accepted: scanned=%u/%u stored=%u last_entity=%s",
                static_cast<unsigned>(scanned_count), static_cast<unsigned>(array.size()),
@@ -4237,7 +4271,7 @@ inline bool store_ha_entities_from_entity_registry_array(JsonArrayConst array) {
   } else {
     ESP_LOGI(TAG, "HA entity persistence skipped: cached list is unchanged");
   }
-  ESP_LOGI(TAG, "stored %u HA switch/light/cover/automation/weather entity(s)",
+  ESP_LOGI(TAG, "stored %u supported HA entity(s)",
            static_cast<unsigned>(entities->count));
   // for (size_t i = 0; i < entities.count; i++) {
   //   ESP_LOGI(TAG, "HA entity: type=%s area=%s friendly_name=%s entity_id=%s",
@@ -4291,7 +4325,9 @@ inline size_t build_filtered_config_options(HaEntityOptionArray &options, bool (
       options[option_count++] = preset_option;
     }
   }
-  std::array<uint16_t, MAX_HA_ENTITY_COUNT> sorted_indexes{};
+  auto indexes = make_ram_allocated<std::array<uint16_t, MAX_HA_ENTITY_COUNT>>();
+  if (!indexes) return option_count;
+  auto &sorted_indexes = *indexes;
   size_t sorted_count = 0;
   const StoredHaEntities &entities = cached_ha_entities();
   for (size_t i = 0; i < entities.count; i++) {

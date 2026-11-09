@@ -59,6 +59,7 @@ inline std::string state() {
   custom_logic::load_ha_entities_if_needed();
   return esphome::json::build_json([&](JsonObject root) {
     root["count"] = custom_logic::cached_ha_entities().count;
+    root["capacity"] = custom_logic::MAX_HA_ENTITY_COUNT;
     JsonArray slots = root["slots"].to<JsonArray>();
     for (size_t i = 0; i < 10; ++i) {
       custom_logic::load_device_config_if_needed(i);
