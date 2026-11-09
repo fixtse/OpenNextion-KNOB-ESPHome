@@ -50,14 +50,14 @@ inline View build(const std::string &entity, const std::string &name) {
   v.hint.text = feedback;
   if (has_prefix(entity, "climate.")) {
     const auto mode = onx_controls::effective(*d, "state");
-    std::string label = mode;
-    if (mode == "heat") { v.symbol = "🔥"; label = "Heat"; v.accent = 0xFFAA66; }
-    else if (mode == "cool") { v.symbol = "❄"; label = "Cool"; }
-    else if (mode == "heat_cool" || mode == "auto") { v.symbol = "☀"; label = "Auto"; }
-    else if (mode == "dry") { v.symbol = "💧"; label = "Dry"; }
-    else if (mode == "fan_only") { v.symbol = "🌀"; label = "Fan"; }
-    else { v.symbol = "⏸"; label = mode == "off" ? "Off" : mode; v.accent = 0xAAAAAA; }
-    v.badge.text = v.symbol + " " + label;
+    std::string mode_label = mode;
+    if (mode == "heat") { v.symbol = "🔥"; mode_label = "Heat"; v.accent = 0xFFAA66; }
+    else if (mode == "cool") { v.symbol = "❄"; mode_label = "Cool"; }
+    else if (mode == "heat_cool" || mode == "auto") { v.symbol = "☀"; mode_label = "Auto"; }
+    else if (mode == "dry") { v.symbol = "💧"; mode_label = "Dry"; }
+    else if (mode == "fan_only") { v.symbol = "🌀"; mode_label = "Fan"; }
+    else { v.symbol = "⏸"; mode_label = mode == "off" ? "Off" : mode; v.accent = 0xAAAAAA; }
+    v.badge.text = v.symbol + " " + mode_label;
     const auto key = selected_setting(*d);
     const auto unit = d->unit.empty() ? "°" : d->unit;
     v.value.text = compact(onx_controls::effective(*d, key));
