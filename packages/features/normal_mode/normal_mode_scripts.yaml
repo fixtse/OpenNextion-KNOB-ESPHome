@@ -605,6 +605,47 @@ script:
               lv_obj_set_style_text_font(id(normal_automation_detail_action), id(fonts_MiSans_Medium_18)->get_lv_font(), 0);
             }
           }
+          lv_obj_set_height(id(normal_automation_detail_action), LV_SIZE_CONTENT);
+          lv_label_set_long_mode(id(normal_automation_detail_action), LV_LABEL_LONG_WRAP);
+          if (entity_id.rfind("media_player.", 0) == 0)
+            lv_obj_set_style_text_font(id(normal_automation_detail_action), id(fonts_MiSans_Medium_18)->get_lv_font(), 0);
+          // The same presentation model supplies the browser's live preview.
+          for (auto *label : {id(normal_detail_badge), id(normal_detail_context), id(normal_detail_hint)})
+            lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+          lv_obj_set_x(id(normal_automation_detail_icon), 0);
+          lv_obj_set_height(id(normal_automation_detail_title), 25);
+          lv_obj_set_width(id(normal_automation_detail_title), 180);
+          if (!timer_detail && entity_id.rfind("media_player.", 0) != 0) {
+            const auto view = onx_detail_view::build(entity_id, title);
+            auto line = [&](lv_obj_t *label, const onx_detail_view::Line &text) {
+              lv_label_set_text(label, text.text.c_str());
+              lv_obj_set_x(label, text.x); lv_obj_set_y(label, text.y); lv_obj_set_width(label, text.width);
+              lv_obj_set_style_text_color(label, lv_color_hex(text.color), 0);
+              auto *font = text.size == 32 ? id(fonts_MiSans_Medium_32)->get_lv_font() :
+                           text.size == 24 ? id(fonts_MiSans_Medium_24)->get_lv_font() :
+                           text.size == 14 ? id(fonts_MiSans_Medium_14)->get_lv_font() :
+                           id(fonts_MiSans_Medium_16)->get_lv_font();
+              lv_obj_set_style_text_font(label, font, 0);
+              if (text.text.empty()) lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+              else lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+            };
+            line(id(normal_detail_badge), view.badge);
+            line(id(normal_automation_detail_action), view.value);
+            lv_obj_set_height(id(normal_automation_detail_action), 40);
+            lv_label_set_long_mode(id(normal_automation_detail_action), LV_LABEL_LONG_DOT);
+            line(id(normal_detail_context), view.context);
+            line(id(normal_detail_hint), view.hint);
+            line(id(normal_automation_detail_title), view.name);
+            lv_obj_set_height(id(normal_automation_detail_title), 40);
+            lv_label_set_long_mode(id(normal_automation_detail_title), LV_LABEL_LONG_WRAP);
+            lv_obj_set_x(id(normal_automation_detail_icon), view.icon_x);
+            lv_obj_set_y(id(normal_automation_detail_icon), view.icon_y);
+            lv_image_set_scale(id(normal_automation_detail_icon), view.icon_size * 256 / 80);
+          } else {
+            lv_label_set_long_mode(id(normal_automation_detail_title), LV_LABEL_LONG_DOT);
+            lv_obj_set_y(id(normal_automation_detail_title), 192);
+            lv_obj_set_style_text_font(id(normal_automation_detail_title), id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
+          }
           id(refresh_normal_media_progress).execute();
 
 

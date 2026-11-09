@@ -6,3 +6,5 @@
 __pycache__/
 
 /firmware/builds/
+
+/tests/artifacts/

@@ -7,7 +7,7 @@ const $=id=>document.getElementById(id),ha=new OnxHA.Client(),DRAFT='onx.config.
 const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['fan','Fan'],['number','Number'],['input_number','Input Number'],['select','Select'],['input_select','Input Select'],['scene','Scene'],['button','Button'],['input_button','Input Button'],['climate','Climate'],['media_player','Media players'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
 const copy=value=>JSON.parse(JSON.stringify(value));
 const empty=()=>({entity:'',name:'',area:'',action:'',actionName:'',typeOption:'',icon:'',iconOverride:'0'});
-let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false;
+let slots=Array.from({length:10},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[];
 function element(tag,text,className){const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e}
 function message(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error)}
 function safeRead(key){try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}}
@@ -34,7 +34,34 @@ function browserStatus(){const loggedIn=!!ha.read('onx.ha.auth');$('browser-stat
 function deviceStatus(online){$('device-status').textContent=online?'Knob: reachable':'Knob: unreachable';$('device-status').dataset.ok=String(online);$('ha-status').textContent='Knob → Home Assistant: '+(!online?'unknown':device.ha_connected?'connected':'not connected');$('ha-status').dataset.ok=String(online&&device.ha_connected);const info=$('device-info');info.replaceChildren();for(const [key,value] of [['Model','ONX2424G013'],['Firmware',device.firmware||'Unknown'],['Uptime',Number.isFinite(device.uptime_ms)?Math.floor(device.uptime_ms/60000)+' minutes':'Unknown'],['Wi-Fi',online?(device.wifi_connected?'connected':'disconnected'):'unknown'],['Home Assistant',online?(device.ha_connected?'connected':'disconnected'):'unknown']])info.append(element('dt',key),element('dd',value))}
 function page(name){document.querySelectorAll('[id^=page-]').forEach(e=>e.hidden=e.id!=='page-'+name);document.querySelectorAll('[data-page]').forEach(e=>{if(e.dataset.page===name)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current')})}
 document.querySelectorAll('[data-page]').forEach(e=>e.onclick=()=>page(e.dataset.page));
-function preview(){const s=slots[active],d=s.entity.split('.')[0];$('preview-name').textContent=s.name||s.entity||'Choose an entity';$('preview-type').textContent=s.entity?(s.typeOption||d.replace('_',' ')):'Empty slot';
+const svgNS='http://www.w3.org/2000/svg',measure=document.createElement('canvas').getContext('2d');
+function svgNode(tag,attrs={}){const node=document.createElementNS(svgNS,tag);for(const [key,value] of Object.entries(attrs))node.setAttribute(key,String(value));return node}
+function fitted(text,size,width){measure.font=size+'px Arial';let out=String(text);if(measure.measureText(out).width<=width)return out;while(out&&measure.measureText(out+'…').width>width)out=out.slice(0,-1);return out+'…'}
+function drawPreview(slot){
+ const svg=$('device-preview'),view=liveViews.find(item=>item.entity===slot.entity);
+ svg.replaceChildren(svgNode('circle',{cx:120,cy:120,r:120,fill:'#000'}));
+ svg.setAttribute('aria-label',(slot.name||slot.entity||'Empty slot')+' device display preview');
+ const hex=color=>'#'+Number(color??0xffffff).toString(16).padStart(6,'0');
+ const text=(content,y,size,width=196,color=0xffffff,x=0,wrap=false)=>{
+  const words=String(content).split(' '),rows=wrap?['']:String(content).split('\n');
+  if(wrap){measure.font=size+'px Arial';for(const word of words){const i=rows.length-1,candidate=(rows[i]+' '+word).trim();if(measure.measureText(candidate).width>width&&rows[i]&&rows.length<2)rows.push(word);else rows[i]=candidate}}
+  for(const [i,row] of rows.slice(0,2).entries()){const line=svgNode('text',{x:120+x,y:y+size*.85+i*(size+2),'text-anchor':'middle','font-size':size,fill:hex(color)});line.textContent=fitted(row,size,width);svg.append(line)}
+ };
+ if(!view){text(slot.entity?'Save to load':'Choose an entity',88,18);if(slot.entity)text('live device data',112,16);$('preview-status').textContent=slot.entity?'No live view for this unsaved entity.':'Choose what this slot displays.';return}
+ if(view.layout==='media'&&view.progress>=0){
+  svg.append(svgNode('circle',{cx:120,cy:120,r:117,fill:'none',stroke:'#344653','stroke-width':4}));
+  const ring=svgNode('circle',{cx:120,cy:120,r:117,fill:'none',stroke:view.playing?'#62b0ff':'#ffbc66','stroke-width':4,'stroke-linecap':'round',pathLength:1000,'stroke-dasharray':view.progress+' '+(1000-view.progress),transform:'rotate(-90 120 120)',class:'preview-ring','data-playing':String(!!view.playing)});svg.append(ring);
+ }
+ if(view.icon&&/^mdi:[a-z0-9-]+$/.test(view.icon)){
+  const size=view.layout==='media'?80:view.icon_size;
+  const icon=svgNode('image',{href:'https://api.iconify.design/mdi/'+view.icon.slice(4)+'.svg?color=%23ffffff',x:120+(view.icon_x||0)-size/2,y:view.icon_y,width:size,height:size});svg.append(icon);
+ }
+ if(view.layout==='media'&&view.artwork){try{const url=new URL(view.artwork);if(['http:','https:'].includes(url.protocol))svg.append(svgNode('image',{href:url.href,x:70,y:18,width:100,height:100,preserveAspectRatio:'xMidYMid slice'}))}catch{}}
+ for(const [i,line] of (view.lines||[]).entries()){const name=i===4;text(name?(slot.name||line.text):line.text,line.y,line.size,line.width,line.color,line.x||0,name&&view.layout!=='media')}
+ $('preview-status').textContent=view.available?'Live device view':'Device view · waiting for entity data';
+}
+async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden)return;previewBusy=true;try{const data=await rpc({op:'preview'});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
+function preview(){const s=slots[active],d=s.entity.split('.')[0];drawPreview(s);
  const rotates={light:'Adjust the selected light control',cover:'Browse; hold and rotate to adjust position',climate:'Adjust the selected setting; hold and turn to choose a setting',fan:'Adjust speed; hold and turn for presets, oscillation or direction',number:'Adjust value within minimum, maximum and step',input_number:'Adjust value within minimum, maximum and step',select:'Choose an option',input_select:'Choose an option',media_player:'Adjust volume'};
  $('rotate-hint').textContent=s.entity?(rotates[d]||'No adjustment; hold to return'):'Browse your devices';
  const presses={light:'Toggle power',cover:'Use the cover’s normal controls',climate:'Cycle supported HVAC modes; confirm a previewed option',fan:'Toggle power; confirm a previewed option',select:'Confirm option',input_select:'Confirm option',number:'Value sent automatically',input_number:'Value sent automatically',scene:'Activate scene',button:'Press button',input_button:'Press button',media_player:'Next track; double press for previous track',script:'Run script',automation:'Use the automation’s normal controls',sensor:'Send sensor press event',binary_sensor:'Send sensor press event',weather:'Read only',timer:'Read only'};
@@ -124,9 +151,9 @@ $('theme').onchange=()=>{const theme=$('theme').value;if(theme==='system')delete
 (async()=>{render();search();try{
  device=await rpc({op:'state'});slots=validateSlots(device.slots);saved=copy(slots);savedWeather=device.weather||'';const data=await rpc({op:'settings_state'});settings=validateSettings({...data,weather:savedWeather});savedSettings=copy(settings);initialized=true;deviceStatus(true);$('ha-url').value=device.ha_url||'';settingsForm();
  const draft=safeRead(DRAFT);if(draft){try{recovery=validateDocument(draft);$('draft-notice').hidden=false}catch{message('An older recovery draft could not be read. Your saved configuration is unchanged.',true)}}
- await ha.finishLogin();const auth=ha.read('onx.ha.auth');if(auth)$('ha-url').value=auth.base;browserStatus();render();search();if(auth)await refreshCatalogue();else message('Knob settings loaded. Sign in to Home Assistant to browse entities.');
+ await ha.finishLogin();const auth=ha.read('onx.ha.auth');if(auth)$('ha-url').value=auth.base;browserStatus();render();search();if(auth)await refreshCatalogue();else message('Knob settings loaded. Sign in to Home Assistant to browse entities.');await refreshPreview();
  }catch(error){if(!initialized)deviceStatus(false);message(error.message,true);render();browserStatus()}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshStatus()});setInterval(()=>{if(!document.hidden)refreshStatus()},30000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden){refreshStatus();refreshPreview()}});setInterval(refreshPreview,2000);setInterval(()=>{if(!document.hidden)refreshStatus()},30000);
 })();
 })();
 )ONXJS";

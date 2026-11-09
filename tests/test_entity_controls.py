@@ -12,9 +12,12 @@ class EntityControls(unittest.TestCase):
         cache = cache[cache.index('struct EntityDetailState {'):cache.index('class DeviceSlotStateUpdater')]
         handlers = '\n'.join(line for line in (root / 'onx_entity_controls.h').read_text().splitlines()
                              if not line.startswith(('#include', '#pragma')))
+        presentation = '\n'.join(line for line in (root / 'onx_detail_view.h').read_text().splitlines()
+                                 if not line.startswith(('#include', '#pragma')))
         harness = r'''
 #include "onx_control_state.h"
 #include "onx_media_state.h"
+#include "onx_icon_state.h"
 #include <array>
 #include <cstdio>
 #include <cassert>
@@ -51,9 +54,30 @@ inline bool has_prefix(const std::string &s, const std::string &prefix) { return
 CACHE
 }
 HANDLERS
+PRESENTATION
 int main() {
   using namespace custom_logic_entity_sub;
   using namespace onx_controls;
+  {
+    auto &sensor = entity_details[1];
+    sensor.entity_id="sensor.madrid_piso_temperature"; sensor.state="16.63";sensor.unit="°C";sensor.received=sensor.available=true;
+    onx_icon_state::metadata[1].bind(sensor.entity_id);onx_icon_state::metadata[1].device_class="temperature";
+    auto view=onx_detail_view::build(sensor.entity_id,"Madrid Piso Temperature");
+    assert(view.value.text=="16.63 °C"&&view.value.size==32&&view.icon_size==28);
+    assert(view.badge.text=="🌡 Temperature"&&view.name.width==180);
+    auto &climate=entity_details[2];climate.entity_id="climate.heater";climate.received=climate.available=true;
+    climate.features=1;climate.state="heat";climate.target="21.5";climate.current="23.0";
+    control_entity="climate.heater";control_setting="temperature";
+    view=onx_detail_view::build(climate.entity_id,"Calentador");
+    assert(view.badge.text=="🔥 Heat"&&view.value.text=="21.5°"&&view.context.text=="Now 23°");
+    climate.state="cool";view=onx_detail_view::build(climate.entity_id,"Calentador");assert(view.badge.text=="❄ Cool");
+    // Rendering a different slot must not change the setting being adjusted on the device.
+    onx_detail_view::build(sensor.entity_id,"Temperature");assert(control_setting=="temperature");
+    auto &fan=entity_details[3];fan.entity_id="fan.office";fan.received=fan.available=true;fan.state="on";
+    fan.features=1;fan.percentage="40";fan.step=20;
+    view=onx_detail_view::build(fan.entity_id,"Office fan");assert(view.badge.text=="🌀 Fan"&&view.value.text=="40%");
+    cancel_controls();
+  }
   esphome::api::APIServer api;
   auto &d = entity_details[0];
   d.entity_id = "climate.test"; d.state = "off"; d.received = d.available = true;
@@ -145,7 +169,7 @@ int main() {
   assert(text(d.entity_id).find("Turn to adjust") == std::string::npos);
 
 }
-'''.replace('CACHE', cache).replace('HANDLERS', handlers)
+'''.replace('CACHE', cache).replace('HANDLERS', handlers).replace('PRESENTATION', presentation)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             (path / 'test.cpp').write_text(harness)

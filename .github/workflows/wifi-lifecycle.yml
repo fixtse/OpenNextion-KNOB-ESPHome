@@ -21,6 +21,7 @@ on:
       - 'packages/base/input.yaml'
       - 'onx_control_state.h'
       - 'onx_entity_controls.h'
+      - 'onx_detail_view.h'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
       - 'onx_icon_state.h'
@@ -83,7 +84,16 @@ jobs:
           /tmp/test_config_http
       - name: Test web picker saves, actions and mobile layout
         if: ${{ always() }}
-        run: bash scripts/test_config_web.sh
+        run: |
+          mkdir -p tests/artifacts
+          ONX_UI_SCREENSHOT=/config/tests/artifacts/onx-config-mobile.png bash scripts/test_config_web.sh
+      - name: Retain web preview screenshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: onx-web-preview-${{ github.run_id }}
+          path: tests/artifacts/*.png
+          if-no-files-found: ignore
       - name: Resume validation thread
         if: ${{ always() }}
         env:

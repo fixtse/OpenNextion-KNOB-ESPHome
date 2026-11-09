@@ -44,6 +44,36 @@ onx_config_web:
   id: entity_config_web
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "preview") {
+      return esphome::json::build_json([&](JsonObject root) {
+        JsonArray slots = root["slots"].to<JsonArray>();
+        for (size_t i = 0; i < 10; ++i) {
+          const auto entity = custom_logic::cached_device_entity_id(i);
+          if (entity.empty()) continue;
+          const auto title = custom_logic::ha_entity_title_from_registry_cache(entity);
+          const auto view = onx_detail_view::build(entity, title);
+          auto slot = slots.add<JsonObject>();
+          slot["entity"] = entity; slot["layout"] = view.layout; slot["available"] = view.available;
+          slot["icon"] = view.icon; slot["accent"] = view.accent;
+          slot["icon_x"] = view.icon_x; slot["icon_y"] = view.icon_y; slot["icon_size"] = view.icon_size;
+          JsonArray lines = slot["lines"].to<JsonArray>();
+          for (const auto *line : {&view.badge, &view.value, &view.context, &view.hint, &view.name}) {
+            auto item = lines.add<JsonObject>();
+            item["text"] = line->text; item["x"] = line->x; item["y"] = line->y;
+            item["size"] = line->size; item["width"] = line->width; item["color"] = line->color;
+          }
+          if (const auto *detail = custom_logic_entity_sub::entity_detail(entity)) {
+            const auto now = id(ha_time).now();
+            auto projection = detail->progress;
+            const auto progress = projection.view(millis(), now.is_valid() ? now.timestamp : NAN,
+                id(normal_ha_api_connected) && detail->available);
+            slot["progress"] = progress.visible ? progress.permille : -1;
+            slot["playing"] = detail->state == "playing";
+            slot["artwork"] = onx_media::artwork_url(id(ha_host).state, detail->picture);
+          }
+        }
+      });
+    }
     if (query.op == "icon_status") {
       return esphome::json::build_json([&](JsonObject root) {
         JsonArray slots = root["slots"].to<JsonArray>();

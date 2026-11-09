@@ -1429,6 +1429,38 @@ lvgl:
                   text_color: 0xFFFFFF
                   text: "Never"
               - label:
+                  id: normal_detail_badge
+                  align: top_mid
+                  y: 36
+                  width: 156
+                  height: 22
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_detail_context
+                  align: top_mid
+                  y: 119
+                  width: 200
+                  height: 22
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0xD2D2D2
+                  text: ""
+                  hidden: true
+              - label:
+                  id: normal_detail_hint
+                  align: top_mid
+                  y: 147
+                  width: 198
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xAAAAAA
+                  text: ""
+                  hidden: true
+              - label:
                   id: normal_automation_detail_title
                   x: 0
                   y: 192

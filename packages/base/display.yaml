@@ -33,7 +33,7 @@ font:
       - file: "../../fonts/NotoEmoji.ttf"
         # Single-codepoint monochrome emoji; keep the subset bounded for flash.
         glyphs:
-          - "❤☀☁☂☕❄⚡✅❌⭐🌙🌞🌧🌡🌈🎵🎶🎧🎤🎸🎹🎷🎺🎻🥁📻💿📀🔊🔇🔔🔥💡🏠😀😊😂😍😎😢😭👍👏💙💚💛💜🎉"
+          - "💧🌀⏸❤☀☁☂☕❄⚡✅❌⭐🌙🌞🌧🌡🌈🎵🎶🎧🎤🎸🎹🎷🎺🎻🥁📻💿📀🔊🔇🔔🔥💡🏠😀😊😂😍😎😢😭👍👏💙💚💛💜🎉"
   - file: "../../fonts/MiSans-Bold.ttf"
     id: fonts_MiSans_Bold_14
     size: 14

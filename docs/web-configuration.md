@@ -75,3 +75,15 @@ browser catalogue loads or refreshes.
 SVG parsing, rasterizer scratch space, and cached pixels all use PSRAM. This avoids
 large parser allocations failing in the device's constrained internal heap even
 when the icon has downloaded successfully.
+
+## Live display previews
+
+The slot preview reads live values from the knob and uses the same presentation
+model as the display. Sensor readings are prominent, names have two lines, and
+icons are compact. Climate and fan controls include mode symbols; media previews
+show the current artwork, artist, volume and playback ring. New entities show a
+clear save-to-load state instead of invented readings. Preview refreshes pause
+while the page is hidden or a configuration save is in progress.
+
+The configuration page uses an orange/slate palette in light and dark themes,
+with Nunito typography when the browser can load it and a local system fallback.
