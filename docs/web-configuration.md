@@ -49,3 +49,16 @@ never writes to the knob: review, then save slots and device settings separately
 
 Diagnostics downloads contain firmware, uptime, reset reason, and connection
 flags. They exclude entity names, HA addresses, tokens, and Wi-Fi credentials.
+
+## Display feedback and icons
+
+Command confirmations and errors clear after 2.5 seconds, restoring normal entity
+metadata such as the media artist. Pending commands remain visible until Home
+Assistant confirms them or they time out.
+
+Opening or refreshing the signed-in browser catalogue also synchronizes the icons
+for saved slots, including icons changed in Home Assistant. Unsaved slot edits are
+preserved. The device downloads MDI icons after its clock has synchronized, retries
+failed downloads with backoff, and tries a second HTTPS source if needed. Built-in
+entity icons remain visible while downloading or when an icon is unavailable. The
+browser connection retry also clears failed icon download delays.

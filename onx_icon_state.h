@@ -13,6 +13,19 @@ inline bool valid_icon(const std::string &icon) {
 inline std::string download_url(const std::string &icon) {
   return valid_icon(icon) ? "https://api.iconify.design/mdi/" + icon.substr(4) + ".svg?color=%23ffffff&width=80&height=80" : "";
 }
+inline std::string backup_url(const std::string &icon) {
+  return valid_icon(icon) ? "https://raw.githubusercontent.com/Templarian/MaterialDesign/master/svg/" + icon.substr(4) + ".svg" : "";
+}
+struct Retry {
+  uint32_t failed_at{0}, delay{5000};
+  unsigned attempts{0};
+  bool due(uint32_t now) const { return now - failed_at >= delay; }
+  void fail(uint32_t now) {
+    static const uint32_t delays[] = {5000, 15000, 60000, 300000};
+    failed_at = now; delay = delays[attempts < 4 ? attempts : 3];
+    if (attempts < 4) ++attempts;
+  }
+};
 inline std::string fallback(const std::string &entity, const std::string &type = "") {
   const auto domain = entity.substr(0, entity.find('.'));
   if (type == "plug") return "power-plug";

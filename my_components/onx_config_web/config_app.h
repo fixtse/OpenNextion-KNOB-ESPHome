@@ -85,7 +85,29 @@ $('search').oninput=()=>{clearTimeout(debounce);debounce=setTimeout(()=>search()
 $('settings-form').oninput=()=>{if(!initialized)return;settings={brightness:$('brightness').value,standby:$('standby').value,sensitivity:$('sensitivity').value,sleep_enabled:$('sleep-enabled').checked?'1':'0',sleep_start:$('sleep-start').value,sleep_end:$('sleep-end').value,sleep_timeout:$('sleep-timeout').value,weather:$('standby-weather').value};persistDraft();$('save-settings').disabled=busy||!dirtySettings();message('Device settings not saved.')};
 $('discard-settings').onclick=()=>{settings=copy(savedSettings);settingsForm();persistDraft();render();message('Unsaved device settings discarded.')};
 $('settings-form').onsubmit=async event=>{event.preventDefault();if(busy||!initialized)return;try{validateSettings(settings)}catch(error){message(error.message,true);return}busy=true;render();const snapshot=copy(settings);try{message('Saving device settings…');await rpc({op:'settings',...snapshot});savedSettings={...snapshot,weather:savedWeather};persistDraft();if(snapshot.weather!==savedWeather){const item=ha.items.find(i=>i.entity===snapshot.weather)||{};await rpc({op:'weather',entity:snapshot.weather,name:item.name||snapshot.weather,area:item.area||''});savedWeather=snapshot.weather}savedSettings=snapshot;message('Device settings saved.')}catch(error){message(error.message+' Review the settings and retry any unsaved changes.',true)}finally{busy=false;persistDraft();render()}};
-async function refreshCatalogue(){if(busy)return;$('refresh').disabled=true;message('Loading entities from Home Assistant…');try{await ha.load();lastLoaded=new Date();for(const slot of slots){const item=ha.items.find(i=>i.entity===slot.entity);if(item&&Object.hasOwn(item,'icon')){slot.icon=item.icon||'';slot.iconOverride=item.iconOverride||'0'}}persistDraft();weatherOptions();roomOptions();render();search();message('Entity list refreshed. Saved knob settings are unchanged.')}catch(error){message(error.message+' Check the address and sign in again if needed.',true)}finally{$('refresh').disabled=false;browserStatus()}}
+async function syncIconMetadata(){
+ let count=0;
+ for(let i=0;i<saved.length;i++){
+  const source=saved[i],item=ha.items.find(item=>item.entity===source.entity);
+  if(!source.entity||!item||!Object.hasOwn(item,'icon'))continue;
+  const icon=item.icon||'',iconOverride=item.iconOverride||'0';
+  if(source.icon===icon&&source.iconOverride===iconOverride)continue;
+  await rpc({op:'icon',slot:i,entity:source.entity,icon,icon_override:iconOverride});
+  source.icon=icon;source.iconOverride=iconOverride;
+  if(slots[i].entity===source.entity){slots[i].icon=icon;slots[i].iconOverride=iconOverride}
+  count++;
+ }
+ return count;
+}
+async function refreshCatalogue(){
+ if(busy)return;$('refresh').disabled=true;message('Loading entities from Home Assistant…');
+ try{
+  await ha.load();lastLoaded=new Date();
+  const icons=await syncIconMetadata();persistDraft();weatherOptions();roomOptions();render();search();
+  message('Entity list refreshed.'+(icons?' '+icons+' device icon'+(icons===1?'':'s')+' synced.':'')+' Unsaved slot edits are preserved.');
+ }catch(error){message(error.message+' Check the address and sign in again if needed.',true)}
+ finally{$('refresh').disabled=false;browserStatus()}
+}
 $('refresh').onclick=refreshCatalogue;$('ha-connect').onclick=async()=>{persistDraft();try{const origin=OnxHA.baseUrl($('ha-url').value);await rpc({op:'ha_host',q:origin});await ha.login(origin)}catch(error){message(error.message,true)}};$('ha-disconnect').onclick=()=>{ha.disconnect();lastLoaded=null;roomOptions();weatherOptions();browserStatus();render();search();message('Browser disconnected. The knob’s Home Assistant connection is unchanged.')};
 async function refreshStatus(){if(statusBusy||busy||!initialized)return;statusBusy=true;try{device=await rpc({op:'state'});deviceStatus(true)}catch(error){deviceStatus(false);message(error.message,true)}finally{statusBusy=false}}
 $('check-status').onclick=refreshStatus;

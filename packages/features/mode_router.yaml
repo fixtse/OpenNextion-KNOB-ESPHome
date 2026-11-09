@@ -44,6 +44,17 @@ onx_config_web:
   id: entity_config_web
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "icon") {
+      if (query.slot < 0 || query.slot >= 10 || query.entity != custom_logic::cached_device_entity_id(query.slot) ||
+          (!query.icon.empty() && !onx_icon_state::valid_icon(query.icon)) ||
+          (query.icon_override != "0" && query.icon_override != "1"))
+        return onx_entity_config::error("Entity changed; reload configuration before syncing icons");
+      if (!onx_entity_config::save_icon(query.slot, query.entity, query.icon, query.icon_override == "1"))
+        return onx_entity_config::error("Could not save entity icon");
+      id(refresh_normal_device_page).execute();
+      id(refresh_normal_automation_detail_page).execute();
+      return std::string("{\"ok\":true}");
+    }
     if (query.op == "ha_host") {
       if ((query.search.rfind("http://", 0) != 0 && query.search.rfind("https://", 0) != 0) ||
           custom_logic::build_ha_http_state_url(query.search, "sensor.placeholder").empty())
@@ -57,6 +68,7 @@ onx_config_web:
       if (retried && millis() - last_retry < 2000) return onx_entity_config::error("Wait a moment before retrying");
       retried = true; last_retry = millis();
       custom_logic_entity_sub::cancel_controls();
+      id(entity_icon_downloader)->retry();
       for (size_t slot = 0; slot < 10; ++slot)
         custom_logic_entity_sub::queue_entity_refresh(custom_logic::cached_device_entity_id(slot), false);
       custom_logic_entity_sub::queue_entity_refresh(custom_logic::cached_standby_weather_entity_id, false);

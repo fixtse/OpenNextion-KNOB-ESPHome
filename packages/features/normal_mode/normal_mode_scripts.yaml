@@ -572,12 +572,9 @@ script:
                 const auto value_end = last_trigger_text.find('\n', split + 1);
                 last_trigger_text = "Volume: " + last_trigger_text.substr(split + 1, value_end - split - 1);
                 lv_obj_set_y(id(normal_automation_detail_action), 166);
-                if (!custom_logic_entity_sub::control_commands.empty()) {
-                  const auto status = onx_controls::text(entity_id);
-                  const auto at = status.find('\n', status.find('\n') + 1);
-                  const auto end = status.find('\n', at + 1);
-                  if (at != std::string::npos) lv_label_set_text(id(normal_media_artist), status.substr(at + 1, end - at - 1).c_str());
-                }
+                const auto feedback = onx_controls::feedback_text(entity_id);
+                lv_label_set_text(id(normal_media_artist),
+                    feedback.empty() ? detail->media_artist.c_str() : feedback.c_str());
               } else {
                 lv_obj_add_flag(id(normal_media_cover), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_media_title), LV_OBJ_FLAG_HIDDEN);

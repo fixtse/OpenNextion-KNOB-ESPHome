@@ -82,6 +82,8 @@ inline void load_icons() {
 inline bool save_icon(size_t slot, const std::string &entity, const std::string &icon, bool override) {
   load_icons();
   if (!icons_loaded || slot >= 10 || (!icon.empty() && !onx_icon_state::valid_icon(icon))) return false;
+  const auto &existing = onx_icon_state::metadata[slot];
+  if (existing.entity == entity && existing.configured == icon && existing.registry_override == override) return true;
   StoredIcon stored;
   custom_logic::copy_string_to_fixed_buffer(entity, stored.entity);
   custom_logic::copy_string_to_fixed_buffer(icon, stored.icon);

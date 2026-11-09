@@ -95,11 +95,15 @@ binary_sensor:
               id(key_long_press_handled) = true;
               return;
             }
+            const int pressed_kind = id(normal_device_detail_kind);
+            const bool entity_detail_page = pressed_kind == NORMAL_DEVICE_DETAIL_KIND_SWITCH ||
+                pressed_kind == NORMAL_DEVICE_DETAIL_KIND_LIGHT || pressed_kind == NORMAL_DEVICE_DETAIL_KIND_PLUG ||
+                pressed_kind == NORMAL_DEVICE_DETAIL_KIND_CURTAIN || pressed_kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
             const auto pressed_entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
             const auto *pressed_detail = custom_logic_entity_sub::entity_detail(pressed_entity);
             if (held_ms < 688 && !id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
                 !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
-                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) &&
+                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
                 id(normal_ha_api_connected) && (!id(normal_device_detail_online) ||
                 pressed_detail == nullptr || !pressed_detail->received || !pressed_detail->available)) {
               id(retry_normal_entity_state).execute();
@@ -107,7 +111,7 @@ binary_sensor:
             }
             if (held_ms < 688 && !id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
                 !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
-                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) &&
+                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
                 id(normal_device_detail_online) && id(normal_ha_api_connected) &&
                 onx_controls::handles(pressed_entity) &&
                 (pressed_entity.rfind("media_player.", 0) != 0 || !custom_logic_entity_sub::control_preview.empty())) {
@@ -118,7 +122,7 @@ binary_sensor:
             if (held_ms >= 688 || id(key_long_press_handled) || id(detail_long_press_exit_fired)) {
               onx_media::clicks.cancel();
             } else if (!id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
-                       !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) &&
+                       !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
                        id(normal_device_detail_online) && id(normal_ha_api_connected) &&
                        pressed_entity.rfind("media_player.", 0) == 0) {
               if (onx_media::clicks.release(now, pressed_entity)) {
@@ -129,7 +133,7 @@ binary_sensor:
             if (!id(key_long_press_handled) && !id(detail_long_press_exit_fired) &&
                 !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
                 !id(normal_device_detail_curtain_adjust_active) &&
-                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) &&
+                !id(ui_presenter)->is_standby_active() && id(normal_device_detail_active) && entity_detail_page &&
                 id(normal_device_detail_index) >= 0 && id(normal_ha_api_connected) &&
                 pressed_entity.rfind("climate.", 0) != 0 &&
                 !onx_entity_config::action_for_ui(id(normal_device_detail_index)).empty()) {
@@ -140,7 +144,7 @@ binary_sensor:
                 id(key_long_press_handled) = true;
               }
             }
-            if (id(normal_device_detail_active) &&
+            if (id(normal_device_detail_active) && entity_detail_page &&
                 id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_LIGHT) {
               if (id(normal_detail_light_mode_count) > 0) {
                 id(normal_detail_light_mode_adjusting) = false;

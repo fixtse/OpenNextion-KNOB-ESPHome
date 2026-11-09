@@ -189,6 +189,22 @@ inline void tick(esphome::api::APIServer *api, const std::string &selected, bool
 #endif
   }
 }
+// Only actual transient feedback belongs over normal metadata. Historical command
+// entries remain for confirmed state bookkeeping, but never keep idle hints visible.
+inline std::string feedback_text(const std::string &id) {
+  if (control_entity != id) return "";
+  if (!control_preview.empty()) return "Press to confirm";
+  bool failed = false, pending = false, dirty = false, sent = false;
+  for (const auto &command : control_commands) {
+    failed |= command.failed && millis() - command.error_at < 2500;
+    pending |= command.active;
+    dirty |= command.active && command.dirty;
+    sent |= command.transmitted && millis() - command.sent < 2500;
+  }
+  if (failed) return "No confirmation";
+  if (pending) return dirty ? "Requested..." : "Waiting for HA...";
+  return sent ? "Action sent" : "";
+}
 inline std::string text(const std::string &id) {
   const auto *d = entity_detail(id);
   if (!d || !d->received) return "Waiting for initial data";
@@ -213,16 +229,10 @@ inline std::string text(const std::string &id) {
   if (key == "state" && (has_prefix(id, "scene.") || has_prefix(id, "button.") || has_prefix(id, "input_button."))) label = "Press to activate";
   std::string out = label + "\n" + value;
   if (has_prefix(id, "climate.")) out += "\nNow: " + d->current + " / " + effective(*d, "state");
-  bool failed = false, pending = false, dirty = false, sent = false;
-  for (const auto &command : control_commands) {
-    failed |= command.failed; pending |= command.active; dirty |= command.active && command.dirty;
-    sent |= command.transmitted && millis() - command.sent < 1500;
-  }
-  if (!control_preview.empty()) out += "\nPress to confirm";
-  else if (failed) out += "\nNo confirmation";
-  else if (pending) out += dirty ? "\nRequested..." : "\nWaiting for HA...";
-  else if (sent) out += "\nAction sent";
-  else out += has_prefix(id, "climate.") ? "\nPress: HVAC mode" : has_prefix(id, "fan.") ? "\nPress: power" : "\nTurn to adjust";
+  const auto feedback = feedback_text(id);
+  if (!feedback.empty()) out += "\n" + feedback;
+  else if (has_prefix(id, "climate.")) out += "\nPress: HVAC mode";
+  else if (has_prefix(id, "fan.")) out += "\nPress: power";
   if (settings(*d).size() > 1) out += "\nHold + turn: setting";
   return out;
 }

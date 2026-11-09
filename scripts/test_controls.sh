@@ -18,6 +18,9 @@ for name in control_state media_state icon_state icon_raster timer_state config_
     check "$output_dir/$name"
   fi
 done
+if check c++ -std=c++17 -Itests/icon_stubs -I. tests/test_icon_downloader.cpp -o "$output_dir/icon_downloader"; then
+  check "$output_dir/icon_downloader"
+fi
 if check c++ -std=c++17 -pthread tests/test_registry_queue.cpp -o "$output_dir/registry"; then
   check "$output_dir/registry"
 fi

@@ -16,7 +16,8 @@ const { chromium } = require('playwright');
    {entity:'automation.welcome',name:'Welcome home',area:'Hallway'}
   ];
   const slots = Array.from({length:10},()=>({entity:'',name:'',action:''}));
-  const results = new Map(); let ticket=0, failSave=false, saved=[];
+  slots[9]={entity:'fan.office',name:'Office fan',action:'',icon:'',iconOverride:'0'};
+  const results = new Map(); let ticket=0, failSave=false, saved=[],iconUpdates=[];
   await page.route('http://knob.test/**',async route=>{
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/'||url.pathname==='/knob'){await route.fulfill({contentType:'text/html',body:html});return}
@@ -33,6 +34,7 @@ const { chromium } = require('playwright');
     const values=new URLSearchParams(request.postData());
     let result;
     if(values.get('op')==='state')result={count:0,slots,weather:'',ha_url:'http://ha.test:8123'};
+    else if(values.get('op')==='icon'){iconUpdates.push(Object.fromEntries(values));Object.assign(slots[Number(values.get('slot'))],{icon:values.get('icon'),iconOverride:values.get('icon_override')});result={ok:true}}
     else if(values.get('op')==='settings_state')result={brightness:'100',standby:'300',sensitivity:'2',sleep_enabled:'0',sleep_start:'23:00',sleep_end:'07:00',sleep_timeout:'300'};
     else if(values.get('op')==='save'){
      if(failSave)result={error:'Could not save the press action; retry'};
@@ -45,6 +47,8 @@ const { chromium } = require('playwright');
   });
   await page.goto('http://knob.test/');
   await page.waitForFunction(()=>!document.getElementById('choose-entity').disabled);
+  await page.getByRole('status').filter({hasText:'Entity list refreshed.'}).waitFor();
+  assert.equal(iconUpdates.length,1);assert.equal(iconUpdates[0].slot,'9');assert.equal(iconUpdates[0].icon,'mdi:ceiling-fan');
   await page.getByRole('button',{name:'Living room temperature'}).waitFor();
   await page.locator('#search').fill('living room');
   await page.getByRole('button',{name:'Living room temperature'}).click();
@@ -74,7 +78,7 @@ const { chromium } = require('playwright');
   await page.getByRole('button',{name:'Use entity ID: script.manual'}).waitFor();
   await page.locator('#choose-entity').click();
   await page.locator('#search').fill('Office fan');
-  await page.getByRole('button',{name:'Office fan'}).click();
+  await page.locator('#results').getByRole('button',{name:'Office fan'}).click();
   assert.equal(await page.locator('#choose-action').isDisabled(),true);
   assert.match(await page.locator('#rotate-hint').textContent(),/speed/);
   await page.locator('#save').click();

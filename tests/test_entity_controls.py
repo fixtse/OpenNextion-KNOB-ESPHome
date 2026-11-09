@@ -97,6 +97,12 @@ int main() {
     assert(!control_commands[0].active);
     press(d.entity_id); assert(effective(d, "state") == "off");
   }
+  // Expired status must restore idle metadata despite retained command records.
+  clock_ms += 100; tick(&api, d.entity_id, true);
+  d.state = "off";
+  for (auto &c : control_commands) c.feedback("state", d.state);
+  clock_ms += 3000; tick(&api, d.entity_id, true);
+  assert(feedback_text(d.entity_id).empty());
   cancel_controls(); d.features = 2; d.target = "None"; d.low = "19"; d.high = "23";
   rotate(d.entity_id, 1);
   assert(effective(d, "target_temp_low") == "19.500000");
@@ -133,6 +139,11 @@ int main() {
   assert(api.sent.back().service == "button.press");
   assert(api.sent.back().data.size() == 1); // Never send a fictitious state parameter.
   assert(!control_commands.back().active);
+  assert(feedback_text(d.entity_id) == "Action sent");
+  clock_ms += 2500; tick(&api, d.entity_id, true);
+  assert(feedback_text(d.entity_id).empty());
+  assert(text(d.entity_id).find("Turn to adjust") == std::string::npos);
+
 }
 '''.replace('CACHE', cache).replace('HANDLERS', handlers)
         with tempfile.TemporaryDirectory() as directory:

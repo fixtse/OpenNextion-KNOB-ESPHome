@@ -12,6 +12,13 @@ int main() {
   assert(fallback("media_player.music") == "music-note"); assert(fallback("number.helper") == "counter");
   assert(fallback("input_select.mode") == "format-list-bulleted"); assert(fallback("switch.plug", "plug") == "power-plug");
   assert(fallback("unknown.new") == "toggle-switch");
+  assert(backup_url("mdi:ceiling-fan") == "https://raw.githubusercontent.com/Templarian/MaterialDesign/master/svg/ceiling-fan.svg");
+  assert(backup_url("mdi:../../etc/passwd").empty());
+  Retry icon_retry; icon_retry.fail(100);
+  assert(!icon_retry.due(5099) && icon_retry.due(5100));
+  icon_retry.fail(5100); assert(icon_retry.delay == 15000);
+  icon_retry.fail(20100); assert(icon_retry.delay == 60000);
+  icon_retry.fail(80100); assert(icon_retry.delay == 300000);
   Metadata meta; meta.bind("fan.office"); meta.configured = "mdi:ceiling-fan"; meta.registry_override = true;
   meta.runtime = "mdi:fan"; assert(meta.chosen() == "mdi:ceiling-fan");
   meta.registry_override = false; assert(meta.chosen() == "mdi:fan");
