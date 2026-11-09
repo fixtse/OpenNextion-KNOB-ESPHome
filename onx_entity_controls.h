@@ -166,7 +166,7 @@ inline void tick(esphome::api::APIServer *api, const std::string &selected, bool
     call.service = esphome::StringRef(command.service);
     call.data.init(command.values.size() + 1);
     esphome::api::HomeassistantServiceMap target;
-    target.key = "entity_id"; target.value = esphome::StringRef(selected); call.data.push_back(target);
+    target.key = esphome::StringRef("entity_id"); target.value = esphome::StringRef(selected); call.data.push_back(target);
     for (const auto &value : command.values) {
       if (value.parameter.empty()) continue;
       esphome::api::HomeassistantServiceMap item;

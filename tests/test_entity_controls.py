@@ -18,12 +18,21 @@ class EntityControls(unittest.TestCase):
 #include <cstdio>
 #include <cassert>
 #include <utility>
+#include <type_traits>
 uint32_t clock_ms = 100;
 uint32_t millis() { return clock_ms; }
 namespace custom_logic { constexpr size_t CONFIGURABLE_DEVICE_SLOT_COUNT = 10; }
 #define USE_API_HOMEASSISTANT_SERVICES
 namespace esphome {
-struct StringRef : std::string { using std::string::string; StringRef(const std::string &s):std::string(s){} };
+// Mirror ESPHome 2026.10's explicit construction so implicit assignments fail here too.
+struct StringRef {
+  std::string value;
+  StringRef() = default;
+  explicit StringRef(const std::string &s) : value(s) {}
+  explicit StringRef(const char *s) : value(s) {}
+  bool operator==(const char *s) const { return value == s; }
+};
+static_assert(!std::is_convertible_v<const char *, StringRef>);
 namespace api {
 struct HomeassistantServiceMap { StringRef key, value; };
 struct Data : std::vector<HomeassistantServiceMap> { void init(size_t n) { reserve(n); } };
