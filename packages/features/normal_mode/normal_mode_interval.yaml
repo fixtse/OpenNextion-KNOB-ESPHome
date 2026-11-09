@@ -150,6 +150,9 @@ interval:
                 lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
             - lvgl.page.show: standby_page
+            - lambda: |-
+                lv_obj_set_style_text_font(id(standby_time_widget), onx_display_settings::datetime.hour_format == 1 ?
+                    id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Bold_64)->get_lv_font(), 0);
             - lvgl.widget.refresh: standby_time_widget
             - lvgl.widget.refresh: standby_date_widget
       - if:

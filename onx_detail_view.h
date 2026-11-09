@@ -1,6 +1,7 @@
 #pragma once
 #include "onx_entity_controls.h"
 #include "onx_icon_state.h"
+#include "onx_display_settings.h"
 #include <cstdio>
 namespace onx_detail_view {
 struct Line { std::string text; int y, size, width; uint32_t color{0xFFFFFF}; int x{0}; };
@@ -105,7 +106,7 @@ inline View build(const std::string &entity, const std::string &name) {
       v.hint.text = "Press to refresh";
     } else {
       const auto &f = d->forecast[page - 3];
-      v.badge.text = f.date.size() >= 10 ? f.date.substr(5, 5) : f.date;
+      v.badge.text = onx_display_settings::format_iso_date(f.date);
       v.value.text = reading(f.high, d->unit); v.context.text = "Low " + reading(f.low, d->unit);
       v.hint.text = condition(f.condition) + "\nRain chance " + reading(f.rain, "%");
     }

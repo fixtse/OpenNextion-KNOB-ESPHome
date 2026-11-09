@@ -22,6 +22,7 @@ template<typename F> inline std::string build_json(F &&fill) {
 }
 
 inline esphome::ESPPreferenceObject display_preference;
+inline esphome::ESPPreferenceObject datetime_preference;
 inline bool display_settings_loaded{false};
 inline void load_display_settings() {
   if (display_settings_loaded || esphome::global_preferences == nullptr) return;
@@ -29,16 +30,24 @@ inline void load_display_settings() {
   onx_display_settings::Settings saved{};
   if (display_preference.load(&saved) && saved.magic == 0x4F4E5844 && saved.media_color <= 0xFFFFFF && saved.standby_scope <= 2)
     onx_display_settings::current = saved;
+  datetime_preference = esphome::global_preferences->make_preference<onx_display_settings::DateTimeSettings>(esphome::fnv1_hash("onx.datetime.v1"));
+  onx_display_settings::DateTimeSettings date_saved{};
+  if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 2 && date_saved.hour_format <= 1)
+    onx_display_settings::datetime = date_saved;
   display_settings_loaded = true;
 }
-inline bool save_display_settings(const std::string &color, const std::string &scope) {
+inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format) {
   load_display_settings();
   onx_display_settings::Settings next{};
   if (!display_settings_loaded || !onx_display_settings::parse_color(color, next.media_color) ||
       !onx_display_settings::parse_scope(scope, next.standby_scope)) return false;
-  if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope) return true;
-  if (!display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
-  onx_display_settings::current = next; return true;
+  onx_display_settings::DateTimeSettings date_next{};
+  if (!onx_display_settings::parse_date_format(date_format, date_next.date_format) ||
+      !onx_display_settings::parse_hour_format(hour_format, date_next.hour_format)) return false;
+  if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope &&
+      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format) return true;
+  if (!datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
+  onx_display_settings::current = next; onx_display_settings::datetime = date_next; return true;
 }
 
 struct PressBinding {

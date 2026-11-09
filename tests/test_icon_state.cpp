@@ -2,6 +2,13 @@
 #include "../onx_recovery_state.h"
 #include <cassert>
 int main() {
+  assert(onx_icon_state::weather_icon("partlycloudy")=="mdi:weather-partly-cloudy");
+  assert(onx_icon_state::weather_icon("clear-night")=="mdi:weather-night");
+  onx_icon_state::Metadata weather;weather.bind("weather.home");weather.condition="rainy";
+  weather.configured="mdi:weather-partly-cloudy";
+  assert(weather.chosen()=="mdi:weather-rainy");
+  weather.runtime="mdi:weather-fog";assert(weather.chosen()=="mdi:weather-fog");
+  weather.registry_override=true;assert(weather.chosen()=="mdi:weather-partly-cloudy");
   using namespace onx_icon_state;
   assert(valid_icon("mdi:ceiling-fan"));
   for (const auto &icon : {"", "mdi:", "mdi:../secret", "https://evil/icon.svg", "mdi:fan?token=x", "mdi:FAN", "hass:fan"}) {

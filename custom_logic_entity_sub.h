@@ -462,6 +462,10 @@ class DeviceSlotStateUpdater {
       else icon.device_class = value;
       return;
     }
+    if (field == "state" && has_prefix(this->entity_id_, "weather.")) {
+      auto &icon = onx_icon_state::metadata[this->slot_];
+      icon.bind(this->entity_id_); icon.condition = value;
+    }
     const size_t ui_slot = this->ui_slot_();
     const bool missing_state = field == "state" && (value.empty() || value == "unknown" ||
                                 value == "unavailable" || value == "None" || value == "null");

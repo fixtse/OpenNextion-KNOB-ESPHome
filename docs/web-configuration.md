@@ -150,3 +150,15 @@ without a device access token. Enable permission for the device to perform
 Home Assistant actions. Providers without daily forecast support show
 “Not available”; press to retry (requests are limited to once per 20 seconds).
 Opening the entity refreshes forecasts cached for more than 15 minutes.
+
+### Dates, clocks and weather icons
+
+In **Device settings**, choose **DD-MM**, **MM-DD**, or **YYYY-MM-DD**, and a
+**12 hour** (with AM/PM) or **24 hour** clock. Defaults are DD-MM and 24 hour.
+Forecast dates and the standby date/clock share these saved preferences; backups
+include them, and older backups receive the defaults. The sleep schedule retains
+its existing times regardless of the display clock format.
+
+The weather carousel shows Home Assistant's icon when supplied, otherwise the
+current condition's MDI icon (sun, partly cloudy, rain, night, etc.). A manually
+selected icon override takes priority. Download failures retain a built-in icon.

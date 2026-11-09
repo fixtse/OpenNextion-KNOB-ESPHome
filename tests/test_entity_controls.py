@@ -18,6 +18,7 @@ class EntityControls(unittest.TestCase):
 #include "onx_control_state.h"
 #include "onx_media_state.h"
 #include "onx_icon_state.h"
+#include "onx_display_settings.h"
 #include <array>
 #include <cstdio>
 #include <cassert>
@@ -77,7 +78,7 @@ int main() {
     weather.forecast_count=1;weather.weather_page=3;
     weather.forecast[0]={"2026-11-10T12:00:00+00:00","rainy","18","9","80"};
     view=onx_detail_view::build(weather.entity_id,"Home");
-    assert(view.badge.text=="11-10" && view.value.text=="18°C" && view.context.text=="Low 9°C");
+    assert(view.badge.text=="10-11" && view.value.text=="18°C" && view.context.text=="Low 9°C");
     assert(view.hint.text.find("80%")!=std::string::npos);
     view=onx_detail_view::carousel(weather.entity_id,"Home");
     assert(view.value.text=="17.65°C" && view.name.text=="Home" && !view.icon.empty());

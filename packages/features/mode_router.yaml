@@ -141,6 +141,8 @@ onx_config_web:
       return onx_entity_config::build_json([&](JsonObject root) {
         root["brightness"] = std::to_string(std::clamp(id(normal_brightness_value), 10, 100));
         root["standby"] = std::to_string(id(app_storage)->get_standby_timeout_ms() / 1000U);
+        root["date_format"] = onx_display_settings::date_format_text(onx_display_settings::datetime.date_format);
+        root["hour_format"] = onx_display_settings::datetime.hour_format == 1 ? "12" : "24";
         root["media_color"] = onx_display_settings::color_text(onx_display_settings::current.media_color);
         root["standby_scope"] = onx_display_settings::scope_text(onx_display_settings::current.standby_scope);
         root["sensitivity"] = std::to_string(id(normal_knob_applied_value));
@@ -152,8 +154,12 @@ onx_config_web:
     }
     if (query.op == "settings") {
       unsigned brightness, standby, sensitivity, sleep_timeout;
-      uint32_t media_color; uint8_t standby_scope;
-      if (!onx_display_settings::parse_color(query.media_color, media_color) ||
+      uint32_t media_color; uint8_t standby_scope, date_format, hour_format;
+      const auto date_text = query.date_format.empty() ? onx_display_settings::date_format_text(onx_display_settings::datetime.date_format) : query.date_format;
+      const auto hour_text = query.hour_format.empty() ? (onx_display_settings::datetime.hour_format == 1 ? "12" : "24") : query.hour_format;
+      if (!onx_display_settings::parse_date_format(date_text, date_format) ||
+          !onx_display_settings::parse_hour_format(hour_text, hour_format) ||
+          !onx_display_settings::parse_color(query.media_color, media_color) ||
           !onx_display_settings::parse_scope(query.standby_scope, standby_scope) ||
           !onx_config::integer_in_range(query.brightness, 10, 100, brightness) ||
           !onx_config::integer_in_range(query.standby, 1, 900, standby) ||
@@ -169,7 +175,7 @@ onx_config_web:
       if (!id(app_storage)->set_standby_timeout_ms(standby * 1000U) ||
           !id(app_storage)->set_sleep_mode_config(enabled, start_minutes, end_minutes, sleep_timeout * 1000U))
         return onx_entity_config::error("Could not persist display settings; retry");
-      if (!onx_entity_config::save_display_settings(query.media_color, query.standby_scope))
+      if (!onx_entity_config::save_display_settings(query.media_color, query.standby_scope, date_text, hour_text))
         return onx_entity_config::error("Could not persist appearance settings; retry");
       auto standby_call = id(standby_timeout_seconds).make_call();
       standby_call.set_value(standby); standby_call.perform();

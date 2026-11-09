@@ -2975,7 +2975,7 @@ lvgl:
               if (!now.is_valid()) {
                 return std::string("----");
               }
-              return now.strftime("%a, %b %d");
+              return now.strftime(onx_display_settings::date_pattern());
         - label:
             id: standby_time_widget
             x: 0
@@ -2991,7 +2991,7 @@ lvgl:
               if (!now.is_valid()) {
                 return std::string("--:--");
               }
-              return now.strftime("%H:%M");
+              return now.strftime(onx_display_settings::time_pattern());
     - id: normal_provisioning_page
       bg_color: 0x272727
       border_width: 0

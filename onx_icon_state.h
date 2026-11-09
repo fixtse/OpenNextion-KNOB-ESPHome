@@ -46,8 +46,18 @@ inline std::string fallback(const std::string &entity, const std::string &type =
   if (domain == "timer") return "timer-outline";
   return "toggle-switch";
 }
+inline std::string weather_icon(const std::string &condition) {
+  if (condition == "partlycloudy") return "mdi:weather-partly-cloudy";
+  if (condition == "clear-night") return "mdi:weather-night";
+  if (condition == "lightning-rainy") return "mdi:weather-lightning-rainy";
+  if (condition == "snowy-rainy") return "mdi:weather-snowy-rainy";
+  if (condition == "windy-variant") return "mdi:weather-windy-variant";
+  for (const char *name : {"sunny", "cloudy", "fog", "hail", "lightning", "pouring", "rainy", "snowy", "windy"})
+    if (condition == name) return std::string("mdi:weather-") + name;
+  return "mdi:weather-partly-cloudy";
+}
 struct Metadata {
-  std::string entity, configured, runtime, device_class;
+  std::string entity, configured, runtime, device_class, condition;
   bool registry_override{false};
   void bind(const std::string &id) {
     if (entity != id) { *this = Metadata{}; entity = id; }
@@ -55,6 +65,7 @@ struct Metadata {
   std::string chosen() const {
     if (registry_override && valid_icon(configured)) return configured;
     if (valid_icon(runtime)) return runtime;
+    if (entity.rfind("weather.", 0) == 0 && !condition.empty()) return weather_icon(condition);
     if (valid_icon(configured)) return configured;
     if (entity.rfind("sensor.", 0) == 0) {
       if (device_class == "temperature") return "mdi:thermometer";

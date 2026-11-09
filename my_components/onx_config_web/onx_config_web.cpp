@@ -96,9 +96,10 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   query.sensitivity = request->arg("sensitivity"); query.sleep_enabled = request->arg("sleep_enabled");
   query.sleep_start = request->arg("sleep_start"); query.sleep_end = request->arg("sleep_end");
   query.sleep_timeout = request->arg("sleep_timeout");
+  query.date_format = request->arg("date_format"); query.hour_format = request->arg("hour_format");
   query.media_color = request->arg("media_color"); query.standby_scope = request->arg("standby_scope");
   unsigned slot = 0, offset = 0;
-  if (query.media_color.size() > 7 || query.standby_scope.size() > 5 || query.icon.size() > 80 || query.icon_override.size() > 1 || query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
+  if (query.date_format.size() > 10 || query.hour_format.size() > 2 || query.media_color.size() > 7 || query.standby_scope.size() > 5 || query.icon.size() > 80 || query.icon_override.size() > 1 || query.op.size() > 16 || query.entity.size() > 128 || query.action.size() > 128 ||
       query.search.size() > 128 || query.domain.size() > 32 ||
       query.brightness.size() > 3 || query.standby.size() > 3 || query.sensitivity.size() > 1 ||
       query.sleep_enabled.size() > 1 || query.sleep_start.size() > 5 || query.sleep_end.size() > 5 || query.sleep_timeout.size() > 4 ||

@@ -2,6 +2,17 @@
 #include <cassert>
 int main() {
   using namespace onx_display_settings;
+  uint8_t format=255;
+  assert(parse_date_format("dd-mm",format)&&format==0);
+  assert(format_iso_date("2026-12-31T12:00:00Z")=="31-12");
+  datetime.date_format=1;assert(format_iso_date("2026-12-31")=="12-31");
+  datetime.date_format=2;assert(format_iso_date("2026-12-31")=="2026-12-31");
+  assert(format_iso_date("unknown")=="unknown");
+  assert(!parse_date_format("bad",format));
+  assert(parse_hour_format("12",format)&&format==1);
+  datetime.hour_format=format;assert(std::string(time_pattern())=="%I:%M %p");
+  assert(parse_hour_format("24",format)&&format==0);
+  assert(!parse_hour_format("13",format));
   uint32_t color=0;
   assert(parse_color("#62b0ff",color)&&color==0x62B0FF&&color_text(color)=="#62B0FF");
   for(const auto &bad : {"", "red", "#fff", "#0000000", "#12zz00", "123456"})assert(!parse_color(bad,color));
