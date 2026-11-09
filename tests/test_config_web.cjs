@@ -44,6 +44,7 @@ const { chromium } = require('playwright');
    throw Error('Unexpected request: '+request.url());
   });
   await page.goto('http://knob.test/');
+  await page.waitForFunction(()=>!document.getElementById('choose-entity').disabled);
   await page.getByRole('button',{name:'Living room temperature'}).waitFor();
   await page.locator('#search').fill('living room');
   await page.getByRole('button',{name:'Living room temperature'}).click();
