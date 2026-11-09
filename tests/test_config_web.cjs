@@ -37,7 +37,7 @@ const { chromium } = require('playwright');
     const values=new URLSearchParams(request.postData());
     let result;
     if(values.get('op')==='state')result={count:0,slots,weather:'',ha_url:'http://ha.test:8123'};
-    else if(values.get('op')==='preview')result={slots:slots.filter(s=>s.entity).map(s=>{
+    else if(values.get('op')==='preview')result={slots:slots.filter(s=>s.entity&&s.entity===values.get('entity')).map(s=>{
      const media=s.entity.startsWith('media_player.'),climate=s.entity.startsWith('climate.');
      return {entity:s.entity,layout:media?'media':'value',available:true,icon:'mdi:thermometer',icon_x:media?0:-62,icon_y:media?18:32,icon_size:media?80:28,progress:media?470:-1,playing:media,artwork:media?'http://ha.test/artwork.svg':'',lines:[
       {text:media?'':climate?'🔥 Heat':'🌡 Temperature',y:36,size:16,width:156,x:16,color:climate?0xffaa66:0x62b0ff},
@@ -124,6 +124,7 @@ const { chromium } = require('playwright');
   assert.equal(await page.locator('#standby-scope').inputValue(),'main');
   await page.getByRole('button',{name:'Soft violet',exact:true}).click();
   assert.equal(await page.locator('#media-color').inputValue(),'#a78bfa');
+  await page.screenshot({path:path.join(screenshots,'onx-color-settings.png'),fullPage:true});
   await page.locator('#standby-scope').selectOption('all');
   await page.locator('#save-settings').click();
   await page.getByRole('status').filter({hasText:'Device settings saved.'}).waitFor();

@@ -45,7 +45,7 @@ onx_config_web:
   handler: !lambda |-
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
     if (query.op == "preview") {
-      return esphome::json::build_json([&](JsonObject root) {
+      return onx_entity_config::build_json([&](JsonObject root) {
         JsonArray slots = root["slots"].to<JsonArray>();
         auto encode = [&](JsonObject target, const onx_detail_view::View &view) {
           target["layout"] = view.layout; target["available"] = view.available;
@@ -60,7 +60,7 @@ onx_config_web:
         };
         for (size_t i = 0; i < 10; ++i) {
           const auto entity = custom_logic::cached_device_entity_id(i);
-          if (entity.empty()) continue;
+          if (entity.empty() || entity != query.entity) continue;
           const auto title = custom_logic::ha_entity_title_from_registry_cache(entity);
           const auto view = onx_detail_view::build(entity, title);
           auto slot = slots.add<JsonObject>();
@@ -83,7 +83,7 @@ onx_config_web:
       });
     }
     if (query.op == "icon_status") {
-      return esphome::json::build_json([&](JsonObject root) {
+      return onx_entity_config::build_json([&](JsonObject root) {
         JsonArray slots = root["slots"].to<JsonArray>();
         for (size_t i = 0; i < 10; ++i) {
           const auto entity = custom_logic::cached_device_entity_id(i);
@@ -133,7 +133,7 @@ onx_config_web:
       return std::string("{\"ok\":true}");
     }
     if (query.op == "settings_state") {
-      return esphome::json::build_json([&](JsonObject root) {
+      return onx_entity_config::build_json([&](JsonObject root) {
         root["brightness"] = std::to_string(std::clamp(id(normal_brightness_value), 10, 100));
         root["standby"] = std::to_string(id(app_storage)->get_standby_timeout_ms() / 1000U);
         root["media_color"] = onx_display_settings::color_text(onx_display_settings::current.media_color);

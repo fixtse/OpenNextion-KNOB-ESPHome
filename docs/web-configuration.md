@@ -105,3 +105,9 @@ Every configured entity now shows a state or value in the main carousel. Lights
 show power and brightness, covers show position and movement, climate and fans
 show their target/speed and mode, and media players show playback state and track.
 Unavailable entities show `--` rather than a stale reading.
+
+Web assets are served directly from flash; the HTML nonce is inserted into a
+chunked response without copying the full page into internal RAM. Live previews
+request only the selected entity. Configuration JSON is measured and serialized
+completely (up to 16 KB), so large configurations never receive a truncated JSON
+response from ESPHome's generic serializer.

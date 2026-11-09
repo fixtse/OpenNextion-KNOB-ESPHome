@@ -5,6 +5,7 @@
 #include "esphome/components/wifi/wifi_component.h"
 #include <array>
 #include <charconv>
+#include <cstring>
 
 namespace esphome::onx_config_web {
 static bool number(const std::string &text, unsigned &value) {
@@ -27,7 +28,7 @@ bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
   return url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js";
 }
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
-  auto *response = request->beginResponse(code, "application/json", body);
+  auto *response = request->beginResponse(code, "application/json", reinterpret_cast<const uint8_t *>(body.data()), body.size());
   response->addHeader("Cache-Control", "no-store");
   // ESPHome 2026.10's IDF wrapper defaults unsupported status codes to 500.
   // Preserve our asynchronous protocol and meaningful client error responses.
@@ -45,21 +46,26 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
   if ((url == "/knob/ha.js" || url == "/knob/app.js") && request->method() == HTTP_GET) {
+    const char *asset = url == "/knob/ha.js" ? HA_BROWSER_JS : CONFIG_APP_JS;
     auto *response = request->beginResponse(200, "text/javascript; charset=utf-8",
-        url == "/knob/ha.js" ? HA_BROWSER_JS : CONFIG_APP_JS);
+        reinterpret_cast<const uint8_t *>(asset), std::strlen(asset));
     response->addHeader("Cache-Control", "no-store");
     request->send(response);
     return;
   }
   if ((url == "/" || url == "/knob" || url == "/knob/") && request->method() == HTTP_GET) {
-    std::string page(CONFIG_PAGE);
-    const auto token = page.find("__ONX_TOKEN__");
-    page.replace(token, 13, nonce_);
-    auto *response = request->beginResponse(200, "text/html; charset=utf-8", page);
+    const char *token = std::strstr(CONFIG_PAGE, "__ONX_TOKEN__");
+    if (token == nullptr) { respond_(request, 500, "{\"error\":\"Page template unavailable\"}"); return; }
+    auto *response = request->beginResponse(200, "text/html; charset=utf-8");
     response->addHeader("Cache-Control", "no-store");
     response->addHeader("X-Content-Type-Options", "nosniff");
     response->addHeader("Referrer-Policy", "no-referrer");
-    request->send(response);
+    // IDF sends these synchronously. Keep the large template in flash and inject
+    // only the small nonce, instead of making two full internal-heap copies.
+    if (httpd_resp_send_chunk(*request, CONFIG_PAGE, token - CONFIG_PAGE) != ESP_OK ||
+        httpd_resp_send_chunk(*request, nonce_.data(), nonce_.size()) != ESP_OK ||
+        httpd_resp_send_chunk(*request, token + 13, std::strlen(token + 13)) != ESP_OK) return;
+    httpd_resp_send_chunk(*request, nullptr, 0);
     return;
   }
   if (url == "/knob/result" && request->method() == HTTP_GET) {

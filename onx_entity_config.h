@@ -7,6 +7,20 @@
 
 namespace onx_entity_config {
 using custom_logic::MAX_HA_ENTITY_ID_LENGTH;
+// Web configuration can legitimately exceed ESPHome's generic 5 KB serializer
+// limit. Allocate its document in PSRAM, measure first, and return complete JSON
+// or an explicit error, never a truncated successful response.
+template<typename F> inline std::string build_json(F &&fill) {
+  auto doc = custom_logic::make_psram_json_document();
+  fill(doc.template to<JsonObject>());
+  if (doc.overflowed()) return "{\"error\":\"Not enough memory to build configuration response\"}";
+  const size_t size = measureJson(doc);
+  if (size > 16384) return "{\"error\":\"Configuration response exceeds size limit\"}";
+  std::string result; result.reserve(size);
+  serializeJson(doc, result);
+  return result;
+}
+
 inline esphome::ESPPreferenceObject display_preference;
 inline bool display_settings_loaded{false};
 inline void load_display_settings() {
@@ -75,7 +89,7 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
   return true;
 }
 inline std::string error(const char *message) {
-  return esphome::json::build_json([&](JsonObject root) { root["error"] = message; });
+  return build_json([&](JsonObject root) { root["error"] = message; });
 }
 struct StoredIcon {
   uint32_t magic{0x4F4E5849};
@@ -117,7 +131,7 @@ inline bool save_icon(size_t slot, const std::string &entity, const std::string 
 inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false) {
   custom_logic::load_ha_entities_if_needed();
   load_icons();
-  return esphome::json::build_json([&](JsonObject root) {
+  return build_json([&](JsonObject root) {
     root["wifi_connected"] = wifi_connected;
     root["ha_connected"] = ha_connected;
     root["count"] = custom_logic::cached_ha_entities().count;

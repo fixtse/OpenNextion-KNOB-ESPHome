@@ -25,6 +25,12 @@ int main() {
   const auto token_start = marker_start + token_marker.size();
   const auto token=page.body.substr(token_start,page.body.find("'",token_start)-token_start);
   assert(token.size()==32);
+  assert(page.copied_response_bytes==0&&page.chunks==4);
+  for(const auto &url : {"/knob/ha.js","/knob/app.js"}) {
+    AsyncWebServerRequest asset;asset.url=url;asset.method_=HTTP_GET;web.handleRequest(&asset);
+    assert(asset.code()==200&&!asset.body.empty()&&asset.copied_response_bytes==0);
+    assert(asset.flash_response_bytes==asset.body.size());
+  }
   auto refresh=request(token);
   web.handleRequest(&refresh);
   assert(refresh.code()==202); // Old wrapper incorrectly returned 500 here.
@@ -38,6 +44,13 @@ int main() {
   assert(refreshes==1);
   web.handleRequest(&result);
   assert(result.code()==200 && result.body=="{\"ok\":true}");
+  // Large responses must survive the protocol intact without another heap copy.
+  const std::string large_json="{\"value\":\""+std::string(10000,'x')+"\"}";
+  web.set_handler([&](const Query &){return large_json;});
+  auto big=request(token);web.handleRequest(&big);web.loop();
+  AsyncWebServerRequest big_result;big_result.url="/knob/result";big_result.method_=HTTP_GET;big_result.args={{"ticket","2"}};
+  web.handleRequest(&big_result);assert(big_result.body==large_json&&big_result.copied_response_bytes==0);
+  web.set_handler([&](const Query &query) {assert(query.op=="refresh"); ++refreshes; return std::string("{\"ok\":true}");});
   auto forbidden=request("wrong");web.handleRequest(&forbidden);assert(forbidden.code()==403);
   auto cross_origin=request(token);cross_origin.headers["Origin"]="http://another-host";web.handleRequest(&cross_origin);assert(cross_origin.code()==403);
   auto large=request(token);large.length=4097;web.handleRequest(&large);assert(large.code()==413);
