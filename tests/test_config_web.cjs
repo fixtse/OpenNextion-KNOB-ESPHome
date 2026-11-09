@@ -20,7 +20,7 @@ const { chromium } = require('playwright');
   slots[9]={entity:'fan.office',name:'Office fan',action:'',icon:'',iconOverride:'0'};
   slots[7]={entity:'climate.calentador',name:'Calentador',action:''};
   slots[8]={entity:'media_player.bedroom',name:'Bedroom',action:''};
-  const results = new Map(); let ticket=0, failSave=false, saved=[],iconUpdates=[];
+  const results = new Map(); let ticket=0, failSave=false, saved=[],iconUpdates=[],savedSettings=[];
   await page.route('http://knob.test/**',async route=>{
    const request=route.request(),url=new URL(request.url());
    if(url.pathname==='/'||url.pathname==='/knob'){await route.fulfill({contentType:'text/html',body:html});return}
@@ -48,6 +48,7 @@ const { chromium } = require('playwright');
      ]};
     })};
     else if(values.get('op')==='icon'){iconUpdates.push(Object.fromEntries(values));Object.assign(slots[Number(values.get('slot'))],{icon:values.get('icon'),iconOverride:values.get('icon_override')});result={ok:true}}
+    else if(values.get('op')==='settings'){savedSettings.push(Object.fromEntries(values));result={ok:true}}
     else if(values.get('op')==='settings_state')result={brightness:'100',standby:'300',sensitivity:'2',sleep_enabled:'0',sleep_start:'23:00',sleep_end:'07:00',sleep_timeout:'300'};
     else if(values.get('op')==='save'){
      if(failSave)result={error:'Could not save the press action; retry'};
@@ -116,8 +117,19 @@ const { chromium } = require('playwright');
   await page.getByRole('button',{name:'Slot 9: Bedroom',exact:true}).click();
   await page.locator('#device-preview text').filter({hasText:'Christina Aguilera'}).waitFor();
   assert.equal(await page.locator('.preview-ring').getAttribute('stroke-dasharray'),'470 530');
+  assert.match(await page.locator('#device-preview').textContent(),/Volume: 50%/);
   assert.equal(await page.locator('#device-preview image').last().getAttribute('width'),'100');
   await page.screenshot({path:path.join(screenshots,'onx-media-preview.png'),fullPage:true});
+  await page.getByRole('button',{name:'Device settings',exact:true}).click();
+  assert.equal(await page.locator('#standby-scope').inputValue(),'main');
+  await page.getByRole('button',{name:'Soft violet',exact:true}).click();
+  assert.equal(await page.locator('#media-color').inputValue(),'#a78bfa');
+  await page.locator('#standby-scope').selectOption('all');
+  await page.locator('#save-settings').click();
+  await page.getByRole('status').filter({hasText:'Device settings saved.'}).waitFor();
+  assert.equal(savedSettings.at(-1).media_color,'#A78BFA');assert.equal(savedSettings.at(-1).standby_scope,'all');
+  await page.getByRole('button',{name:'Display & actions',exact:true}).click();
+  assert.equal(await page.locator('.preview-ring').getAttribute('stroke'),'#A78BFA');
   await page.getByRole('button',{name:'Slot 1: Office mode, unsaved',exact:true}).click();
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);

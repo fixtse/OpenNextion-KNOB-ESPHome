@@ -138,6 +138,7 @@ bool OnxUi::is_standby_active() const {
   if (!this->is_normal_mode_active()) {
     return false;
   }
+  if (this->standby_guard_ && !this->standby_guard_()) return false;
   const uint32_t idle_ms = millis() - this->last_user_activity_ms_;
   return idle_ms >= this->standby_timeout_ms_;
 }

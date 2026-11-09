@@ -47,21 +47,28 @@ onx_config_web:
     if (query.op == "preview") {
       return esphome::json::build_json([&](JsonObject root) {
         JsonArray slots = root["slots"].to<JsonArray>();
+        auto encode = [&](JsonObject target, const onx_detail_view::View &view) {
+          target["layout"] = view.layout; target["available"] = view.available;
+          target["icon"] = view.icon; target["accent"] = view.accent;
+          target["icon_x"] = view.icon_x; target["icon_y"] = view.icon_y; target["icon_size"] = view.icon_size;
+          JsonArray lines = target["lines"].to<JsonArray>();
+          for (const auto *line : {&view.badge, &view.value, &view.context, &view.hint, &view.name}) {
+            auto item = lines.add<JsonObject>();
+            item["text"] = line->text; item["x"] = line->x; item["y"] = line->y;
+            item["size"] = line->size; item["width"] = line->width; item["color"] = line->color;
+          }
+        };
         for (size_t i = 0; i < 10; ++i) {
           const auto entity = custom_logic::cached_device_entity_id(i);
           if (entity.empty()) continue;
           const auto title = custom_logic::ha_entity_title_from_registry_cache(entity);
           const auto view = onx_detail_view::build(entity, title);
           auto slot = slots.add<JsonObject>();
-          slot["entity"] = entity; slot["layout"] = view.layout; slot["available"] = view.available;
-          slot["icon"] = view.icon; slot["accent"] = view.accent;
-          slot["icon_x"] = view.icon_x; slot["icon_y"] = view.icon_y; slot["icon_size"] = view.icon_size;
-          JsonArray lines = slot["lines"].to<JsonArray>();
-          for (const auto *line : {&view.badge, &view.value, &view.context, &view.hint, &view.name}) {
-            auto item = lines.add<JsonObject>();
-            item["text"] = line->text; item["x"] = line->x; item["y"] = line->y;
-            item["size"] = line->size; item["width"] = line->width; item["color"] = line->color;
-          }
+          slot["entity"] = entity; encode(slot, view);
+          JsonObject carousel = slot["carousel"].to<JsonObject>();
+          encode(carousel, onx_detail_view::carousel(entity, title));
+          carousel["counter"] = std::to_string(custom_logic::normal_ui_slot_for_device_config_slot(i) + 1) +
+              "/" + std::to_string(id(normal_device_count));
           if (const auto *detail = custom_logic_entity_sub::entity_detail(entity)) {
             const auto now = id(ha_time).now();
             auto projection = detail->progress;
@@ -69,6 +76,7 @@ onx_config_web:
                 id(normal_ha_api_connected) && detail->available);
             slot["progress"] = progress.visible ? progress.permille : -1;
             slot["playing"] = detail->state == "playing";
+            slot["ring_color"] = onx_display_settings::current.media_color;
             slot["artwork"] = onx_media::artwork_url(id(ha_host).state, detail->picture);
           }
         }
@@ -128,6 +136,8 @@ onx_config_web:
       return esphome::json::build_json([&](JsonObject root) {
         root["brightness"] = std::to_string(std::clamp(id(normal_brightness_value), 10, 100));
         root["standby"] = std::to_string(id(app_storage)->get_standby_timeout_ms() / 1000U);
+        root["media_color"] = onx_display_settings::color_text(onx_display_settings::current.media_color);
+        root["standby_scope"] = onx_display_settings::scope_text(onx_display_settings::current.standby_scope);
         root["sensitivity"] = std::to_string(id(normal_knob_applied_value));
         root["sleep_enabled"] = id(ui_presenter)->get_sleep_mode_enabled() ? "1" : "0";
         root["sleep_start"] = id(ui_presenter)->get_sleep_window_start_time().substr(0, 5);
@@ -137,7 +147,10 @@ onx_config_web:
     }
     if (query.op == "settings") {
       unsigned brightness, standby, sensitivity, sleep_timeout;
-      if (!onx_config::integer_in_range(query.brightness, 10, 100, brightness) ||
+      uint32_t media_color; uint8_t standby_scope;
+      if (!onx_display_settings::parse_color(query.media_color, media_color) ||
+          !onx_display_settings::parse_scope(query.standby_scope, standby_scope) ||
+          !onx_config::integer_in_range(query.brightness, 10, 100, brightness) ||
           !onx_config::integer_in_range(query.standby, 1, 900, standby) ||
           !onx_config::integer_in_range(query.sensitivity, 1, 4, sensitivity) || sensitivity == 3 ||
           !onx_config::integer_in_range(query.sleep_timeout, 1, 3600, sleep_timeout) ||
@@ -151,6 +164,8 @@ onx_config_web:
       if (!id(app_storage)->set_standby_timeout_ms(standby * 1000U) ||
           !id(app_storage)->set_sleep_mode_config(enabled, start_minutes, end_minutes, sleep_timeout * 1000U))
         return onx_entity_config::error("Could not persist display settings; retry");
+      if (!onx_entity_config::save_display_settings(query.media_color, query.standby_scope))
+        return onx_entity_config::error("Could not persist appearance settings; retry");
       auto standby_call = id(standby_timeout_seconds).make_call();
       standby_call.set_value(standby); standby_call.perform();
       id(ui_presenter)->set_sleep_mode_config(enabled, start, end, sleep_timeout * 1000U);

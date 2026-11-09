@@ -9,6 +9,7 @@ interval:
           custom_logic_entity_sub::recover_entity_states(id(api_server), id(normal_ha_api_connected));
   - interval: 1s
     then:
+      - script.execute: refresh_normal_device_page
       # A Native API client becomes identifiable as HA only after it subscribes
       # to states, which happens after on_client_connected. Keep this derived
       # state authoritative and self-healing.

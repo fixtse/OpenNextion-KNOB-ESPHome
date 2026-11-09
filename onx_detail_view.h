@@ -87,7 +87,7 @@ inline View build(const std::string &entity, const std::string &name) {
   } else if (has_prefix(entity,"media_player.")) {
     v.layout = "media"; v.icon_x=0; v.icon_y=18; v.icon_size=80;
     const float volume = onx_control::number(onx_controls::effective(*d,"volume_level"));
-    v.value = {"Volume: " + (std::isfinite(volume) ? compact(std::to_string(volume*100)) + "%" : "--"),166,18,196};
+    v.value = {"Volume: " + onx_media::volume_percent(volume),166,18,196};
     v.context = {onx_media::display_text(d->media_title.empty()?d->state:d->media_title),122,16,196};
     v.hint = {onx_media::display_text(feedback.empty()?d->media_artist:feedback),144,16,196,0xD2D2D2};
     v.badge.text.clear(); v.name.y=192; v.name.width=180;
@@ -100,6 +100,15 @@ inline View build(const std::string &entity, const std::string &name) {
   }
   if (v.value.text.size() > 14) v.value.size = std::min(v.value.size, 24);
   v.badge.color = v.accent;
+  return v;
+}
+inline View carousel(const std::string &entity, const std::string &name) {
+  auto v = build(entity, name); v.layout = "carousel";
+  v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
+  const bool sensor = entity.rfind("sensor.",0)==0 || entity.rfind("binary_sensor.",0)==0;
+  v.icon_x = 0; v.icon_y = sensor ? 38 : 62; v.icon_size = sensor ? 28 : 80;
+  if (!sensor) v.value.text.clear();
+  v.name.y = sensor ? 144 : 151; v.name.width = sensor ? 184 : 180; v.name.size = 18;
   return v;
 }
 }  // namespace onx_detail_view

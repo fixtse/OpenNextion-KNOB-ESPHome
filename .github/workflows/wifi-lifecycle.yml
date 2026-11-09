@@ -22,6 +22,10 @@ on:
       - 'onx_control_state.h'
       - 'onx_entity_controls.h'
       - 'onx_detail_view.h'
+      - 'onx_display_settings.h'
+      - 'tests/test_display_settings.cpp'
+      - 'tests/test_standby_scope.py'
+      - 'my_components/onx_ui/**'
       - 'tests/test_media_state.cpp'
       - 'onx_media_state.h'
       - 'onx_icon_state.h'
@@ -61,8 +65,11 @@ jobs:
         run: |
           c++ -std=c++17 tests/test_control_state.cpp -o /tmp/test_control_state
           /tmp/test_control_state
+          c++ -std=c++17 tests/test_display_settings.cpp -o /tmp/test_display_settings
+          /tmp/test_display_settings
           python3 tests/test_entity_controls.py
           python3 tests/test_input_routing.py
+          python3 tests/test_standby_scope.py
           python3 tests/test_entity_recovery.py
           python3 tests/test_legacy_cleanup.py
           c++ -std=c++17 tests/test_media_state.cpp -o /tmp/test_media_state

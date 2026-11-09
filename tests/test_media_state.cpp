@@ -1,6 +1,11 @@
 #include "../onx_media_state.h"
 #include <cassert>
 int main() {
+  assert(onx_media::volume_percent(0.60000004f) == "60%");
+  assert(onx_media::volume_percent(0.59999996f) == "60%");
+  assert(onx_media::volume_percent(0.555f) == "56%");
+  assert(onx_media::volume_percent(-1) == "0%" && onx_media::volume_percent(2) == "100%");
+  assert(onx_media::volume_percent(NAN) == "--");
   using namespace onx_media;
   ClickDetector click;
   assert(!click.release(1000, "media_player.room"));

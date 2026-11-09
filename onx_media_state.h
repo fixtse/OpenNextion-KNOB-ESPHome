@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <cmath>
 namespace onx_media {
+inline std::string volume_percent(float level) {
+  if (!std::isfinite(level)) return "--";
+  return std::to_string(static_cast<int>(std::lround(std::clamp(level, 0.0f, 1.0f) * 100.0f))) + "%";
+}
 // Bitmap label fonts render the selected emoji as monochrome glyphs. Their
 // optional text/emoji presentation selectors have no visible glyph of their own.
 inline std::string display_text(std::string value) {

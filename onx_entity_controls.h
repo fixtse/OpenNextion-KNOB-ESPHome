@@ -224,7 +224,7 @@ inline std::string text(const std::string &id) {
   };
   std::string value = control_preview.empty() ? effective(*d, key) : control_preview;
   if (key == "range") value = display(effective(*d, "target_temp_low")) + " - " + display(effective(*d, "target_temp_high"));
-  else if (key == "volume_level") value = display(std::to_string(detail_number(value) * 100)) + "%";
+  else if (key == "volume_level") value = onx_media::volume_percent(detail_number(value));
   else value = display(value);
   if (key == "state" && (has_prefix(id, "scene.") || has_prefix(id, "button.") || has_prefix(id, "input_button."))) label = "Press to activate";
   std::string out = label + "\n" + value;

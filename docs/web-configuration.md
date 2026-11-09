@@ -43,7 +43,7 @@ Assistant's **Firmware Update** entity.
 ## Backups
 
 Export downloads the last successfully saved slots and settings, excluding
-credentials. JSON backups have schema version 1 and model ONX2424G013. Imports
+credentials. JSON backups have schema version 2 (version 1 imports migrate with defaults) and model ONX2424G013. Imports
 are limited to 64 KB and validated before replacing the local draft. Importing
 never writes to the knob: review, then save slots and device settings separately.
 
@@ -87,3 +87,16 @@ while the page is hidden or a configuration save is in progress.
 
 The configuration page uses an orange/slate palette in light and dark themes,
 with Nunito typography when the browser can load it and a local system fallback.
+
+Sensor values are also visible in the main device carousel, without opening the
+entity. The preview's screen selector switches between the carousel and opened
+entity layouts. Media volume always displays a whole-number percentage.
+
+Choose the media progress ring color in **Device settings**, using a preset or
+the custom color picker. The default remains blue; paused playback uses the same
+color at reduced opacity. The color is stored on the knob and included in backups.
+
+The weather view's inactivity timer defaults to **From the main screen only**,
+so an opened entity or settings page stays visible. Choose **From any screen**
+for the previous behavior, or **Never automatically** to disable that transition.
+The scheduled sleep timer is configured separately.

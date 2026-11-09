@@ -2,10 +2,31 @@
 #include "custom_logic.h"
 #include "onx_config_rules.h"
 #include "onx_icon_state.h"
+#include "onx_display_settings.h"
 #include "esphome/components/onx_config_web/onx_config_web.h"
 
 namespace onx_entity_config {
 using custom_logic::MAX_HA_ENTITY_ID_LENGTH;
+inline esphome::ESPPreferenceObject display_preference;
+inline bool display_settings_loaded{false};
+inline void load_display_settings() {
+  if (display_settings_loaded || esphome::global_preferences == nullptr) return;
+  display_preference = esphome::global_preferences->make_preference<onx_display_settings::Settings>(esphome::fnv1_hash("onx.display.v1"));
+  onx_display_settings::Settings saved{};
+  if (display_preference.load(&saved) && saved.magic == 0x4F4E5844 && saved.media_color <= 0xFFFFFF && saved.standby_scope <= 2)
+    onx_display_settings::current = saved;
+  display_settings_loaded = true;
+}
+inline bool save_display_settings(const std::string &color, const std::string &scope) {
+  load_display_settings();
+  onx_display_settings::Settings next{};
+  if (!display_settings_loaded || !onx_display_settings::parse_color(color, next.media_color) ||
+      !onx_display_settings::parse_scope(scope, next.standby_scope)) return false;
+  if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope) return true;
+  if (!display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
+  onx_display_settings::current = next; return true;
+}
+
 struct PressBinding {
   char source[MAX_HA_ENTITY_ID_LENGTH + 1]{};
   char action[MAX_HA_ENTITY_ID_LENGTH + 1]{};
