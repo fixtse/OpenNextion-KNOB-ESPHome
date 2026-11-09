@@ -25,6 +25,7 @@ RTC_NOINIT_ATTR inline Event retained;
 inline Event retained{};
 #endif
 inline Event previous{};
+inline uint32_t wifi_disconnects{0}, last_wifi_disconnect_ms{0};
 inline void start() {
 #ifdef USE_ESP32
   const auto reason=esp_reset_reason();

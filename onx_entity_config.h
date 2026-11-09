@@ -224,13 +224,17 @@ inline bool save_icon(size_t slot, const std::string &entity, const std::string 
   meta.bind(entity); meta.configured = icon; meta.registry_override = override;
   return true;
 }
-inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false) {
+inline std::string state(const std::string &host = "", bool wifi_connected = false, bool ha_connected = false, float wifi_rssi = NAN, const std::string &artwork_error = "") {
   custom_logic::load_ha_entities_if_needed();
   load_icons();
   load_playlists();
   return build_json([&](JsonObject root) {
     root["wifi_connected"] = wifi_connected;
     root["ha_connected"] = ha_connected;
+    root["wifi_rssi_dbm"] = wifi_rssi;
+    root["wifi_disconnects_since_boot"] = onx_runtime::wifi_disconnects;
+    root["last_wifi_disconnect_ms"] = onx_runtime::last_wifi_disconnect_ms;
+    root["artwork_error"] = artwork_error;
     root["count"] = custom_logic::cached_ha_entities().count;
     std::string url = custom_logic::build_ha_http_state_url(host, "sensor.placeholder");
     const auto path = url.find("/api/states/");

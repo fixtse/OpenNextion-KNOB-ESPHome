@@ -31,15 +31,16 @@ bool OnlineImage::cancelled_(uint32_t generation) {
 }
 void OnlineImage::update() {
   if(busy_ || is_decoding()) return;
-  if(!validate_url_(url_)) { failed_.call(); return; }
+  last_error_.clear();
+  if(!validate_url_(url_)) { last_error_="Invalid artwork URL";failed_.call(); return; }
   auto *work=new(std::nothrow) Work{this,url_,{},generation_,2500};
-  if(!work) { failed_.call(); return; }
+  if(!work) { last_error_="Request allocation failed";failed_.call(); return; }
   if(parent_) work->timeout=std::min<uint32_t>(2500,parent_->get_timeout());
   for(auto &header:request_headers_) work->headers.push_back({header.first,header.second.value()});
   busy_=true;
   // All DNS, TCP, TLS, redirects and body reads happen off the ESPHome/UI task.
   if(xTaskCreate(fetch_task_,"onx_artwork",12288,work,1,nullptr)!=pdPASS) {
-    busy_=false;delete work;failed_.call();
+    busy_=false;delete work;last_error_="Worker allocation failed";failed_.call();
   }
 }
 void OnlineImage::fetch_task_(void *arg) {
@@ -66,7 +67,8 @@ void OnlineImage::fetch_task_(void *arg) {
     int64_t length=-1;
     for(unsigned redirects=0;redirects<=3;++redirects) {
       if(work->owner->cancelled_(work->generation) || millis()-started>=15000) { error="Cancelled or timed out";break; }
-      if(esp_http_client_open(client,0)!=ESP_OK) {error="Connection failed";break;}
+      const auto opened_status=esp_http_client_open(client,0);
+      if(opened_status!=ESP_OK) {error=std::string("Connection failed: ")+esp_err_to_name(opened_status);break;}
       length=esp_http_client_fetch_headers(client);
       const int status=esp_http_client_get_status_code(client);
       if(status==200) {opened=true;break;}
@@ -129,7 +131,7 @@ void OnlineImage::loop() {
   }
   busy_=false;
   if(generation!=generation_) {heap_caps_free(data);return;}
-  if(!data) {ESP_LOGW(TAG,"Artwork unavailable: %s",error.c_str());failed_.call();return;}
+  if(!data) {last_error_=error;ESP_LOGW(TAG,"Artwork unavailable: %s",error.c_str());failed_.call();return;}
   runtime_image::ImageFormat format=get_format();
   if(format==runtime_image::AUTO) {
     if(size>=3 && data[0]==0xFF && data[1]==0xD8 && data[2]==0xFF) format=runtime_image::JPEG;
@@ -150,7 +152,7 @@ void OnlineImage::loop() {
   }
   heap_caps_free(data);
   if(okay) {ESP_LOGI(TAG,"Artwork loaded (%u bytes)",static_cast<unsigned>(size));finished_.call(false);}
-  else {RuntimeImage::release();ESP_LOGW(TAG,"Artwork decode failed");failed_.call();}
+  else {last_error_="Artwork decode failed (unsupported or invalid image)";RuntimeImage::release();ESP_LOGW(TAG,"Artwork decode failed");failed_.call();}
 }
 void OnlineImage::release() {
   {

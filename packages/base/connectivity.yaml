@@ -55,6 +55,9 @@ wifi:
       - ble.enable:
       - lambda: |-
           id(normal_wifi_connected) = false;
+          ++onx_runtime::wifi_disconnects;
+          onx_runtime::last_wifi_disconnect_ms = millis();
+          onx_runtime::record("wifi_disconnected");
       - if:
           condition:
             lambda: |-

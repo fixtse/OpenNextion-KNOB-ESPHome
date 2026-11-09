@@ -80,3 +80,8 @@ limited to 512 KB of PSRAM, three redirects, and a 15-second deadline, with
 JPEG/PNG/BMP content is identified from its bytes. Final decoding remains on the
 main task, so very large source dimensions can still cause a shorter decode
 pause; the network limit does not promise a dimension-independent decode time.
+
+HTTP diagnostics also report the most recent Wi-Fi RSSI (sampled every 60 seconds),
+Wi-Fi disconnect count since boot, and the last artwork download/decode error.
+A connected Wi-Fi flag alone is not a measurement of signal quality or internet
+reachability. Artwork error messages omit URLs and access parameters.

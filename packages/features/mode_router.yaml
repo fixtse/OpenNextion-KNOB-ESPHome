@@ -44,7 +44,7 @@ onx_icons:
 onx_config_web:
   id: entity_config_web
   handler: !lambda |-
-    if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected));
+    if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected), id(wifi_rssi).state, id(media_cover_image)->last_error());
     if (query.op == "preview") {
       return onx_entity_config::build_json([&](JsonObject root) {
         JsonArray slots = root["slots"].to<JsonArray>();
