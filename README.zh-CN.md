@@ -1,4 +1,6 @@
-# Home Assistant 旋钮控制面板
+# OpenNextion Knob by fixtSE
+
+由 [fixtSE](https://fixtse.com/) 打造。
 
 **轻轻一转，掌控日常智能家居。**
 

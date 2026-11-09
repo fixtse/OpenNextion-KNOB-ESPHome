@@ -1,5 +1,6 @@
 #include "onx_config_web.h"
 #include "config_page.h"
+#include "branding_assets.h"
 #include "config_app.h"
 #include "ha_browser.h"
 #include "esphome/components/wifi/wifi_component.h"
@@ -25,7 +26,7 @@ bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
   // address open our app after Wi-Fi connects. Do not expose the generic server
   // entity-control endpoints alongside the configuration app.
   if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) return true;
-  return url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js";
+  return url == "/knob/favicon.svg" || url == "/knob/fixtse-logo.png" || url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js";
 }
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
   auto *response = request->beginResponse(code, "application/json", reinterpret_cast<const uint8_t *>(body.data()), body.size());
@@ -45,6 +46,15 @@ void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::st
 void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
   std::array<char, AsyncWebServerRequest::URL_BUF_SIZE> buffer;
   const auto url = request->url_to(buffer);
+  if (request->method() == HTTP_GET && (url == "/knob/fixtse-logo.png" || url == "/knob/favicon.svg")) {
+    const bool logo = url == "/knob/fixtse-logo.png";
+    auto *response = request->beginResponse(200, logo ? "image/png" : "image/svg+xml",
+        logo ? FIXTSE_LOGO : reinterpret_cast<const uint8_t *>(KNOB_FAVICON),
+        logo ? sizeof(FIXTSE_LOGO) : sizeof(KNOB_FAVICON) - 1);
+    response->addHeader("Cache-Control", "public, max-age=86400");
+    request->send(response);
+    return;
+  }
   if ((url == "/knob/ha.js" || url == "/knob/app.js") && request->method() == HTTP_GET) {
     const char *asset = url == "/knob/ha.js" ? HA_BROWSER_JS : CONFIG_APP_JS;
     auto *response = request->beginResponse(200, "text/javascript; charset=utf-8",

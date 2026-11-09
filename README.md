@@ -1,9 +1,10 @@
-# Home Assistant Knob Control
+# OpenNextion Knob by fixtSE
 
 **Your everyday smart home controls, one turn away.**
 
-Turn the ONX2424G013 into a compact Home Assistant controller. Adjust the room,
-start a routine, or check what matters—all from a round display and a single knob.
+Made by [fixtSE](https://fixtse.com/). Turn the ONX2424G013 into a compact Home
+Assistant controller. Adjust the room, start a routine, or check what matters—all
+from a round display and a single knob.
 
 [Get started](docs/setup.md) · [Download firmware](https://github.com/fixtse/esp-ota/releases) · [简体中文](README.zh-CN.md)
 
@@ -17,7 +18,7 @@ start a routine, or check what matters—all from a round display and a single k
 | Media | Adjust volume, play/pause, skip tracks with press-and-turn, run an automation or script when idle, and follow playback on a circular progress ring. |
 | Switches & covers | Control switches, plugs, and cover position. |
 | Helpers & routines | Adjust numbers, confirm select options, activate scenes, press buttons, and run scripts or automations. |
-| At a glance | View sensors, weather, and timer countdowns with an animated progress ring. |
+| At a glance | See sensor values, browse weather conditions and daily forecasts, and automatically display active voice, Google Home, and Home Assistant timers. |
 
 Available settings adapt to the capabilities of each Home Assistant entity.
 
@@ -33,7 +34,7 @@ Display text supports accented Latin characters (for example, Beyoncé) and thes
 - **Clear feedback.** See requested values immediately, confirmation from Home Assistant, and connection or timeout messages.
 - **No device token to manage.** Home Assistant controls use the ESPHome integration; sign in through your browser to choose entities.
 - **Built-in configuration page.** Set up from your phone or computer, with themes, unsaved-change recovery, and configuration backup and restore.
-- **A display that fits your day.** Choose brightness, knob sensitivity, standby weather, and a sleep schedule.
+- **A display that fits your day.** Choose your progress-ring color, date format, 12/24-hour clock, brightness, standby behavior, and sleep schedule.
 - **Easy upkeep.** Wi-Fi provisioning, automatic state recovery, manual retry without restarting, and wireless firmware updates.
 
 ## Get started
@@ -43,3 +44,5 @@ Display text supports accented Latin characters (for example, Beyoncé) and thes
 3. Open the device’s **Visit** link—or `http://<knob IP>/`—to sign in to Home Assistant, choose your entities, and save your slots.
 
 [Control guide](docs/knob-controls.md) · [Configuration & backups](docs/web-configuration.md)
+
+[OpenNextion Knob by fixtSE](https://fixtse.com/)
