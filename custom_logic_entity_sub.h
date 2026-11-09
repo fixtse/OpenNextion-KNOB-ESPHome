@@ -14,6 +14,10 @@
 #include "esphome.h"
 #include "esphome/components/api/api_server.h"
 #include "esphome/components/select/select.h"
+#ifdef USE_LVGL
+#include "src/misc/cache/instance/lv_image_cache.h"
+#include "src/misc/cache/instance/lv_image_header_cache.h"
+#endif
 
 namespace custom_logic_entity_sub {
 
