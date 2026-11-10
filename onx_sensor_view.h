@@ -1,4 +1,5 @@
 #pragma once
+#include "onx_memory.h"
 #include "onx_display_settings.h"
 #include <algorithm>
 #include <array>
@@ -13,7 +14,7 @@ struct Config {
   char primary[129]{}, secondary[129]{}, text[161]{"{value}"};
   uint8_t graph{0};
 };
-inline std::array<Config,20> configs;
+inline onx_memory::StateArray<Config,20> configs;
 struct Point { uint32_t epoch{0}; float value{NAN}; };
 struct State {
   std::string primary, secondary, value, unit;
@@ -38,7 +39,7 @@ struct State {
     return out;
   }
 };
-inline std::array<State,20> states;
+inline onx_memory::StateArray<State,20> states;
 inline int index(const std::string &entity) {
   for(size_t i=0;i<configs.size();++i)if(entity==configs[i].primary)return int(i);
   return -1;

@@ -1,4 +1,5 @@
 #pragma once
+#include "onx_memory.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -13,7 +14,7 @@ struct Config {
   uint8_t count{0};
   Entry entries[MAX_ENTRIES]{};
 };
-inline std::array<Config, 20> configs;
+inline onx_memory::StateArray<Config, 20> configs;
 struct Browser {
   std::string entity;
   int selected{0};

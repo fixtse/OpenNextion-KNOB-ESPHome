@@ -1,4 +1,5 @@
 #pragma once
+#include "onx_memory.h"
 
 #include <algorithm>
 #include <array>
@@ -364,7 +365,7 @@ struct EntityDetailState {
   uint32_t timer_received_ms{0};
   float minimum{NAN}, maximum{NAN}, step{NAN}, humidity_min{NAN}, humidity_max{NAN};
 };
-static std::array<EntityDetailState, custom_logic::CONFIGURABLE_DEVICE_SLOT_COUNT> entity_details{};
+static onx_memory::StateArray<EntityDetailState, custom_logic::CONFIGURABLE_DEVICE_SLOT_COUNT> entity_details{};
 
 inline float detail_number(const std::string &value) {
   char *end = nullptr;

@@ -1,4 +1,5 @@
 #pragma once
+#include "onx_memory.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -79,7 +80,7 @@ struct Metadata {
     return "";
   }
 };
-inline std::array<Metadata, 20> metadata;
+inline onx_memory::StateArray<Metadata, 20> metadata;
 inline std::string selected_icon(const std::string &entity) {
   for (const auto &item : metadata) if (item.entity == entity) return item.chosen();
   return "";
