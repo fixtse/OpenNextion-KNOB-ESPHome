@@ -643,6 +643,16 @@ script:
 
           int detail_index = std::clamp(id(normal_device_detail_index), 0, 19);
           const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+          const auto *media_state=custom_logic_entity_sub::entity_detail(entity_id);
+          if(entity_id.rfind("media_player.",0)==0 && media_state && media_state->received &&
+              media_state->available && media_state->state=="off" &&
+              id(normal_ha_api_connected) && id(normal_device_detail_online)) {
+            // Only an explicit, available off state closes the player. Idle,
+            // paused and missing/disconnected state keep their existing views.
+            onx_playlist::browser.clear();
+            id(exit_normal_switch_detail).execute();
+            return;
+          }
           std::string title = ha_entity_title_from_registry_cache(entity_id);
           if (title.empty()) {
             title = entity_id.empty() ? "Automation" : entity_id;

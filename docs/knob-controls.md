@@ -106,3 +106,8 @@ centered; there is no Playing/Paused text pill. The circular playback progress
 indicator retains its selected color and paused behavior. Existing knob controls
 and playlist navigation work in both views. Missing artwork falls back to the
 entity icon. Press the physical knob to play or pause.
+
+When the media player reports **off**, its detail view closes and returns to the
+main carousel in either appearance. **Idle** and **paused** keep the player view
+open. Losing the connection or receiving an unavailable state does not trigger
+this automatic return.
