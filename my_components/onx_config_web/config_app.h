@@ -6,10 +6,11 @@ static const char CONFIG_APP_JS[] = R"ONXJS(
 const $=id=>document.getElementById(id),ha=new OnxHA.Client(),DRAFT='onx.config.draft.v1';
 const domains=[['','All'],['sensor','Sensors'],['binary_sensor','Binary sensors'],['light','Lights'],['switch','Switches'],['fan','Fan'],['number','Number'],['input_number','Input Number'],['select','Select'],['input_select','Input Select'],['scene','Scene'],['button','Button'],['input_button','Input Button'],['climate','Climate'],['media_player','Media players'],['timer','Timers'],['weather','Weather'],['cover','Covers'],['actions','Automations & scripts']];
 const copy=value=>JSON.parse(JSON.stringify(value));
-const empty=()=>({entity:'',name:'',area:'',action:'',actionName:'',typeOption:'',icon:'',iconOverride:'0',secondary:'',secondaryText:'{value}',sensorGraph:'0',timerHidden:'0',playlists:[]});
+const emptyGestures=()=>({cw:'',ccw:'',holdCw:'',holdCcw:'',feedback:'',popup:'1',responses:'0',events:'0',step:'1'});
+const empty=()=>({entity:'',name:'',area:'',action:'',actionName:'',typeOption:'',icon:'',iconOverride:'0',secondary:'',secondaryText:'{value}',sensorGraph:'0',timerHidden:'0',gestures:emptyGestures(),playlists:[]});
 const MAX_SLOTS=20;
 let visibleSlots=1;
-let slots=Array.from({length:MAX_SLOTS},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[],overlayTimer=0,lastPreviewAt=0,slotTab='display',playlistTarget=-1;
+let slots=Array.from({length:MAX_SLOTS},empty),saved=copy(slots),active=0,mode='entity',domain='',next=-1,revision=0,debounce,busy=false,initialized=false,device={},settings={},savedSettings={},savedWeather='',recovery=null,lastLoaded=null,statusBusy=false,previewBusy=false,liveViews=[],overlayTimer=0,lastPreviewAt=0,slotTab='display',playlistTarget=-1,gestureTarget='cw';
 function element(tag,text,className){const e=document.createElement(tag);e.textContent=text;if(className)e.className=className;return e}
 function message(text,error=false){$('status').textContent=text;$('status').classList.toggle('error',error)}
 function safeRead(key){try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}}
@@ -18,9 +19,9 @@ function dirtySettings(){return JSON.stringify(settings)!==JSON.stringify(savedS
 function hasChanges(){return slots.some((_,i)=>dirtySlot(i))||dirtySettings()}
 function persistDraft(){if(!initialized)return;if(recovery&&hasChanges()){recovery=null;$('draft-notice').hidden=true}if(recovery)return;try{if(hasChanges())sessionStorage.setItem(DRAFT,JSON.stringify({schema:2,slots,settings}));else sessionStorage.removeItem(DRAFT)}catch{message('This browser could not store a recovery draft. Save your changes before closing.',true)}}
 function actionLabel(action){return !action?'Device default':action==='none'?'No action':action.startsWith('script.')?'Run script':'Run automation'}
-function nativePress(entity){return /^(climate|fan|number|input_number|select|input_select|scene|button|input_button)\./.test(entity)}
+function nativePress(entity){return /^(fan|number|input_number|select|input_select|scene|button|input_button)\./.test(entity)}
 function choices(slot){const d=slot.entity.split('.')[0];return d==='light'?['Light (On/Off)','Dimmable Light','Color Temperature Light','RGB Light']:d==='switch'?['Switch','Plug']:d==='cover'?['Cover (Preset Off)','Cover (Preset On)']:['Automatic']}
-function slotPayload(index,slot){return {op:'save',slot:index,entity:slot.entity,action:slot.action,name:slot.name,area:slot.area,action_name:slot.actionName,type:slot.typeOption,icon:slot.icon,icon_override:slot.iconOverride,secondary:slot.secondary,secondary_text:slot.secondaryText,sensor_graph:slot.sensorGraph,timer_hidden:slot.timerHidden,playlists:JSON.stringify(slot.playlists)}}
+function slotPayload(index,slot){return {op:'save',slot:index,entity:slot.entity,action:slot.action,name:slot.name,area:slot.area,action_name:slot.actionName,type:slot.typeOption,icon:slot.icon,icon_override:slot.iconOverride,secondary:slot.secondary,secondary_text:slot.secondaryText,sensor_graph:slot.sensorGraph,timer_hidden:slot.timerHidden,gestures:JSON.stringify(slot.gestures),playlists:JSON.stringify(slot.playlists)}}
 async function fetchJson(url,options={}){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
  try{const response=await fetch(url,{...options,cache:'no-store',signal:controller.signal});const body=await response.json();if(!response.ok||body.error)throw Error(body.error||'The knob could not complete this request');return {response,body}}
@@ -85,7 +86,7 @@ function drawPreview(slot){
 async function refreshPreview(){if(previewBusy||busy||!initialized||document.hidden||$('entity-picker').open)return;previewBusy=true;lastPreviewAt=Date.now();try{const data=await rpc({op:'preview',entity:slots[active].entity});liveViews=Array.isArray(data.slots)?data.slots:[];drawPreview(slots[active])}catch{$('preview-status').textContent='Live preview unavailable. Check the knob connection.'}finally{previewBusy=false}}
 function preview(){const s=slots[active],d=s.entity.split('.')[0];drawPreview(s);
  const rotates={light:'Adjust the selected light control',cover:'Browse; hold and rotate to adjust position',climate:'Adjust the selected setting; hold and turn to choose a setting',fan:'Adjust speed; hold and turn for presets, oscillation or direction',number:'Adjust value within minimum, maximum and step',input_number:'Adjust value within minimum, maximum and step',select:'Choose an option',input_select:'Choose an option',media_player:'Adjust volume; press + turn for next/previous track; hold 0.5s and release for playlists'};
- $('rotate-hint').textContent=s.entity?(rotates[d]||'No adjustment; hold to return'):'Browse your devices';
+ $('rotate-hint').textContent=s.gestures.cw||s.gestures.ccw||s.gestures.events==='1'?'Run configured gesture actions':s.entity?(rotates[d]||'No adjustment; hold to return'):'Browse your devices';
  const presses={light:'Toggle power',cover:'Use the cover’s normal controls',climate:'Cycle supported HVAC modes; confirm a previewed option',fan:'Toggle power; confirm a previewed option',select:'Confirm option',input_select:'Confirm option',number:'Value sent automatically',input_number:'Value sent automatically',scene:'Activate scene',button:'Press button',input_button:'Press button',media_player:'Play/pause when loaded; run the selected action when idle',script:'Run script',automation:'Use the automation’s normal controls',sensor:'Send sensor press event',binary_sensor:'Send sensor press event',weather:'Read only',timer:'Read only'};
  $('press-hint').textContent=d==='media_player'?('Playing/paused: play/pause. Idle: '+(s.action==='none'?'no action':s.action?(s.actionName||actionLabel(s.action)):'choose an automation or script')):!s.entity?'Open the selected device':nativePress(s.entity)?presses[d]:s.action==='none'?'No action':s.action?(s.actionName||actionLabel(s.action)):presses[d]||'Toggle power';
 }
@@ -145,8 +146,8 @@ function renderPlaylists(){
  $('add-playlist').disabled=busy||!initialized||s.playlists.length>=8;
 }
 $('add-playlist').onclick=()=>selectMode('playlist',slots[active].playlists.length);
-function isActionPicker(){return mode==='action'||mode==='playlist'}
-function selectedPickerEntity(){const s=slots[active];return mode==='playlist'?s.playlists[playlistTarget]?.action:mode==='secondary'?s.secondary:mode==='action'?s.action:s.entity}
+function isActionPicker(){return mode==='action'||mode==='playlist'||mode==='gesture'}
+function selectedPickerEntity(){const s=slots[active];return mode==='gesture'?s.gestures[gestureTarget]:mode==='gestureFeedback'?s.gestures.feedback:mode==='playlist'?s.playlists[playlistTarget]?.action:mode==='secondary'?s.secondary:mode==='action'?s.action:s.entity}
 function closePicker(){if($('entity-picker').open)$('entity-picker').close()}
 $('close-picker').onclick=closePicker;
 $('entity-picker').addEventListener('click',event=>{if(event.target!==$('entity-picker'))return;const r=event.target.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closePicker()});
@@ -159,7 +160,7 @@ function render(){
  const s=slots[active],restricted=nativePress(s.entity),count=slots.filter((_,i)=>dirtySlot(i)).length;
  $('slot-title').textContent='Slot '+(active+1);$('unsaved-count').textContent=count?count+' unsaved slot'+(count===1?'':'s'):'';
  $('action-binding').querySelector('h3').textContent=s.entity.startsWith('media_player.')?'When idle':'When pressed';
- renderEditorTabs();renderPlaylists();
+ renderEditorTabs();renderPlaylists();renderGestures();
  $('timer-options').hidden=!(s.entity.startsWith('timer.')||s.entity.startsWith('sensor.'));$('timer-hidden').checked=s.timerHidden==='1';
  $('sensor-options').hidden=!s.entity.startsWith('sensor.');$('secondary-entity').value=s.secondary;$('secondary-text').value=s.secondaryText;$('sensor-presentation').value=s.sensorGraph;
  $('entity-name').textContent=s.name||s.entity||'Empty slot';$('entity-id').textContent=s.entity;$('display-name').value=s.name;
@@ -171,7 +172,7 @@ function render(){
  $('move-up').disabled=busy||active===0;$('move-down').disabled=busy||active===MAX_SLOTS-1;$('duplicate').disabled=busy||!s.entity||!slots.some(s=>!s.entity);
  for(const id of ['timer-hidden','choose-secondary','secondary-entity','secondary-text','sensor-presentation','choose-entity','clear','display-name','import','export','ha-connect','ha-disconnect','discard-settings'])$(id).disabled=busy||!initialized;
  $('save-settings').disabled=busy||!initialized||!dirtySettings();
- $('display-binding').classList.toggle('active',slotTab==='display');$('action-binding').classList.toggle('active',slotTab==='action');$('action-hint').hidden=!isActionPicker();$('search-title').textContent=isActionPicker()?'Automations & scripts':mode==='secondary'?'Secondary entities':'Available entities';$('picker-title').textContent=mode==='playlist'?'Choose a playlist action':mode==='action'?'Choose a press action':mode==='secondary'?'Choose a secondary entity':'Choose a display entity';$('picker-context').textContent=mode==='playlist'?(slots[active].playlists[playlistTarget]?.name||'Playlist '+(playlistTarget+1)):slots[active].name||'Slot '+(active+1);
+ $('display-binding').classList.toggle('active',slotTab==='display');$('action-binding').classList.toggle('active',slotTab==='action');$('action-hint').hidden=!isActionPicker();$('search-title').textContent=isActionPicker()?'Automations & scripts':mode==='secondary'?'Secondary entities':'Available entities';$('picker-title').textContent=mode==='gesture'?'Choose a gesture action':mode==='gestureFeedback'?'Choose a feedback entity':mode==='playlist'?'Choose a playlist action':mode==='action'?'Choose a press action':mode==='secondary'?'Choose a secondary entity':'Choose a display entity';$('picker-context').textContent=mode==='playlist'?(slots[active].playlists[playlistTarget]?.name||'Playlist '+(playlistTarget+1)):slots[active].name||'Slot '+(active+1);
  $('filters').replaceChildren(...(isActionPicker()?[['actions','All actions'],['automation','Automations'],['script','Scripts']]:domains).map(([value,title])=>{const b=element('button',title);b.setAttribute('aria-pressed',String(value===domain));b.onclick=()=>{domain=value;render();search()};return b}));preview();
 }
 function changed(){if(recovery){recovery=null;$('draft-notice').hidden=true}persistDraft();render();message('Changes not saved. Review and save when ready.')}
@@ -184,7 +185,9 @@ function choose(item){
  if(busy)return;const s=slots[active];
  if(isActionPicker()&&!/^(automation|script)\./.test(item.entity))return;
  const target=playlistTarget,chosenMode=mode;
- if(mode==='playlist'){
+ if(mode==='gesture')s.gestures[gestureTarget]=item.entity;
+ else if(mode==='gestureFeedback')s.gestures.feedback=item.entity;
+ else if(mode==='playlist'){
   if(target<0||target>s.playlists.length||target>=8)return;
   if(target===s.playlists.length)s.playlists.push({name:'',action:''});
   const entry=s.playlists[target],old=ha.items.find(i=>i.entity===entry.action);
@@ -192,11 +195,12 @@ function choose(item){
   entry.action=item.entity;slotTab='playlists';
  }else if(mode==='secondary')s.secondary=item.entity;
  else if(mode==='entity'){
-  if(s.entity!==item.entity){s.action='';s.actionName='';s.secondary='';s.secondaryText='{value}';s.sensorGraph='0';s.timerHidden='0';s.playlists=[];s.typeOption=''}
+  if(s.entity!==item.entity){s.action='';s.actionName='';s.secondary='';s.secondaryText='{value}';s.sensorGraph='0';s.timerHidden='0';s.gestures=emptyGestures();s.playlists=[];s.typeOption=''}
   Object.assign(s,{entity:item.entity,name:item.name||item.entity,area:item.area||'',icon:item.icon||'',iconOverride:item.iconOverride||'0'});slotTab='display';
  }else{if(!s.entity||nativePress(s.entity))return;s.action=item.entity;s.actionName=item.name||actionLabel(item.entity)}
  closePicker();mode='entity';playlistTarget=-1;changed();search();
  if(chosenMode==='playlist')document.querySelector('[data-choose-playlist="'+target+'"]')?.focus();
+ else if(chosenMode==='gesture'||chosenMode==='gestureFeedback')document.querySelector('[data-gesture-choose="'+(chosenMode==='gestureFeedback'?'feedback':gestureTarget)+'"]')?.focus();
  else $(chosenMode==='action'?'choose-action':chosenMode==='secondary'?'choose-secondary':'choose-entity').focus();
 }
 function isManualEntity(value){return /^[a-z0-9_]+\.[a-z0-9_]+$/.test(value)&&value.length<=128&&/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\./.test(value)&&mode!=='playlist'&&(!isActionPicker()||/^(automation|script)\./.test(value))}
@@ -214,7 +218,31 @@ function validatePlaylists(entries,entity){
  if(!Array.isArray(entries)||entries.length>8||entries.length&&!entity.startsWith('media_player.'))throw Error('Playlists require a media player and a maximum of eight entries.');
  return entries.map(entry=>{if(!entry||typeof entry.name!=='string'||!entry.name.trim()||/[\r\n]/.test(entry.name)||new TextEncoder().encode(entry.name).length>48||typeof entry.action!=='string'||entry.action.length>128||!/^(automation|script)\.[a-z0-9_]+$/.test(entry.action))throw Error('Each playlist needs a name (up to 48 UTF-8 bytes) and a script or automation entity ID.');return {name:entry.name,action:entry.action}});
 }
-function validateSlots(input){if(!Array.isArray(input)||![10,MAX_SLOTS].includes(input.length))throw Error('A configuration must contain ten or twenty slots.');input=[...input,...Array.from({length:MAX_SLOTS-input.length},empty)];return input.map(s=>{if(!s||typeof s!=='object')throw Error('Invalid slot in configuration.');const result=empty();for(const key of Object.keys(result)){if(key==='playlists')continue;const value=s[key]??(['iconOverride','sensorGraph','timerHidden'].includes(key)?'0':key==='secondaryText'?'{value}':'');if(typeof value!=='string'||value.length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192)||new TextEncoder().encode(value).length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192))throw Error('Invalid or oversized slot field: '+key);result[key]=value}if(!['0','1'].includes(result.timerHidden))throw Error('Invalid timer visibility.');result.playlists=validatePlaylists(s.playlists??[],result.entity);if(result.secondary&&!/^[a-z_]+\.[a-z0-9_]+$/.test(result.secondary)||!['0','1'].includes(result.sensorGraph))throw Error('Choose a valid secondary entity and sensor display.');if(result.icon&&!/^mdi:[a-z0-9-]{1,76}$/.test(result.icon)||!['0','1'].includes(result.iconOverride))throw Error('Invalid entity icon.');if(result.entity&&!isSupported(result.entity))throw Error('Unsupported entity: '+result.entity);if(result.action&&!/^(none|(?:automation|script)\.[a-z0-9_]+)$/.test(result.action))throw Error('Unsupported press action.');if(!result.entity&&result.action)throw Error('An empty slot cannot have a press action.');if(result.typeOption&&!choices(result).includes(result.typeOption))throw Error('Display type does not match its entity.');return result})}
+function validateGestures(input){
+ const value={...emptyGestures(),...(input||{})},result={};
+ for(const key of ['cw','ccw','holdCw','holdCcw']){const action=value[key];if(typeof action!=='string'||action.length>128||action&&!/^(none|(?:automation|script)\.[a-z0-9_]+)$/.test(action))throw Error('Choose a script, automation, Default or No action for each gesture.');result[key]=action}
+ if(typeof value.feedback!=='string'||value.feedback.length>128||value.feedback&&!/^[a-z_]+\.[a-z0-9_]+$/.test(value.feedback))throw Error('Choose a valid feedback entity.');result.feedback=value.feedback;
+ for(const key of ['popup','responses','events']){if(!['0','1'].includes(value[key]))throw Error('Invalid gesture feedback option.');result[key]=value[key]}
+ if(typeof value.step!=='string'||!/^\d{1,3}$/.test(value.step)||+value.step<1||+value.step>100)throw Error('Gesture step must be 1–100.');result.step=value.step;return result;
+}
+function renderGestures(){
+ const gesture=slots[active].gestures;
+ for(const key of ['cw','ccw','holdCw','holdCcw']){
+  $('gesture-'+key).value=gesture[key];$('gesture-'+key).disabled=busy||!initialized||!slots[active].entity;
+ }
+ $('gesture-feedback').value=gesture.feedback;$('gesture-step').value=gesture.step;
+ for(const key of ['popup','responses','events'])$('gesture-'+key).checked=gesture[key]==='1';
+ for(const node of document.querySelectorAll('[data-gesture-choose],[data-gesture-reset],#gesture-feedback,#gesture-step,#gesture-popup,#gesture-responses,#gesture-events'))node.disabled=busy||!initialized||!slots[active].entity;
+}
+for(const key of ['cw','ccw','holdCw','holdCcw']){
+ $('gesture-'+key).onchange=()=>{slots[active].gestures[key]=$('gesture-'+key).value.trim();changed()};
+}
+for(const button of document.querySelectorAll('[data-gesture-choose]'))button.onclick=()=>{gestureTarget=button.dataset.gestureChoose;selectMode(gestureTarget==='feedback'?'gestureFeedback':'gesture')};
+for(const button of document.querySelectorAll('[data-gesture-reset]'))button.onclick=()=>{slots[active].gestures[button.dataset.gestureReset]='';changed()};
+$('gesture-feedback').onchange=()=>{slots[active].gestures.feedback=$('gesture-feedback').value.trim();changed()};
+$('gesture-step').onchange=()=>{slots[active].gestures.step=$('gesture-step').value;changed()};
+for(const key of ['popup','responses','events'])$('gesture-'+key).onchange=()=>{slots[active].gestures[key]=$('gesture-'+key).checked?'1':'0';changed()};
+function validateSlots(input){if(!Array.isArray(input)||![10,MAX_SLOTS].includes(input.length))throw Error('A configuration must contain ten or twenty slots.');input=[...input,...Array.from({length:MAX_SLOTS-input.length},empty)];return input.map(s=>{if(!s||typeof s!=='object')throw Error('Invalid slot in configuration.');const result=empty();for(const key of Object.keys(result)){if(key==='playlists'||key==='gestures')continue;const value=s[key]??(['iconOverride','sensorGraph','timerHidden'].includes(key)?'0':key==='secondaryText'?'{value}':'');if(typeof value!=='string'||value.length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192)||new TextEncoder().encode(value).length>(['entity','action','secondary'].includes(key)?128:key==='secondaryText'?160:key==='typeOption'?32:192))throw Error('Invalid or oversized slot field: '+key);result[key]=value}if(!['0','1'].includes(result.timerHidden))throw Error('Invalid timer visibility.');result.gestures=validateGestures(s.gestures);result.playlists=validatePlaylists(s.playlists??[],result.entity);if(result.secondary&&!/^[a-z_]+\.[a-z0-9_]+$/.test(result.secondary)||!['0','1'].includes(result.sensorGraph))throw Error('Choose a valid secondary entity and sensor display.');if(result.icon&&!/^mdi:[a-z0-9-]{1,76}$/.test(result.icon)||!['0','1'].includes(result.iconOverride))throw Error('Invalid entity icon.');if(result.entity&&!isSupported(result.entity))throw Error('Unsupported entity: '+result.entity);if(result.action&&!/^(none|(?:automation|script)\.[a-z0-9_]+)$/.test(result.action))throw Error('Unsupported press action.');if(!result.entity&&result.action)throw Error('An empty slot cannot have a press action.');if(result.typeOption&&!choices(result).includes(result.typeOption))throw Error('Display type does not match its entity.');return result})}
 function isSupported(value){return /^\[Local\] HMI IO(10|11|17|18)$/.test(value)||/^(sensor|binary_sensor|light|switch|climate|media_player|timer|weather|cover|automation|script|fan|number|input_number|select|input_select|scene|button|input_button)\.[a-z0-9_]+$/.test(value)}
 function validateSettings(value){if(!value||typeof value!=='object')throw Error('Device settings are missing.');value={idle_view:'clock',media_color:'#62B0FF',standby_scope:'main',date_format:'dd-mm',hour_format:'24',show_ampm:'1',...value};const result={};for(const key of ['idle_view','show_ampm','date_format','hour_format','media_color','standby_scope','brightness','standby','sensitivity','sleep_enabled','sleep_start','sleep_end','sleep_timeout','weather']){if(typeof value[key]!=='string')throw Error('Invalid device setting: '+key);result[key]=value[key]}if(!['clock','media'].includes(result.idle_view))throw Error('Choose a valid idle screen.');if(!/^#[0-9a-f]{6}$/i.test(result.media_color)||!['main','all','never'].includes(result.standby_scope))throw Error('Choose a valid progress color and weather timeout behavior.');if(!['0','1'].includes(result.show_ampm)||!['dd-mm','mm-dd','yyyy-mm-dd','dd-mmm','mmm-dd','yyyy-mmm-dd'].includes(result.date_format)||!['12','24'].includes(result.hour_format))throw Error('Choose a valid date and clock format.');result.media_color=result.media_color.toUpperCase();for(const [key,min,max] of [['brightness',10,100],['standby',1,900],['sleep_timeout',1,3600]])if(!/^\d+$/.test(result[key])||+result[key]<min||+result[key]>max)throw Error('Invalid value for '+key);if(!['1','2','4'].includes(result.sensitivity)||!['0','1'].includes(result.sleep_enabled)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_start)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.sleep_end)||result.weather&&!/^weather\.[a-z0-9_]+$/.test(result.weather))throw Error('Invalid sleep, sensitivity, or weather setting.');return result}
 function validateDocument(value){if(![1,2].includes(value?.schema))throw Error('Unsupported configuration version.');return {slots:validateSlots(value.slots),settings:validateSettings(value.settings)}}

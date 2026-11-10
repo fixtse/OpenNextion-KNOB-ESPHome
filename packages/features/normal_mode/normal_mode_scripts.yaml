@@ -751,7 +751,8 @@ script:
           lv_obj_set_height(id(normal_automation_detail_title), 25);
           lv_obj_set_width(id(normal_automation_detail_title), 180);
           if (!timer_detail && entity_id.rfind("media_player.", 0) != 0) {
-            const auto view = onx_detail_view::build(entity_id, title);
+            auto view = onx_detail_view::build(entity_id, title);
+            onx_entity_config::customize_control_view(detail_index,entity_id,view);
             if(view.layout=="graph") onx_sensor_graph::render(lv_obj_get_parent(id(normal_automation_detail_action)),entity_id,id(ha_time).now().timestamp,onx_display_settings::current.media_color);
             auto line = [&](lv_obj_t *label, const onx_detail_view::Line &text) {
               onx_render::label(label, text.text.c_str());
@@ -2372,6 +2373,144 @@ script:
           }
           id(ui_presenter)->notify_user_activity();
           id(refresh_normal_automation_detail_page).execute();
+
+  - id: queue_normal_gesture
+    parameters:
+      direction: int
+    then:
+      - lambda: |-
+          const int slot=onx_entity_config::gesture_slot_for_ui(id(normal_device_detail_index));
+          const int kind=onx_gesture::gesture(direction,id(key_btn).state);
+          if(!onx_gesture::routes(slot,kind))return;
+          onx_gesture::queue(slot,kind,id(normal_knob_applied_value));
+          if(id(key_btn).state) {id(key_long_press_handled)=true;id(normal_clear_wifi_allowed)=false;}
+          id(ui_presenter)->notify_user_activity();
+
+  - id: dispatch_normal_gesture_queue
+    then:
+      - lambda: |-
+          if(!id(normal_device_detail_active) || !id(normal_ha_api_connected) ||
+              !id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
+              id(screen_off_state) || id(sleep_mode_state) || id(sleep_wakeup_pending) || id(standby_wakeup_pending) ||
+              id(mode_manager)->is_provisioning_mode_enabled() || onx_notification::current.visible ||
+              onx_timer::popup.visible || onx_playlist::browser.open || id(detail_long_press_exit_fired)) {
+            onx_gesture::clear_pending();return;
+          }
+          if(onx_gesture::pending.empty())return;
+          const auto request=onx_gesture::pending.front();onx_gesture::pending.pop_front();
+          if(request.slot!=onx_entity_config::gesture_slot_for_ui(id(normal_device_detail_index))) {
+            onx_gesture::clear_pending();return;
+          }
+          const auto &config=onx_gesture::configs[request.slot];
+          auto &state=onx_gesture::states[request.slot];
+          state.requested_ms=millis();++state.token;
+          const auto *detail=custom_logic_entity_sub::entity_detail(config.entity);
+          const std::string value=state.received?state.value:!config.feedback[0] && detail?detail->state:"";
+          const std::string unit=state.received?state.unit:!config.feedback[0] && detail?detail->unit:"";
+          id(emit_normal_gesture).execute(request.slot,request.kind,request.delta,state.token,
+              std::string(config.actions[request.kind]),std::string(config.entity),value,unit,config.responses,config.events);
+
+  - id: emit_normal_gesture
+    mode: parallel
+    max_runs: 8
+    parameters:
+      slot: int
+      kind: int
+      delta: int
+      token: int
+      action: string
+      entity: string
+      value: string
+      unit: string
+      responses: bool
+      events: bool
+    then:
+      - if:
+          condition:
+            lambda: return events;
+          then:
+            - homeassistant.event:
+                event: esphome.knob_gesture
+                data:
+                  device: !lambda return App.get_name();
+                  entity_id: !lambda return entity;
+                  direction: !lambda return std::string(onx_gesture::names[kind]);
+                  delta: !lambda return std::to_string(delta);
+                  pressed: !lambda return std::string(kind>=2?"true":"false");
+                  value: !lambda return value;
+                  unit: !lambda return unit;
+      - if:
+          condition:
+            lambda: return action.rfind("automation.",0)==0;
+          then:
+            - homeassistant.action:
+                action: automation.trigger
+                data:
+                  entity_id: !lambda return action;
+                  skip_condition: "false"
+                data_template:
+                  variables: !lambda |-
+                    return custom_logic::build_ha_action_variables(entity,delta,onx_gesture::names[kind],kind>=2,value,unit);
+      - if:
+          condition:
+            lambda: return action.rfind("script.",0)==0 && !responses;
+          then:
+            - homeassistant.action:
+                action: !lambda return action;
+                data:
+                  knob_entity: !lambda return entity;
+                  direction: !lambda return std::string(onx_gesture::names[kind]);
+                  delta: !lambda return std::to_string(delta);
+                  pressed: !lambda return std::string(kind>=2?"true":"false");
+                  value: !lambda return value;
+                  unit: !lambda return unit;
+      - if:
+          condition:
+            lambda: return action.rfind("script.",0)==0 && responses;
+          then:
+            - homeassistant.action:
+                action: !lambda return action;
+                data:
+                  knob_entity: !lambda return entity;
+                  direction: !lambda return std::string(onx_gesture::names[kind]);
+                  delta: !lambda return std::to_string(delta);
+                  pressed: !lambda return std::string(kind>=2?"true":"false");
+                  value: !lambda return value;
+                  unit: !lambda return unit;
+                capture_response: true
+                on_success:
+                  - lambda: |-
+                      if(slot<0 || slot>=20 || entity!=onx_gesture::configs[slot].entity ||
+                          onx_gesture::states[slot].token!=static_cast<uint32_t>(token))return;
+                      const auto result=response["response"];
+                      if(result["value"].isNull())return;
+                      std::string text;
+                      if(result["value"].is<const char *>())text=result["value"].as<std::string>();
+                      else serializeJson(result["value"],text);
+                      onx_gesture::feedback(slot,text,result["unit"] | onx_gesture::states[slot].unit,millis(),true);
+                on_error:
+                  - lambda: |-
+                      if(slot>=0 && slot<20 && entity==onx_gesture::configs[slot].entity &&
+                          onx_gesture::configs[slot].popup && onx_gesture::states[slot].token==static_cast<uint32_t>(token)) {
+                        onx_gesture::states[slot].notice="Action failed";
+                        onx_gesture::states[slot].feedback_ms=millis();
+                      }
+
+  - id: refresh_normal_gesture_feedback
+    then:
+      - lambda: |-
+          const int slot=onx_entity_config::gesture_slot_for_ui(id(normal_device_detail_index));
+          const bool active=slot>=0 && id(normal_device_detail_active) && id(normal_ha_api_connected) &&
+              id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() &&
+              !id(screen_off_state) && !id(sleep_mode_state) && !onx_notification::current.visible && !onx_timer::popup.visible;
+          if(!active || !onx_gesture::states[slot].feedback_ms || millis()-onx_gesture::states[slot].feedback_ms>=1500) {
+            lv_obj_add_flag(id(normal_gesture_feedback),LV_OBJ_FLAG_HIDDEN);return;
+          }
+          const auto &state=onx_gesture::states[slot];
+          const auto text=state.notice.empty()?state.value+(state.unit.empty()?"":" "+state.unit):state.notice;
+          onx_render::label(id(normal_gesture_feedback_text),text.c_str());
+          lv_obj_clear_flag(id(normal_gesture_feedback),LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(id(normal_gesture_feedback));
 
   - id: refresh_normal_message_popup
     then:

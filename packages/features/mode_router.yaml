@@ -63,7 +63,8 @@ onx_config_web:
           const auto entity = custom_logic::cached_device_entity_id(i);
           if (entity.empty() || entity != query.entity) continue;
           const auto title = custom_logic::ha_entity_title_from_registry_cache(entity);
-          const auto view = onx_detail_view::build(entity, title);
+          auto view = onx_detail_view::build(entity, title);
+          onx_entity_config::customize_control_view(custom_logic::normal_ui_slot_for_device_config_slot(i),entity,view);
           auto slot = slots.add<JsonObject>();
           slot["entity"] = entity; encode(slot, view);
           if(view.layout=="graph") {
@@ -245,7 +246,7 @@ onx_config_web:
         (query.icon_override != "" && query.icon_override != "0" && query.icon_override != "1"))
       return onx_entity_config::error("Choose a valid MDI icon");
     const auto domain = custom_logic::ha_domain_from_entity_id(query.entity);
-    if (onx_controls::handles(query.entity) && query.entity.rfind("media_player.", 0) != 0 && !query.action.empty())
+    if (onx_controls::handles(query.entity) && query.entity.rfind("media_player.", 0) != 0 && domain!="climate" && !query.action.empty())
       return onx_entity_config::error("This entity uses native press controls; choose Default");
     if (!query.type.empty()) {
       const bool allowed = (domain == "switch" && (query.type == "Switch" || query.type == "Plug")) ||
@@ -265,6 +266,9 @@ onx_config_web:
     if ((!query.timer_hidden.empty() && query.timer_hidden!="0" && query.timer_hidden!="1") ||
         (query.timer_hidden=="1" && domain!="timer" && domain!="sensor"))
       return onx_entity_config::error("Only timers and timer sensors can be hidden from the carousel");
+    onx_gesture::Config gesture_config{};
+    if(!onx_entity_config::parse_gestures(query.entity,query.gestures,gesture_config))
+      return onx_entity_config::error("Choose valid gesture actions, feedback entity and step (1-100)");
     onx_playlist::Config playlist_config{};
     if (!onx_entity_config::parse_playlists(query.entity,query.playlists,playlist_config))
       return onx_entity_config::error("Add up to eight playlist names (48 UTF-8 bytes) and valid script or automation entity IDs");
@@ -276,6 +280,8 @@ onx_config_web:
       return onx_entity_config::error("Could not save sensor display settings; retry");
     if (!onx_entity_config::save_timer_visibility(query.slot,query.entity,query.timer_hidden=="1"))
       return onx_entity_config::error("Could not save timer visibility; retry");
+    if(!onx_entity_config::save_gestures(query.slot,gesture_config))
+      return onx_entity_config::error("Could not save gesture controls; retry");
     if (!onx_entity_config::save_playlists(query.slot,playlist_config))
       return onx_entity_config::error("Could not save playlist actions; retry");
     if (!onx_entity_config::save_selected_metadata(query)) return onx_entity_config::error("Could not save selected entity details");

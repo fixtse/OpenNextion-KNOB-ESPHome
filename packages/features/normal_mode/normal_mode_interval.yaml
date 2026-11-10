@@ -2,6 +2,8 @@ interval:
   - interval: 100ms
     then:
       - script.execute: refresh_normal_message_popup
+      - script.execute: dispatch_normal_gesture_queue
+      - script.execute: refresh_normal_gesture_feedback
       - lambda: |-
           if(!id(ui_presenter)->is_normal_mode_active() || id(ui_presenter)->is_standby_active() ||
               id(normal_page_index)!=0 || id(normal_device_detail_active) || id(screen_off_state) || id(sleep_mode_state))

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <atomic>
 #include "onx_registry_queue.h"
+#include "onx_gesture.h"
 #include <array>
 #include <cctype>
 #include <cstring>
@@ -380,6 +381,7 @@ static InferredNormalDeviceConfig device9_inferred_config{};
 static InferredNormalDeviceConfig device10_inferred_config{};
 
 inline uint32_t normalize_light_capability_mask(uint32_t mask);
+
 inline bool is_configurable_device_slot(size_t slot);
 inline std::string device_slot_label(size_t slot);
 inline void set_cached_device1_custom_config_from_entity_default(const std::string &entity_id);
@@ -677,6 +679,14 @@ inline void ensure_device1_config_pref_ready() {
 
 inline void ensure_device2_config_pref_ready() {
   ensure_device_config_pref_ready(1);
+}
+
+inline std::string build_ha_action_variables(const std::string &entity,int delta,const std::string &direction,
+                                             bool pressed,const std::string &value,const std::string &unit) {
+  auto doc=make_psram_json_document();
+  doc["knob_entity"]=entity;doc["delta"]=delta;doc["direction"]=direction;
+  doc["pressed"]=pressed;doc["value"]=value;doc["unit"]=unit;
+  std::string result;serializeJson(doc,result);return "{{ "+result+" }}";
 }
 
 inline bool is_configurable_device_slot(size_t slot) {
@@ -3775,6 +3785,8 @@ inline bool erase_custom_logic_normal_mode_nvs_keys() {
     }
   };
 
+  erase_key(esphome::fnv1_hash("onx.press_bindings.v1"),"legacy press bindings");
+  erase_key(esphome::fnv1_hash("onx.press_bindings.v2"),"press bindings");
   erase_key(LEGACY_HA_TOKEN_PREF_KEY, "HA token");
   for (size_t i = 0; i < HA_ENTITY_PREF_CHUNK_COUNT; i++) {
     erase_key(HA_ENTITY_CHUNK_PREF_KEY_BASE + i, "HA entity chunk");
@@ -3787,6 +3799,7 @@ inline bool erase_custom_logic_normal_mode_nvs_keys() {
     erase_key(device_config_pref_key(slot), "device config");
     erase_key(device_light_runtime_pref_key(slot), "device light runtime");
     erase_key(DEVICE_TYPE_RESTORE_PREF_KEYS[slot], "device type restore");
+    erase_key(esphome::fnv1_hash("onx.gestures.v1."+std::to_string(slot)),"gesture bindings");
   }
 
   err = nvs_commit(handle);
@@ -3829,7 +3842,9 @@ inline void clear_custom_logic_normal_mode_ram_state() {
     device_config_loaded(slot) = true;
     device_config_option_strings(slot).fill(std::string{});
     staged_device_config_option_strings(slot).fill(std::string{});
+    onx_gesture::configs[slot]={};onx_gesture::states[slot]={};
   }
+  onx_gesture::clear_pending();
 }
 
 inline bool reset_normal_mode_preferences() {

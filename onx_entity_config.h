@@ -1,6 +1,8 @@
 #pragma once
 #include <vector>
 #include "custom_logic.h"
+#include "onx_gesture.h"
+#include "onx_detail_view.h"
 #include "onx_config_rules.h"
 #include "onx_icon_state.h"
 #include "onx_display_settings.h"
@@ -212,6 +214,66 @@ inline const onx_playlist::Config *playlists_for_ui(int ui_slot,const std::strin
   }
   return nullptr;
 }
+inline bool gestures_loaded=false;
+inline std::array<esphome::ESPPreferenceObject,20> gesture_preferences;
+inline void load_gestures() {
+  if(gestures_loaded || esphome::global_preferences==nullptr)return;
+  for(size_t i=0;i<20;++i) {
+    gesture_preferences[i]=esphome::global_preferences->make_preference<onx_gesture::Config>(esphome::fnv1_hash("onx.gestures.v1."+std::to_string(i)));
+    onx_gesture::Config saved{};
+    if(!gesture_preferences[i].load(&saved) || saved.magic!=0x4F4E5847)continue;
+    saved.entity[128]=saved.feedback[128]=0;
+    bool valid=(onx_config::valid_entity(saved.entity) || custom_logic::is_local_hmi_gpio_switch_preset_option(saved.entity)) && (!saved.feedback[0] || onx_config::valid_entity(saved.feedback)) &&
+        saved.popup<=1 && saved.responses<=1 && saved.events<=1 && saved.step>=1 && saved.step<=100;
+    for(auto &action:saved.actions) {action[128]=0;valid=valid && onx_config::valid_action(action);}
+    if(valid)onx_gesture::configs[i]=saved;
+  }
+  gestures_loaded=true;
+}
+inline bool parse_gestures(const std::string &entity,const std::string &raw,onx_gesture::Config &next) {
+  snprintf(next.entity,sizeof(next.entity),"%s",entity.c_str());
+  if(raw.empty())return true;
+  auto doc=custom_logic::make_psram_json_document();
+  if(deserializeJson(doc,raw) || !doc.is<JsonObject>())return false;
+  const char *keys[]={"cw","ccw","holdCw","holdCcw"};
+  for(size_t i=0;i<4;++i) {
+    const std::string action=doc[keys[i]] | "";
+    if(!onx_config::valid_action(action))return false;
+    snprintf(next.actions[i],sizeof(next.actions[i]),"%s",action.c_str());
+  }
+  const std::string feedback=doc["feedback"] | "";
+  if(!feedback.empty() && !onx_config::valid_entity(feedback))return false;
+  snprintf(next.feedback,sizeof(next.feedback),"%s",feedback.c_str());
+  for(const auto key:{"popup","responses","events"}) {
+    const std::string value=doc[key] | (std::string(key)=="popup"?"1":"0");
+    if(value!="0" && value!="1")return false;
+    if(std::string(key)=="popup")next.popup=value=="1";
+    if(std::string(key)=="responses")next.responses=value=="1";
+    if(std::string(key)=="events")next.events=value=="1";
+  }
+  unsigned step=1;
+  const std::string step_text=doc["step"] | "1";
+  if(!onx_config::integer_in_range(step_text,1,100,step))return false;
+  next.step=step;return true;
+}
+inline bool save_gestures(size_t slot,const onx_gesture::Config &next) {
+  load_gestures();if(!gestures_loaded || slot>=20)return false;
+  if(!gesture_preferences[slot].save(&next) || !esphome::global_preferences->sync())return false;
+  const bool same=std::string(next.entity)==onx_gesture::configs[slot].entity && std::string(next.feedback)==onx_gesture::configs[slot].feedback;
+  const uint32_t next_token=onx_gesture::states[slot].token+1;
+  onx_gesture::configs[slot]=next;
+  if(!same)onx_gesture::states[slot]={};
+  onx_gesture::states[slot].token=next_token;onx_gesture::states[slot].feedback_ms=0;
+  onx_gesture::clear_pending();return true;
+}
+inline int gesture_slot_for_ui(int ui_slot) {
+  load_gestures();
+  for(size_t i=0;i<20;++i)
+    if(custom_logic::normal_ui_slot_for_device_config_slot(i)==static_cast<size_t>(ui_slot) &&
+        !custom_logic::cached_device_entity_id(i).empty() && custom_logic::cached_device_entity_id(i)==onx_gesture::configs[i].entity)return i;
+  return -1;
+}
+
 struct PressBinding {
   char source[MAX_HA_ENTITY_ID_LENGTH + 1]{};
   char action[MAX_HA_ENTITY_ID_LENGTH + 1]{};
@@ -275,6 +337,20 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
   bindings = next;
   return true;
 }
+inline void customize_control_view(int ui_slot,const std::string &entity,onx_detail_view::View &view) {
+  const auto press=action_for_ui(ui_slot);
+  if(entity.rfind("climate.",0)==0 && !press.empty())
+    view.hint.text=press=="none"?"Press: no action":"Press: custom action";
+  const int slot=gesture_slot_for_ui(ui_slot);
+  if(slot<0)return;
+  const auto &config=onx_gesture::configs[slot];
+  if(config.actions[0][0] || config.actions[1][0] || config.events)view.hint.text="Turn: custom control";
+  if(config.actions[2][0] || config.actions[3][0])view.hint.text+="\nHold + turn: custom control";
+  if(entity.rfind("sensor.",0)==0 && config.feedback[0] && onx_gesture::states[slot].received) {
+    const auto &state=onx_gesture::states[slot];
+    view.value.text=state.value+(state.unit.empty()?"":" "+state.unit);
+  }
+}
 inline std::string error(const char *message) {
   return build_json([&](JsonObject root) { root["error"] = message; });
 }
@@ -319,6 +395,7 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
   custom_logic::load_ha_entities_if_needed();
   load_icons();
   load_playlists();
+  load_gestures();
   return build_json([&](JsonObject root) {
     root["wifi_connected"] = wifi_connected;
     root["ha_connected"] = ha_connected;
@@ -360,6 +437,16 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       custom_logic::load_device_config_if_needed(i);
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
+      auto gestures=slot["gestures"].to<JsonObject>();
+      const auto &control=onx_gesture::configs[i];
+      const bool bound=custom_logic::cached_device_entity_id(i)==control.entity;
+      const char *gesture_keys[]={"cw","ccw","holdCw","holdCcw"};
+      for(size_t j=0;j<4;++j)gestures[gesture_keys[j]]=bound?control.actions[j]:"";
+      gestures["feedback"]=bound?control.feedback:"";
+      gestures["popup"]=!bound || control.popup?"1":"0";
+      gestures["responses"]=bound && control.responses?"1":"0";
+      gestures["events"]=bound && control.events?"1":"0";
+      gestures["step"]=std::to_string(bound?control.step:1);
       slot["timerHidden"] = timer_hidden(i,custom_logic::cached_device_entity_id(i))?"1":"0";
       JsonArray playlists=slot["playlists"].to<JsonArray>();
       const auto &playlist=onx_playlist::configs[i];

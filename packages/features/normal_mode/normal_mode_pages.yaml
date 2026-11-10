@@ -110,6 +110,30 @@ lvgl:
                 text_font: fonts_MiSans_Bold_12
                 text_color: 0xB8B8B8
                 text: "Turn to scroll · Press to dismiss"
+      - obj:
+          id: normal_gesture_feedback
+          align: bottom_mid
+          y: -30
+          width: 184
+          height: 40
+          radius: 12
+          bg_color: 0x000000
+          bg_opa: 85%
+          border_width: 0
+          pad_all: 4
+          clickable: false
+          scrollable: false
+          hidden: true
+          widgets:
+            - label:
+                id: normal_gesture_feedback_text
+                align: center
+                width: 174
+                long_mode: DOT
+                text_align: CENTER
+                text_font: fonts_MiSans_Medium_18
+                text_color: 0xFFFFFF
+                text: ""
   pages:
     - id: device_empty
       bg_color: 0x000000

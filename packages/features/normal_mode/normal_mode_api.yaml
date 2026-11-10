@@ -37,3 +37,16 @@ api:
         - lambda: |-
             onx_notification::current.dismiss();
             id(refresh_normal_message_popup).execute();
+    - action: show_control_feedback
+      description: Show a brief, non-blocking value popup for a configured control entity.
+      variables:
+        entity_id: string
+        value: string
+        unit: string
+      then:
+        - lambda: |-
+            for(int slot=0;slot<20;++slot)
+              if(entity_id==std::string(onx_gesture::configs[slot].entity) &&
+                  custom_logic::cached_device_entity_id(slot)==onx_gesture::configs[slot].entity)
+                onx_gesture::feedback(slot,value,unit,millis(),true);
+            id(refresh_normal_gesture_feedback).execute();

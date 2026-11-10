@@ -1,4 +1,5 @@
 #pragma once
+#include "onx_gesture.h"
 #include "onx_memory.h"
 
 #include <algorithm>
@@ -1121,12 +1122,43 @@ inline void sample_sensor_history(time_t now) {
   }
 }
 
+inline void subscribe_gesture_feedback(esphome::api::APIServer *api,size_t slot,const std::string &primary) {
+#ifdef USE_API_HOMEASSISTANT_STATES
+  if(!api || slot>=20 || primary!=onx_gesture::configs[slot].entity)return;
+  const auto &config=onx_gesture::configs[slot];
+  bool enabled=config.events || config.responses || config.feedback[0];
+  for(const auto &action:config.actions)enabled=enabled || (action[0] && std::strcmp(action,"none")!=0);
+  if(!enabled)return;
+  const std::string entity=config.feedback[0]?config.feedback:primary;
+  static std::array<std::set<std::string>,20> registered;
+  if(!registered[slot].insert(primary+"\n"+entity).second) {
+    if(!onx_gesture::states[slot].received)for(const std::string attribute:{std::string(""),std::string("unit_of_measurement")}) {
+      esphome::api::SubscribeHomeAssistantStateResponse request;
+      request.entity_id=esphome::StringRef(entity);request.attribute=esphome::StringRef(attribute);request.once=true;
+      for(const auto &client:api->active_clients())if(client && client->is_connection_setup())client->send_message(request);
+    }
+    return;
+  }
+  for(const std::string attribute:{std::string(""),std::string("unit_of_measurement")})
+    api->subscribe_home_assistant_state(entity,esphome::optional<std::string>(attribute),
+        [slot,primary,entity,attribute](const std::string &value) {
+          const auto &current=onx_gesture::configs[slot];
+          if(custom_logic::cached_device_entity_id(slot)!=primary || primary!=current.entity ||
+              entity!=(current.feedback[0]?std::string(current.feedback):primary))return;
+          auto &state=onx_gesture::states[slot];
+          if(attribute.empty())onx_gesture::feedback(slot,value,state.unit,millis());
+          else state.unit=onx_notification::clipped(value,24);
+        });
+#endif
+}
+
 inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, const std::string &entity_id) {
   if (!is_valid_entity_id(entity_id)) {
     ESP_LOGI(TAG, "%s has no valid dynamic HA entity subscription", custom_logic::device_slot_label(slot).c_str());
     return;
   }
 
+  subscribe_gesture_feedback(api_server,slot,entity_id);
   subscribe_secondary(api_server,slot,entity_id);
   subscribe_field(api_server, slot, entity_id, "state", "");
   subscribe_field(api_server, slot, entity_id, "icon", "icon");
