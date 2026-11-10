@@ -91,3 +91,18 @@ A press used to dismiss a [display notification](display-notifications.md)
 when a notification appears while the knob is already held. The press stays
 consumed until release, even if the notification times out or Home Assistant
 dismisses it first. Release the knob before starting a separate reset hold.
+
+## Media player appearance
+
+In the configuration webpage's **Device settings**, choose **Media player view →
+Material · tonal card** and save. Classic remains the default. The selection
+applies to media detail views and the playing-media idle screen, and is included
+in configuration backups.
+
+Material maximizes the complete artwork within the round display, preserving
+its proportions; the circular edge hides only the outer corners of square art.
+A translucent tonal panel keeps the title, artist and volume readable. A compact
+playback-state pill sits above it, while the circular playback progress indicator
+retains its selected color and paused behavior. Existing knob controls and
+playlist navigation work in both views. Missing artwork falls back to the entity
+icon. The state pill is informational; press the physical knob to play or pause.

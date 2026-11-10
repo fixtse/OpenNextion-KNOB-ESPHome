@@ -8,6 +8,8 @@ struct Settings {
   uint8_t standby_scope{0}; // 0 main carousel only, 1 all views, 2 disabled
 };
 inline Settings current;
+struct MediaStyle {uint32_t magic{0x4F4E584D};uint8_t material{0};};
+inline MediaStyle media_style;
 struct IdleSettings {uint32_t magic{0x4F4E5849};uint8_t media{0};};
 inline IdleSettings idle;
 struct DateTimeSettings {

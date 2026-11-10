@@ -785,6 +785,7 @@ script:
             lv_obj_set_y(id(normal_automation_detail_title), 192);
             lv_obj_set_style_text_font(id(normal_automation_detail_title), id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
           }
+          id(apply_normal_media_style).execute();
           id(refresh_normal_media_progress).execute();
 
 
@@ -2864,6 +2865,63 @@ script:
           lv_obj_set_style_arc_color(id(normal_media_progress_arc),
               lv_color_hex(onx_display_settings::current.media_color), LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(normal_media_progress_arc), detail->state == "paused" ? 153 : LV_OPA_COVER, LV_PART_INDICATOR);
+
+  - id: apply_normal_media_style
+    then:
+      - lambda: |-
+          const auto entity=id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          auto *detail=custom_logic_entity_sub::entity_detail(entity);
+          const bool media=id(normal_device_detail_active) &&
+              id(normal_device_detail_kind)==NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
+              entity.rfind("media_player.",0)==0 && detail!=nullptr;
+          const bool material=media && onx_display_settings::media_style.material;
+          auto *card=id(normal_media_material_card);
+          auto *state=id(normal_media_material_state);
+          if(!media) {
+            lv_obj_add_flag(card,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(state,LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
+          if(material) {
+            // A tonal surface keeps contrast predictable without sampling artwork.
+            const auto accent=lv_color_hex(onx_display_settings::current.media_color);
+            lv_obj_set_style_bg_color(card,lv_color_mix(accent,lv_color_hex(0x24262C),36),0);
+            lv_obj_set_style_bg_color(state,lv_color_mix(accent,lv_color_hex(0xFFFFFF),96),0);
+            onx_render::label(state,detail->state=="playing"?"Playing":detail->state=="paused"?"Paused":"Idle");
+            lv_obj_clear_flag(card,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(state,LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(card,LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(state,LV_OBJ_FLAG_HIDDEN);
+          }
+          auto *cover=id(normal_media_cover);
+          const int scale=material?256:116;
+          lv_image_set_pivot(cover,0,0);
+          lv_image_set_scale(cover,scale);
+          const int width=id(media_cover_image)->get_width()*scale/256;
+          const int height=id(media_cover_image)->get_height()*scale/256;
+          lv_obj_align(cover,LV_ALIGN_TOP_LEFT,(240-width)/2,material?(240-height)/2:18);
+          lv_obj_set_style_clip_corner(id(normal_automation_detail_shell),true,0);
+          lv_obj_set_x(id(normal_automation_detail_icon),0);
+          lv_obj_set_y(id(normal_automation_detail_icon),material?30:(media?18:40));
+          if(material)lv_image_set_scale(id(normal_automation_detail_icon),256);
+          lv_obj_set_y(id(normal_media_title),material?126:122);
+          lv_obj_set_width(id(normal_media_title),material?180:196);
+          lv_obj_set_y(id(normal_media_artist),material?148:144);
+          lv_obj_set_width(id(normal_media_artist),material?180:196);
+          // Reapply after the shared detail renderer positions the volume/name.
+          if(media) {
+            lv_obj_set_y(id(normal_automation_detail_action),material?174:166);
+            lv_obj_set_y(id(normal_automation_detail_title),material?204:192);
+            lv_obj_set_style_text_font(id(normal_automation_detail_action),
+                material?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_18)->get_lv_font(),0);
+          }
+          lv_obj_set_x(id(normal_media_transport_overlay),material?48:0);
+          lv_obj_set_y(id(normal_media_transport_overlay),material?58:44);
+          if(material) {
+            lv_obj_move_to_index(cover,0);
+            lv_obj_move_to_index(card,1);
+          }
 
   - id: refresh_normal_media_cover
     then:
