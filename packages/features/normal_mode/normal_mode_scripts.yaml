@@ -167,7 +167,9 @@ script:
       - lambda: |-
           if (!id(ui_presenter)->is_normal_mode_active() ||
               id(ui_presenter)->is_standby_active() ||
-              id(normal_page_index) != 0 || id(normal_device_detail_active)) {
+              id(normal_page_index) != 0 || id(normal_device_detail_active) ||
+              id(screen_off_state) || id(sleep_mode_state)) {
+            onx_navigation::hide();
             lv_obj_add_flag(id(normal_device_wifi_online_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
@@ -373,52 +375,26 @@ script:
               lv_obj_set_width(w.title,view.name.width);lv_obj_set_height(w.title,40);
             }
             set_hidden(w.index_icon, true);
-            // Three reusable landmarks instead of a row of indistinguishable dots.
-            // There are ten physical carousel pages plus Settings, regardless of entry count.
-            set_hidden(w.pagination, true);
-            struct Navigator {lv_obj_t *cells[3]{}, *icons[3]{};};
-            static std::array<Navigator,11> navigators{};
-            auto &nav=navigators[settings_entry?10:entry_index%10];
+            set_hidden(w.pagination,true);
             const int navigator_index=settings_entry?total:entry_index;
-            const int neighbours[]={
-              onx_entity_config::carousel_neighbour(navigator_index,total,-1),
-              navigator_index,
-              onx_entity_config::carousel_neighbour(navigator_index,total,1)};
-            for(int n=0;n<3;++n) {
-              if(!nav.cells[n]) {
-                auto *cell=nav.cells[n]=lv_obj_create(lv_obj_get_parent(w.pagination));
-                lv_obj_set_size(cell,26,26);
-                lv_obj_set_pos(cell,74+n*33,210);
-                lv_obj_set_style_pad_all(cell,0,0);
-                lv_obj_set_style_border_width(cell,0,0);
-                lv_obj_set_style_radius(cell,13,0);
-                lv_obj_set_style_bg_color(cell,lv_color_hex(0x20384E),0);
-                lv_obj_set_style_bg_opa(cell,n==1?LV_OPA_COVER:LV_OPA_TRANSP,0);
-                lv_obj_clear_flag(cell,LV_OBJ_FLAG_SCROLLABLE);
-                lv_obj_clear_flag(cell,LV_OBJ_FLAG_CLICKABLE);
-                nav.icons[n]=lv_img_create(cell);
-                lv_obj_clear_flag(nav.icons[n],LV_OBJ_FLAG_CLICKABLE);
-              }
-              const int index=neighbours[n];
-              set_hidden(nav.cells[n],index<0);
-              if(index<0)continue;
-              if(index==total) {
-                onx_render::image(nav.icons[n],id(normal_device_icon_settings_img)->get_lv_image_dsc());
-                lv_image_set_scale(nav.icons[n],18*256/id(normal_device_icon_settings_img)->get_width());
-                lv_obj_set_style_image_recolor(nav.icons[n],lv_color_hex(n==1?0x62B0FF:0xFFFFFF),0);
-                lv_obj_set_style_image_recolor_opa(nav.icons[n],LV_OPA_COVER,0);
-              } else {
-                id(apply_normal_entity_icon).execute(nav.icons[n],
-                    id(ui_presenter)->get_normal_device_entity_id(index),
-                    id(ui_presenter)->get_normal_device_type(index),n==1);
-                lv_image_set_scale(nav.icons[n],18*256/80);
-              }
-              lv_obj_center(nav.icons[n]);
-              lv_obj_set_style_opa(nav.cells[n],n==1?LV_OPA_COVER:140,0);
-            }
+            onx_navigation::render(onx_entity_config::carousel_entries(total),navigator_index,
+                [&](lv_obj_t *icon,int index,bool active) {
+                  if(index==total) {
+                    onx_render::image(icon,id(normal_device_icon_settings_img)->get_lv_image_dsc());
+                    lv_image_set_scale(icon,18*256/id(normal_device_icon_settings_img)->get_width());
+                    lv_obj_set_style_image_recolor(icon,lv_color_hex(active?0x62B0FF:0xFFFFFF),0);
+                    lv_obj_set_style_image_recolor_opa(icon,LV_OPA_COVER,0);
+                  } else {
+                    id(apply_normal_entity_icon).execute(icon,
+                        id(ui_presenter)->get_normal_device_entity_id(index),
+                        id(ui_presenter)->get_normal_device_type(index),active);
+                    lv_image_set_scale(icon,18*256/80);
+                  }
+                });
           };
 
           if (total == 0 && selected == 0) {
+            onx_navigation::hide();
             set_hidden(id(normal_device_wifi_online_widget), true);
             set_hidden(id(normal_device_wifi_offline_widget), true);
             set_hidden(id(normal_device_homeassistant_online_widget), true);
@@ -1282,19 +1258,8 @@ script:
           lv_obj_set_style_border_width(id(normal_settings_detail_shell), 0, 0);
           lv_label_set_text(id(normal_settings_header_title), "Settings");
 
-          lv_obj_set_style_bg_opa(roller, LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_border_width(roller, 0, LV_PART_MAIN);
-          lv_obj_set_style_text_color(roller, lv_color_hex(0x4D4D4D), LV_PART_MAIN);
-          lv_obj_set_style_text_font(roller, id(fonts_MiSans_Medium_16), LV_PART_MAIN);
-          lv_obj_set_style_text_line_space(roller, 15, LV_PART_MAIN);
-
-          lv_obj_set_style_bg_color(roller, lv_color_hex(0x3D3D3D), LV_PART_SELECTED);
-          lv_obj_set_style_bg_opa(roller, LV_OPA_COVER, LV_PART_SELECTED);
-          lv_obj_set_style_radius(roller, 15, LV_PART_SELECTED);
-          lv_obj_set_style_text_color(roller, lv_color_white(), LV_PART_SELECTED);
-          lv_obj_set_style_text_font(roller, id(fonts_MiSans_Medium_18), LV_PART_SELECTED);
-          lv_obj_set_style_pad_left(roller, 20, LV_PART_SELECTED);
-          lv_obj_set_style_pad_right(roller, 40, LV_PART_SELECTED);
+          onx_render::settings_roller(roller,id(fonts_MiSans_Medium_16)->get_lv_font(),
+              id(fonts_MiSans_Medium_18)->get_lv_font());
 
           lv_roller_set_selected(roller, selected, LV_ANIM_OFF);
           lv_obj_align_to(arrow, roller, LV_ALIGN_CENTER, 85, 0);
@@ -1431,19 +1396,8 @@ script:
           lv_obj_t *roller = id(normal_settings_knob_roller)->obj;
 
           lv_label_set_text(id(normal_settings_knob_title), "Knob sensitivity");
-          lv_obj_set_style_bg_opa(roller, LV_OPA_TRANSP, LV_PART_MAIN);
-          lv_obj_set_style_border_width(roller, 0, LV_PART_MAIN);
-          lv_obj_set_style_text_color(roller, lv_color_hex(0x4D4D4D), LV_PART_MAIN);
-          lv_obj_set_style_text_font(roller, id(fonts_MiSans_Medium_16), LV_PART_MAIN);
-          lv_obj_set_style_text_line_space(roller, 15, LV_PART_MAIN);
-
-          lv_obj_set_style_bg_color(roller, lv_color_hex(0x3D3D3D), LV_PART_SELECTED);
-          lv_obj_set_style_bg_opa(roller, LV_OPA_COVER, LV_PART_SELECTED);
-          lv_obj_set_style_radius(roller, 15, LV_PART_SELECTED);
-          lv_obj_set_style_text_color(roller, lv_color_white(), LV_PART_SELECTED);
-          lv_obj_set_style_text_font(roller, id(fonts_MiSans_Medium_18), LV_PART_SELECTED);
-          lv_obj_set_style_pad_left(roller, 20, LV_PART_SELECTED);
-          lv_obj_set_style_pad_right(roller, 40, LV_PART_SELECTED);
+          onx_render::settings_roller(roller,id(fonts_MiSans_Medium_16)->get_lv_font(),
+              id(fonts_MiSans_Medium_18)->get_lv_font());
 
           lv_roller_set_selected(roller, selected, LV_ANIM_OFF);
 
@@ -1717,6 +1671,7 @@ script:
               id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS) {
             return;
           }
+          onx_navigation::hide();
           id(normal_device_detail_active) = true;
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_WIFI;
           id(normal_page_index) = 1;
@@ -1739,6 +1694,7 @@ script:
               id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS) {
             return;
           }
+          onx_navigation::hide();
           id(normal_device_detail_active) = true;
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_BRIGHTNESS;
           id(normal_page_index) = 1;
@@ -1761,6 +1717,7 @@ script:
               id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS) {
             return;
           }
+          onx_navigation::hide();
           id(normal_device_detail_active) = true;
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_KNOB;
           id(normal_page_index) = 1;
@@ -1784,6 +1741,7 @@ script:
               id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_SETTINGS) {
             return;
           }
+          onx_navigation::hide();
           id(normal_device_detail_active) = true;
           id(normal_device_detail_kind) = NORMAL_DEVICE_DETAIL_KIND_SETTINGS_CONNECTION;
           id(normal_page_index) = 1;
@@ -2003,6 +1961,7 @@ script:
           }
 
           id(normal_device_detail_index) = (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS) ? -1 : detail_index;
+          onx_navigation::hide();
           id(normal_device_detail_active) = true;
           id(normal_device_detail_kind) = detail_kind;
           id(normal_page_index) = 1;
@@ -2786,6 +2745,7 @@ script:
           if (holding) lv_obj_add_flag(id(normal_playlist_roller)->obj, LV_OBJ_FLAG_HIDDEN);
           else lv_obj_clear_flag(id(normal_playlist_roller)->obj, LV_OBJ_FLAG_HIDDEN);
           if (holding) {
+            lv_obj_clear_flag(id(normal_playlist_hint),LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
             const bool ready = held >= onx_playlist::OPEN_MS;
             onx_render::label(id(normal_playlist_heading), ready ? "Release now" : "Keep holding");
@@ -2803,11 +2763,13 @@ script:
               options+=onx_media::display_text(list->entries[j].name);
             }
             auto *roller=id(normal_playlist_roller)->obj;
+            onx_render::settings_roller(roller,id(fonts_MiSans_Medium_16)->get_lv_font(),
+                id(fonts_MiSans_Medium_18)->get_lv_font(),false);
             if(options!=lv_roller_get_options(roller))lv_roller_set_options(roller,options.c_str(),LV_ROLLER_MODE_NORMAL);
-            lv_roller_set_selected(roller,i,LV_ANIM_OFF);
+            if(lv_roller_get_selected(roller)!=i)lv_roller_set_selected(roller,i,LV_ANIM_ON);
             onx_render::label(id(normal_playlist_heading), "Playlists");
             lv_obj_add_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
-            onx_render::label(id(normal_playlist_hint), "Turn, then press");
+            lv_obj_add_flag(id(normal_playlist_hint),LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_playlist_hold_bar), LV_OBJ_FLAG_HIDDEN);
           }
 

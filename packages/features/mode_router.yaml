@@ -80,16 +80,20 @@ onx_config_web:
           auto navigator=carousel["navigator"].to<JsonArray>();
           const int ui_slot=custom_logic::normal_ui_slot_for_device_config_slot(i);
           const int total=id(normal_device_count);
-          for(int n=-1;n<=1;++n) {
-            const int index=n==0?ui_slot:onx_entity_config::carousel_neighbour(ui_slot,total,n);
-            auto item=navigator.add<JsonObject>();
-            item["visible"]=index>=0 && !onx_entity_config::timer_hidden(i,entity);
-            item["selected"]=n==0;
-            if(index<0)continue;
-            const auto neighbour=index==total?std::string(""):id(ui_presenter)->get_normal_device_entity_id(index);
-            auto icon=onx_icon_state::selected_icon(neighbour);
-            if(icon.empty())icon="mdi:"+onx_icon_state::fallback(neighbour,index==total?"settings":id(ui_presenter)->get_normal_device_type(index));
-            item["icon"]=index==total?"mdi:cog":icon;
+          const auto entries=onx_entity_config::carousel_entries(total);
+          const auto current=std::find(entries.begin(),entries.end(),ui_slot);
+          if(current!=entries.end()) {
+            const int rank=current-entries.begin();
+            const int start=onx_navigation::window_start(rank,entries.size(),onx_navigation::first);
+            for(int n=start;n<std::min<int>(entries.size(),start+onx_navigation::VISIBLE_ICONS);++n) {
+              const int index=entries[n];
+              auto item=navigator.add<JsonObject>();
+              item["visible"]=true;item["selected"]=index==ui_slot;
+              const auto neighbour=index==total?std::string(""):id(ui_presenter)->get_normal_device_entity_id(index);
+              auto icon=onx_icon_state::selected_icon(neighbour);
+              if(icon.empty())icon="mdi:"+onx_icon_state::fallback(neighbour,id(ui_presenter)->get_normal_device_type(index));
+              item["icon"]=index==total?"mdi:cog":icon;
+            }
           }
           if (const auto *detail = custom_logic_entity_sub::entity_detail(entity)) {
             const auto now = id(ha_time).now();

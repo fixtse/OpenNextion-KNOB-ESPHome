@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "custom_logic.h"
 #include "onx_config_rules.h"
 #include "onx_icon_state.h"
@@ -105,6 +106,13 @@ inline int carousel_selection(int selected,int total,int direction) {
   }
   return selected;
 }
+inline std::vector<int> carousel_entries(int total) {
+  std::vector<int> entries;entries.reserve(total+1);
+  for(int i=0;i<total;++i)if(!carousel_hidden(i))entries.push_back(i);
+  entries.push_back(total);  // Settings is always reachable.
+  return entries;
+}
+
 // A missing neighbour is -1; the settings gear remains the final landmark.
 inline int carousel_neighbour(int selected,int total,int direction) {
   int index=selected+direction;

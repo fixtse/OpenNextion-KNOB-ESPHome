@@ -1814,7 +1814,7 @@ lvgl:
                     - label:
                         id: normal_playlist_heading
                         align: top_mid
-                        y: 30
+                        y: 18
                         width: 196
                         text_align: CENTER
                         text_font: fonts_MiSans_Medium_18

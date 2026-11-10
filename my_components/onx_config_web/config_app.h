@@ -75,8 +75,8 @@ function drawPreview(slot){
  }
  if(view.layout==='carousel')for(const [i,item] of (view.navigator||[]).entries()){
   if(!item.visible)continue;
-  const x=87+i*33;
-  if(item.selected)svg.append(svgNode('circle',{cx:x,cy:223,r:13,fill:'#20384E'}));
+  const x=120+(i-((view.navigator||[]).length-1)/2)*24;
+  if(item.selected)svg.append(svgNode('circle',{cx:x,cy:223,r:12,fill:'#20384E'}));
   if(/^mdi:[a-z0-9-]+$/.test(item.icon||''))svg.append(svgNode('image',{href:'https://api.iconify.design/mdi/'+item.icon.slice(4)+'.svg?color='+encodeURIComponent(item.selected?'#62B0FF':'#ffffff'),x:x-9,y:214,width:18,height:18,opacity:item.selected?1:.55}));
  }
  for(const [i,line] of (view.lines||[]).entries()){const name=i===4;text(name&&!slot.secondary?(slot.name||line.text):line.text,line.y,line.size,line.width,line.color,line.x||0,name&&view.layout!=='media')}
