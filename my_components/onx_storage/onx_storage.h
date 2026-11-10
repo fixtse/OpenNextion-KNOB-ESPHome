@@ -120,7 +120,7 @@ class OnxStorage : public Component {
   bool set_auth_record(const std::string &auth_code, const std::string &auth_sha256);
 
   bool reset_normal_mode_config();
-  bool set_normal_ui_config(const std::array<NormalUiDeviceConfig, 10> &devices);
+  bool set_normal_ui_config(const std::array<NormalUiDeviceConfig, 20> &devices);
   const std::string &get_normal_ui_device_title(size_t index) const;
   const std::string &get_normal_ui_device_type(size_t index) const;
   const std::string &get_normal_ui_device_entity_id(size_t index) const;
@@ -161,7 +161,7 @@ class OnxStorage : public Component {
   static constexpr size_t FACTORY_PASSWORD_MAX_LENGTH = 64;
   static constexpr size_t AUTH_CODE_MAX_LENGTH = 32;
   static constexpr size_t AUTH_SHA256_MAX_LENGTH = 64;
-  static constexpr size_t NORMAL_UI_DEVICE_MAX_COUNT = 10;
+  static constexpr size_t NORMAL_UI_DEVICE_MAX_COUNT = 20;
   static constexpr size_t NORMAL_UI_TITLE_MAX_LENGTH = 128;
   static constexpr size_t NORMAL_UI_ICON_MAX_LENGTH = 16;
   static constexpr size_t NORMAL_UI_ENTITY_ID_MAX_LENGTH = 128;

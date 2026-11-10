@@ -177,7 +177,7 @@ script:
 
           int total = id(normal_device_count);
           if (total < 0) total = 0;
-          if (total > 10) total = 10;
+          if (total > 20) total = 20;
           const int last_selectable = total == 0 ? (id(normal_ha_added) ? 1 : 2) : total;
 
           int selected = id(normal_device_selected_index);
@@ -373,8 +373,49 @@ script:
               lv_obj_set_width(w.title,view.name.width);lv_obj_set_height(w.title,40);
             }
             set_hidden(w.index_icon, true);
-            const auto dots = onx_detail_view::pagination(onx_entity_config::carousel_position(entry_index), onx_entity_config::carousel_position(total) + 1);
-            lv_label_set_text(w.pagination, dots.c_str());
+            // Three reusable landmarks instead of a row of indistinguishable dots.
+            // There are ten physical carousel pages plus Settings, regardless of entry count.
+            set_hidden(w.pagination, true);
+            struct Navigator {lv_obj_t *cells[3]{}, *icons[3]{};};
+            static std::array<Navigator,11> navigators{};
+            auto &nav=navigators[settings_entry?10:entry_index%10];
+            const int navigator_index=settings_entry?total:entry_index;
+            const int neighbours[]={
+              onx_entity_config::carousel_neighbour(navigator_index,total,-1),
+              navigator_index,
+              onx_entity_config::carousel_neighbour(navigator_index,total,1)};
+            for(int n=0;n<3;++n) {
+              if(!nav.cells[n]) {
+                auto *cell=nav.cells[n]=lv_obj_create(lv_obj_get_parent(w.pagination));
+                lv_obj_set_size(cell,26,26);
+                lv_obj_set_pos(cell,74+n*33,210);
+                lv_obj_set_style_pad_all(cell,0,0);
+                lv_obj_set_style_border_width(cell,0,0);
+                lv_obj_set_style_radius(cell,13,0);
+                lv_obj_set_style_bg_color(cell,lv_color_hex(0x20384E),0);
+                lv_obj_set_style_bg_opa(cell,n==1?LV_OPA_COVER:LV_OPA_TRANSP,0);
+                lv_obj_clear_flag(cell,LV_OBJ_FLAG_SCROLLABLE);
+                lv_obj_clear_flag(cell,LV_OBJ_FLAG_CLICKABLE);
+                nav.icons[n]=lv_img_create(cell);
+                lv_obj_clear_flag(nav.icons[n],LV_OBJ_FLAG_CLICKABLE);
+              }
+              const int index=neighbours[n];
+              set_hidden(nav.cells[n],index<0);
+              if(index<0)continue;
+              if(index==total) {
+                onx_render::image(nav.icons[n],id(normal_device_icon_settings_img)->get_lv_image_dsc());
+                lv_image_set_scale(nav.icons[n],18*256/id(normal_device_icon_settings_img)->get_width());
+                lv_obj_set_style_image_recolor(nav.icons[n],lv_color_hex(n==1?0x62B0FF:0xFFFFFF),0);
+                lv_obj_set_style_image_recolor_opa(nav.icons[n],LV_OPA_COVER,0);
+              } else {
+                id(apply_normal_entity_icon).execute(nav.icons[n],
+                    id(ui_presenter)->get_normal_device_entity_id(index),
+                    id(ui_presenter)->get_normal_device_type(index),n==1);
+                lv_image_set_scale(nav.icons[n],18*256/80);
+              }
+              lv_obj_center(nav.icons[n]);
+              lv_obj_set_style_opa(nav.cells[n],n==1?LV_OPA_COVER:140,0);
+            }
           };
 
           if (total == 0 && selected == 0) {
@@ -391,36 +432,36 @@ script:
           if (selected >= total) {
             render_entry({id(normal_device_settings_icon_switch), id(normal_device_settings_icon_switch_on), id(normal_device_settings_icon_plug), id(normal_device_settings_icon_plug_on), id(normal_device_settings_icon_light), id(normal_device_settings_icon_light_on), id(normal_device_settings_icon_curtain), id(normal_device_settings_icon_settings), id(normal_device_settings_title), id(normal_device_settings_index_icon), nullptr, nullptr, id(normal_device_settings_pagination)}, selected);
           } else {
-            switch (selected) {
+            switch (selected % 10) {
               case 0:
-                render_entry({id(normal_device_0_icon_switch), id(normal_device_0_icon_switch_on), id(normal_device_0_icon_plug), id(normal_device_0_icon_plug_on), id(normal_device_0_icon_light), id(normal_device_0_icon_light_on), id(normal_device_0_icon_curtain), id(normal_device_0_icon_settings), id(normal_device_0_title), id(normal_device_0_index_icon), id(normal_device_0_value), id(normal_device_0_context), id(normal_device_0_pagination)}, 0);
+                render_entry({id(normal_device_0_icon_switch), id(normal_device_0_icon_switch_on), id(normal_device_0_icon_plug), id(normal_device_0_icon_plug_on), id(normal_device_0_icon_light), id(normal_device_0_icon_light_on), id(normal_device_0_icon_curtain), id(normal_device_0_icon_settings), id(normal_device_0_title), id(normal_device_0_index_icon), id(normal_device_0_value), id(normal_device_0_context), id(normal_device_0_pagination)}, selected);
                 break;
               case 1:
-                render_entry({id(normal_device_1_icon_switch), id(normal_device_1_icon_switch_on), id(normal_device_1_icon_plug), id(normal_device_1_icon_plug_on), id(normal_device_1_icon_light), id(normal_device_1_icon_light_on), id(normal_device_1_icon_curtain), id(normal_device_1_icon_settings), id(normal_device_1_title), id(normal_device_1_index_icon), id(normal_device_1_value), id(normal_device_1_context), id(normal_device_1_pagination)}, 1);
+                render_entry({id(normal_device_1_icon_switch), id(normal_device_1_icon_switch_on), id(normal_device_1_icon_plug), id(normal_device_1_icon_plug_on), id(normal_device_1_icon_light), id(normal_device_1_icon_light_on), id(normal_device_1_icon_curtain), id(normal_device_1_icon_settings), id(normal_device_1_title), id(normal_device_1_index_icon), id(normal_device_1_value), id(normal_device_1_context), id(normal_device_1_pagination)}, selected);
                 break;
               case 2:
-                render_entry({id(normal_device_2_icon_switch), id(normal_device_2_icon_switch_on), id(normal_device_2_icon_plug), id(normal_device_2_icon_plug_on), id(normal_device_2_icon_light), id(normal_device_2_icon_light_on), id(normal_device_2_icon_curtain), id(normal_device_2_icon_settings), id(normal_device_2_title), id(normal_device_2_index_icon), id(normal_device_2_value), id(normal_device_2_context), id(normal_device_2_pagination)}, 2);
+                render_entry({id(normal_device_2_icon_switch), id(normal_device_2_icon_switch_on), id(normal_device_2_icon_plug), id(normal_device_2_icon_plug_on), id(normal_device_2_icon_light), id(normal_device_2_icon_light_on), id(normal_device_2_icon_curtain), id(normal_device_2_icon_settings), id(normal_device_2_title), id(normal_device_2_index_icon), id(normal_device_2_value), id(normal_device_2_context), id(normal_device_2_pagination)}, selected);
                 break;
               case 3:
-                render_entry({id(normal_device_3_icon_switch), id(normal_device_3_icon_switch_on), id(normal_device_3_icon_plug), id(normal_device_3_icon_plug_on), id(normal_device_3_icon_light), id(normal_device_3_icon_light_on), id(normal_device_3_icon_curtain), id(normal_device_3_icon_settings), id(normal_device_3_title), id(normal_device_3_index_icon), id(normal_device_3_value), id(normal_device_3_context), id(normal_device_3_pagination)}, 3);
+                render_entry({id(normal_device_3_icon_switch), id(normal_device_3_icon_switch_on), id(normal_device_3_icon_plug), id(normal_device_3_icon_plug_on), id(normal_device_3_icon_light), id(normal_device_3_icon_light_on), id(normal_device_3_icon_curtain), id(normal_device_3_icon_settings), id(normal_device_3_title), id(normal_device_3_index_icon), id(normal_device_3_value), id(normal_device_3_context), id(normal_device_3_pagination)}, selected);
                 break;
               case 4:
-                render_entry({id(normal_device_4_icon_switch), id(normal_device_4_icon_switch_on), id(normal_device_4_icon_plug), id(normal_device_4_icon_plug_on), id(normal_device_4_icon_light), id(normal_device_4_icon_light_on), id(normal_device_4_icon_curtain), id(normal_device_4_icon_settings), id(normal_device_4_title), id(normal_device_4_index_icon), id(normal_device_4_value), id(normal_device_4_context), id(normal_device_4_pagination)}, 4);
+                render_entry({id(normal_device_4_icon_switch), id(normal_device_4_icon_switch_on), id(normal_device_4_icon_plug), id(normal_device_4_icon_plug_on), id(normal_device_4_icon_light), id(normal_device_4_icon_light_on), id(normal_device_4_icon_curtain), id(normal_device_4_icon_settings), id(normal_device_4_title), id(normal_device_4_index_icon), id(normal_device_4_value), id(normal_device_4_context), id(normal_device_4_pagination)}, selected);
                 break;
               case 5:
-                render_entry({id(normal_device_5_icon_switch), id(normal_device_5_icon_switch_on), id(normal_device_5_icon_plug), id(normal_device_5_icon_plug_on), id(normal_device_5_icon_light), id(normal_device_5_icon_light_on), id(normal_device_5_icon_curtain), id(normal_device_5_icon_settings), id(normal_device_5_title), id(normal_device_5_index_icon), id(normal_device_5_value), id(normal_device_5_context), id(normal_device_5_pagination)}, 5);
+                render_entry({id(normal_device_5_icon_switch), id(normal_device_5_icon_switch_on), id(normal_device_5_icon_plug), id(normal_device_5_icon_plug_on), id(normal_device_5_icon_light), id(normal_device_5_icon_light_on), id(normal_device_5_icon_curtain), id(normal_device_5_icon_settings), id(normal_device_5_title), id(normal_device_5_index_icon), id(normal_device_5_value), id(normal_device_5_context), id(normal_device_5_pagination)}, selected);
                 break;
               case 6:
-                render_entry({id(normal_device_6_icon_switch), id(normal_device_6_icon_switch_on), id(normal_device_6_icon_plug), id(normal_device_6_icon_plug_on), id(normal_device_6_icon_light), id(normal_device_6_icon_light_on), id(normal_device_6_icon_curtain), id(normal_device_6_icon_settings), id(normal_device_6_title), id(normal_device_6_index_icon), id(normal_device_6_value), id(normal_device_6_context), id(normal_device_6_pagination)}, 6);
+                render_entry({id(normal_device_6_icon_switch), id(normal_device_6_icon_switch_on), id(normal_device_6_icon_plug), id(normal_device_6_icon_plug_on), id(normal_device_6_icon_light), id(normal_device_6_icon_light_on), id(normal_device_6_icon_curtain), id(normal_device_6_icon_settings), id(normal_device_6_title), id(normal_device_6_index_icon), id(normal_device_6_value), id(normal_device_6_context), id(normal_device_6_pagination)}, selected);
                 break;
               case 7:
-                render_entry({id(normal_device_7_icon_switch), id(normal_device_7_icon_switch_on), id(normal_device_7_icon_plug), id(normal_device_7_icon_plug_on), id(normal_device_7_icon_light), id(normal_device_7_icon_light_on), id(normal_device_7_icon_curtain), id(normal_device_7_icon_settings), id(normal_device_7_title), id(normal_device_7_index_icon), id(normal_device_7_value), id(normal_device_7_context), id(normal_device_7_pagination)}, 7);
+                render_entry({id(normal_device_7_icon_switch), id(normal_device_7_icon_switch_on), id(normal_device_7_icon_plug), id(normal_device_7_icon_plug_on), id(normal_device_7_icon_light), id(normal_device_7_icon_light_on), id(normal_device_7_icon_curtain), id(normal_device_7_icon_settings), id(normal_device_7_title), id(normal_device_7_index_icon), id(normal_device_7_value), id(normal_device_7_context), id(normal_device_7_pagination)}, selected);
                 break;
               case 8:
-                render_entry({id(normal_device_8_icon_switch), id(normal_device_8_icon_switch_on), id(normal_device_8_icon_plug), id(normal_device_8_icon_plug_on), id(normal_device_8_icon_light), id(normal_device_8_icon_light_on), id(normal_device_8_icon_curtain), id(normal_device_8_icon_settings), id(normal_device_8_title), id(normal_device_8_index_icon), id(normal_device_8_value), id(normal_device_8_context), id(normal_device_8_pagination)}, 8);
+                render_entry({id(normal_device_8_icon_switch), id(normal_device_8_icon_switch_on), id(normal_device_8_icon_plug), id(normal_device_8_icon_plug_on), id(normal_device_8_icon_light), id(normal_device_8_icon_light_on), id(normal_device_8_icon_curtain), id(normal_device_8_icon_settings), id(normal_device_8_title), id(normal_device_8_index_icon), id(normal_device_8_value), id(normal_device_8_context), id(normal_device_8_pagination)}, selected);
                 break;
               default:
-                render_entry({id(normal_device_9_icon_switch), id(normal_device_9_icon_switch_on), id(normal_device_9_icon_plug), id(normal_device_9_icon_plug_on), id(normal_device_9_icon_light), id(normal_device_9_icon_light_on), id(normal_device_9_icon_curtain), id(normal_device_9_icon_settings), id(normal_device_9_title), id(normal_device_9_index_icon), id(normal_device_9_value), id(normal_device_9_context), id(normal_device_9_pagination)}, 9);
+                render_entry({id(normal_device_9_icon_switch), id(normal_device_9_icon_switch_on), id(normal_device_9_icon_plug), id(normal_device_9_icon_plug_on), id(normal_device_9_icon_light), id(normal_device_9_icon_light_on), id(normal_device_9_icon_curtain), id(normal_device_9_icon_settings), id(normal_device_9_title), id(normal_device_9_index_icon), id(normal_device_9_value), id(normal_device_9_context), id(normal_device_9_pagination)}, selected);
                 break;
             }
           }
@@ -434,7 +475,7 @@ script:
       - lambda: |-
           int total = id(normal_device_count);
           if (total < 0) total = 0;
-          if (total > 10) total = 10;
+          if (total > 20) total = 20;
           const int last_selectable = total == 0 ? (id(normal_ha_added) ? 1 : 2) : total;
           int selected = id(normal_device_selected_index);
           if (selected < 0) selected = 0;
@@ -448,7 +489,7 @@ script:
           } else if (total == 0 && !id(normal_ha_added) && selected == 1) {
             target = id(normal_setup_help_page)->obj;
           } else if (selected < total) {
-            switch (selected) {
+            switch (selected % 10) {
               case 0: target = id(device_0)->obj; break;
               case 1: target = id(device_1)->obj; break;
               case 2: target = id(device_2)->obj; break;
@@ -495,8 +536,8 @@ script:
           if (detail_index < 0) {
             detail_index = 0;
           }
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
 
           const std::string device_entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
@@ -580,7 +621,7 @@ script:
             lv_obj_clear_state(sw, LV_STATE_CHECKED);
           }
           const bool is_online = is_local_gpio_switch ||
-                                 ((detail_index >= 0 && detail_index < 10)
+                                 ((detail_index >= 0 && detail_index < 20)
                                       ? ((id(normal_device_online_mask) & (1 << detail_index)) != 0)
                                       : true);
           id(normal_device_detail_online) = is_online;
@@ -602,7 +643,7 @@ script:
           lv_obj_add_flag(id(normal_device_detail_plug_off), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_detail_light_on), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_detail_light_off), LV_OBJ_FLAG_HIDDEN);
-          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 19);
           id(apply_normal_entity_icon).execute(id(normal_switch_entity_icon),
               id(ui_presenter)->get_normal_device_entity_id(slot),
               id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
@@ -624,7 +665,7 @@ script:
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
 
-          int detail_index = std::clamp(id(normal_device_detail_index), 0, 9);
+          int detail_index = std::clamp(id(normal_device_detail_index), 0, 19);
           const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
           std::string title = ha_entity_title_from_registry_cache(entity_id);
           if (title.empty()) {
@@ -809,8 +850,8 @@ script:
           if (detail_index < 0) {
             detail_index = 0;
           }
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
 
           const std::string device_entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
@@ -965,7 +1006,7 @@ script:
           } else {
             lv_obj_clear_state(sw, LV_STATE_CHECKED);
           }
-          const bool is_online = (detail_index >= 0 && detail_index < 10)
+          const bool is_online = (detail_index >= 0 && detail_index < 20)
                                      ? ((id(normal_device_online_mask) & (1 << detail_index)) != 0)
                                      : true;
           id(normal_device_detail_online) = is_online;
@@ -1004,7 +1045,7 @@ script:
           lv_obj_add_flag(id(normal_light_device_detail_plug_off), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_light_device_detail_light_on), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_light_device_detail_light_off), LV_OBJ_FLAG_HIDDEN);
-          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 19);
           id(apply_normal_entity_icon).execute(id(normal_light_entity_icon),
               id(ui_presenter)->get_normal_device_entity_id(slot),
               id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
@@ -1098,8 +1139,8 @@ script:
           if (detail_index < 0) {
             detail_index = 0;
           }
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
 
           const std::string device_entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
@@ -1185,7 +1226,7 @@ script:
 
           lv_label_set_text(id(normal_curtain_detail_state), state_text.c_str());
           lv_label_set_text(id(normal_curtain_detail_title), device_title.c_str());
-          const bool is_online = (detail_index >= 0 && detail_index < 10)
+          const bool is_online = (detail_index >= 0 && detail_index < 20)
                                      ? ((id(normal_device_online_mask) & (1 << detail_index)) != 0)
                                      : true;
           id(normal_device_detail_online) = is_online;
@@ -1203,7 +1244,7 @@ script:
           lv_obj_add_flag(id(normal_curtain_detail_0_img), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_curtain_detail_100_img), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_curtain_detail_x_img), LV_OBJ_FLAG_HIDDEN);
-          const int slot = std::clamp(id(normal_device_detail_index), 0, 9);
+          const int slot = std::clamp(id(normal_device_detail_index), 0, 19);
           id(apply_normal_entity_icon).execute(id(normal_curtain_entity_icon),
               id(ui_presenter)->get_normal_device_entity_id(slot),
               id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
@@ -1470,8 +1511,8 @@ script:
           if (detail_index < 0) {
             detail_index = 0;
           }
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
 
           std::string device_title = id(ui_presenter)->get_normal_device_title(detail_index);
@@ -1491,7 +1532,7 @@ script:
       - lambda: |-
           int detail_index = id(normal_device_detail_index);
           if (detail_index < 0) detail_index = 0;
-          if (detail_index > 9) detail_index = 9;
+          if (detail_index > 19) detail_index = 19;
           const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
           if (!is_local_hmi_gpio_switch_entity_id(entity_id)) {
             return;
@@ -1583,7 +1624,7 @@ script:
       - if:
           condition:
             lambda: |-
-              const int index = std::clamp(detail_index, 0, 9);
+              const int index = std::clamp(detail_index, 0, 19);
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(index);
               return id(normal_device_detail_active) &&
                      id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
@@ -1593,7 +1634,7 @@ script:
                      id(normal_ha_api_connected) && entity_id.rfind("automation.", 0) == 0;
           then:
             - lambda: |-
-                const int index = std::clamp(detail_index, 0, 9);
+                const int index = std::clamp(detail_index, 0, 19);
                 id(normal_automation_press_feedback_active) = true;
                 lv_img_set_src(id(normal_automation_detail_icon),
                                id(normal_device_automation_detail_press_img));
@@ -1607,12 +1648,12 @@ script:
                   entity_id: "{{ target_entity_id }}"
                 variables:
                   target_entity_id: !lambda |-
-                    const int index = std::clamp(detail_index, 0, 9);
+                    const int index = std::clamp(detail_index, 0, 19);
                     return id(ui_presenter)->get_normal_device_entity_id(index);
             - script.execute: show_normal_action_sent
             - delay: 180ms
             - lambda: |-
-                const int index = std::clamp(detail_index, 0, 9);
+                const int index = std::clamp(detail_index, 0, 19);
                 id(normal_automation_press_feedback_active) = false;
                 if (id(normal_device_detail_active) &&
                     id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
@@ -1629,7 +1670,7 @@ script:
             lambda: |-
               int detail_index = id(normal_device_detail_index);
               if (detail_index < 0) detail_index = 0;
-              if (detail_index > 9) detail_index = 9;
+              if (detail_index > 19) detail_index = 19;
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
               return !entity_id.empty() && entity_id.rfind("light.", 0) == 0;
           then:
@@ -1641,7 +1682,7 @@ script:
                   target_entity_id: !lambda |-
                     int detail_index = id(normal_device_detail_index);
                     if (detail_index < 0) detail_index = 0;
-                    if (detail_index > 9) detail_index = 9;
+                    if (detail_index > 19) detail_index = 19;
                     return id(ui_presenter)->get_normal_device_entity_id(detail_index);
             - script.execute: show_normal_action_sent
           else:
@@ -1650,7 +1691,7 @@ script:
                   lambda: |-
                     int detail_index = id(normal_device_detail_index);
                     if (detail_index < 0) detail_index = 0;
-                    if (detail_index > 9) detail_index = 9;
+                    if (detail_index > 19) detail_index = 19;
                     const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
                     return !entity_id.empty() && !is_local_hmi_gpio_switch_entity_id(entity_id);
                 then:
@@ -1662,7 +1703,7 @@ script:
                         target_entity_id: !lambda |-
                           int detail_index = id(normal_device_detail_index);
                           if (detail_index < 0) detail_index = 0;
-                          if (detail_index > 9) detail_index = 9;
+                          if (detail_index > 19) detail_index = 19;
                           return id(ui_presenter)->get_normal_device_entity_id(detail_index);
 
                   - script.execute: show_normal_action_sent
@@ -1843,13 +1884,13 @@ script:
             lambda: |-
               int index = detail_index;
               if (index < 0) index = 0;
-              if (index > 9) index = 9;
+              if (index > 19) index = 19;
               return !id(ui_presenter)->get_normal_device_entity_id(index).empty();
           then:
             - lambda: |-
                 int index = detail_index;
                 if (index < 0) index = 0;
-                if (index > 9) index = 9;
+                if (index > 19) index = 19;
                 int target_position = position;
                 if (target_position < 0) target_position = 0;
                 if (target_position > 100) target_position = 100;
@@ -1867,7 +1908,7 @@ script:
               }
               int detail_index = id(normal_device_detail_index);
               if (detail_index < 0) detail_index = 0;
-              if (detail_index > 9) detail_index = 9;
+              if (detail_index > 19) detail_index = 19;
               return !id(ui_presenter)->get_normal_device_entity_id(detail_index).empty();
           then:
             - homeassistant.service:
@@ -1879,7 +1920,7 @@ script:
                   target_entity_id: !lambda |-
                     int detail_index = id(normal_device_detail_index);
                     if (detail_index < 0) detail_index = 0;
-                    if (detail_index > 9) detail_index = 9;
+                    if (detail_index > 19) detail_index = 19;
                     return id(ui_presenter)->get_normal_device_entity_id(detail_index);
                   target_position: !lambda |-
                     return std::clamp(id(normal_device_detail_curtain_target_position), 0, 100);
@@ -1900,8 +1941,8 @@ script:
           if (detail_index < 0) {
             detail_index = 0;
           }
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
           const int target_position = std::clamp(id(normal_device_detail_curtain_target_position), 0, 100);
           ESP_LOGI("normal_mode", "curtain motion complete: index=%d target_position=%d", detail_index, target_position);
@@ -1913,7 +1954,7 @@ script:
           int raw_selected_index = id(normal_device_selected_index);
           int total = id(normal_device_count);
           if (total < 0) total = 0;
-          if (total > 10) total = 10;
+          if (total > 20) total = 20;
           const int settings_index = total == 0 ? (id(normal_ha_added) ? 1 : 2) : total;
           if (total == 0 && raw_selected_index == 0) {
             ESP_LOGI("normal_mode", "detail entry ignored: empty list page has no detail");
@@ -1924,39 +1965,7 @@ script:
             detail_index = 0;
           }
 
-          std::string device_type = "";
-          switch (detail_index) {
-            case 0:
-              device_type = id(ui_presenter)->get_normal_device_type(0);
-              break;
-            case 1:
-              device_type = id(ui_presenter)->get_normal_device_type(1);
-              break;
-            case 2:
-              device_type = id(ui_presenter)->get_normal_device_type(2);
-              break;
-            case 3:
-              device_type = id(ui_presenter)->get_normal_device_type(3);
-              break;
-            case 4:
-              device_type = id(ui_presenter)->get_normal_device_type(4);
-              break;
-            case 5:
-              device_type = id(ui_presenter)->get_normal_device_type(5);
-              break;
-            case 6:
-              device_type = id(ui_presenter)->get_normal_device_type(6);
-              break;
-            case 7:
-              device_type = id(ui_presenter)->get_normal_device_type(7);
-              break;
-            case 8:
-              device_type = id(ui_presenter)->get_normal_device_type(8);
-              break;
-            default:
-              device_type = id(ui_presenter)->get_normal_device_type(9);
-              break;
-          }
+          std::string device_type = id(ui_presenter)->get_normal_device_type(detail_index);
 
           auto lower = [](std::string s) {
             for (char &c : s) {
@@ -1989,8 +1998,8 @@ script:
             return;
           }
 
-          if (detail_index > 9) {
-            detail_index = 9;
+          if (detail_index > 19) {
+            detail_index = 19;
           }
 
           id(normal_device_detail_index) = (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS) ? -1 : detail_index;
@@ -2038,7 +2047,7 @@ script:
           id(normal_device_detail_online) = (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS)
                                                  ? true
                                                  : (is_local_gpio_switch ||
-                                                    ((detail_index >= 0 && detail_index < 10)
+                                                    ((detail_index >= 0 && detail_index < 20)
                                                         ? ((id(normal_device_online_mask) & (1 << detail_index)) != 0)
                                                         : true));
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_CURTAIN) {
@@ -2122,14 +2131,14 @@ script:
       is_on: bool
     then:
       - lambda: |-
-          int index = std::clamp(detail_index, 0, 9);
+          int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::begin_normal_light_feedback_window(
               index, custom_logic::NORMAL_LIGHT_FEEDBACK_BRIGHTNESS, is_on, brightness_pct);
       - delay: 178ms
       - lambda: |-
           int index = detail_index;
           if (index < 0) index = 0;
-          if (index > 9) index = 9;
+          if (index > 19) index = 19;
           int brightness = std::clamp(brightness_pct, 0, 100);
           ESP_LOGI("normal_mode", "dimming light direct control: index=%d brightness=%d state=%s",
                    index, brightness, is_on ? "ON" : "OFF");
@@ -2138,7 +2147,7 @@ script:
             lambda: |-
               int index = detail_index;
               if (index < 0) index = 0;
-              if (index > 9) index = 9;
+              if (index > 19) index = 19;
               return !id(ui_presenter)->get_normal_device_entity_id(index).empty();
           then:
             - if:
@@ -2154,7 +2163,7 @@ script:
                         target_entity_id: !lambda |-
                           int index = detail_index;
                           if (index < 0) index = 0;
-                          if (index > 9) index = 9;
+                          if (index > 19) index = 19;
                           return id(ui_presenter)->get_normal_device_entity_id(index);
                 else:
                   - homeassistant.service:
@@ -2166,14 +2175,14 @@ script:
                         target_entity_id: !lambda |-
                           int index = detail_index;
                           if (index < 0) index = 0;
-                          if (index > 9) index = 9;
+                          if (index > 19) index = 19;
                           return id(ui_presenter)->get_normal_device_entity_id(index);
                         target_brightness: !lambda |-
                           int brightness = std::clamp(brightness_pct, 0, 100);
                           return brightness;
       - delay: 935ms
       - lambda: |-
-          const int index = std::clamp(detail_index, 0, 9);
+          const int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::flush_normal_light_feedback_window(
               index, id(ui_presenter)->get_normal_device_entity_id(index));
       - script.execute: refresh_normal_light_detail_page
@@ -2185,14 +2194,14 @@ script:
       color_temperature: int
     then:
       - lambda: |-
-          int index = std::clamp(detail_index, 0, 9);
+          int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::begin_normal_light_feedback_window(
               index, custom_logic::NORMAL_LIGHT_FEEDBACK_COLOR_TEMPERATURE, true, color_temperature);
       - delay: 178ms
       - lambda: |-
           int index = detail_index;
           if (index < 0) index = 0;
-          if (index > 9) index = 9;
+          if (index > 19) index = 19;
           auto light_state = id(app_storage)->normal_device_slot(index).light();
           int cct_min_kelvin = (int) light_state.min_color_temperature_kelvin;
           int cct_max_kelvin = (int) light_state.max_color_temperature_kelvin;
@@ -2212,7 +2221,7 @@ script:
             lambda: |-
               int index = detail_index;
               if (index < 0) index = 0;
-              if (index > 9) index = 9;
+              if (index > 19) index = 19;
               return !id(ui_presenter)->get_normal_device_entity_id(index).empty();
           then:
             - homeassistant.service:
@@ -2224,12 +2233,12 @@ script:
                   target_entity_id: !lambda |-
                     int index = detail_index;
                     if (index < 0) index = 0;
-                    if (index > 9) index = 9;
+                    if (index > 19) index = 19;
                     return id(ui_presenter)->get_normal_device_entity_id(index);
                   target_color_temperature_kelvin: !lambda |-
                     int index = detail_index;
                     if (index < 0) index = 0;
-                    if (index > 9) index = 9;
+                    if (index > 19) index = 19;
                     auto light_state = id(app_storage)->normal_device_slot(index).light();
                     int cct_min_kelvin = (int) light_state.min_color_temperature_kelvin;
                     int cct_max_kelvin = (int) light_state.max_color_temperature_kelvin;
@@ -2245,7 +2254,7 @@ script:
                     return cct_kelvin;
       - delay: 935ms
       - lambda: |-
-          const int index = std::clamp(detail_index, 0, 9);
+          const int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::flush_normal_light_feedback_window(
               index, id(ui_presenter)->get_normal_device_entity_id(index));
       - script.execute: refresh_normal_light_detail_page
@@ -2257,14 +2266,14 @@ script:
       rgb_value_pct: int
     then:
       - lambda: |-
-          int index = std::clamp(detail_index, 0, 9);
+          int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::begin_normal_light_feedback_window(
               index, custom_logic::NORMAL_LIGHT_FEEDBACK_RGB, true, rgb_value_pct);
       - delay: 178ms
       - lambda: |-
           int index = detail_index;
           if (index < 0) index = 0;
-          if (index > 9) index = 9;
+          if (index > 19) index = 19;
           int rgb_tick = std::clamp(rgb_value_pct, 0, 35);
           int hue = (rgb_tick * 10) % 360;
           int saturation = 100;
@@ -2275,7 +2284,7 @@ script:
             lambda: |-
               int index = detail_index;
               if (index < 0) index = 0;
-              if (index > 9) index = 9;
+              if (index > 19) index = 19;
               return !id(ui_presenter)->get_normal_device_entity_id(index).empty();
           then:
             - homeassistant.service:
@@ -2293,11 +2302,11 @@ script:
                   target_entity_id: !lambda |-
                     int index = detail_index;
                     if (index < 0) index = 0;
-                    if (index > 9) index = 9;
+                    if (index > 19) index = 19;
                     return id(ui_presenter)->get_normal_device_entity_id(index);
       - delay: 935ms
       - lambda: |-
-          const int index = std::clamp(detail_index, 0, 9);
+          const int index = std::clamp(detail_index, 0, 19);
           custom_logic_entity_sub::flush_normal_light_feedback_window(
               index, id(ui_presenter)->get_normal_device_entity_id(index));
       - script.execute: refresh_normal_light_detail_page
@@ -2414,7 +2423,7 @@ script:
           int candidate=-1; double soonest=INFINITY;
           const auto now = id(ha_time).now();
           bool popup_still_active=false;
-          for (int i=0;i<id(normal_device_count) && i<10;++i) {
+          for (int i=0;i<id(normal_device_count) && i<20;++i) {
             const auto entity=id(ui_presenter)->get_normal_device_entity_id(i);
             auto *d=custom_logic_entity_sub::entity_detail(entity);
             if (!d || !d->received || !d->available || !custom_logic_entity_sub::is_timer_detail(entity)) continue;

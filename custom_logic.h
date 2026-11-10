@@ -28,11 +28,11 @@
 namespace custom_logic {
 
 static const char *const TAG = "CustomLogic";
-static constexpr size_t MAX_HA_ENTITY_COUNT = 21;
+static constexpr size_t MAX_HA_ENTITY_COUNT = 41;
 static constexpr size_t LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT = 4;
 static constexpr size_t MAX_HA_ENTITY_OPTION_COUNT =
     MAX_HA_ENTITY_COUNT + 1 + LOCAL_HMI_GPIO_SWITCH_PRESET_OPTION_COUNT;
-static constexpr size_t CONFIGURABLE_DEVICE_SLOT_COUNT = 10;
+static constexpr size_t CONFIGURABLE_DEVICE_SLOT_COUNT = 20;
 enum NormalDeviceDetailKind : int {
   NORMAL_DEVICE_DETAIL_KIND_NONE = 0,
   NORMAL_DEVICE_DETAIL_KIND_SWITCH = 1,
@@ -153,6 +153,7 @@ static const uint32_t STANDBY_TIMEOUT_SECONDS_RESTORE_PREF_KEY = 2269619899UL;
 static const std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT> DEVICE_TYPE_RESTORE_PREF_KEYS = {
     2895307732UL, 3842786398UL, 1065727512UL, 154823182UL, 1579139780UL,
     834557022UL,  1476224880UL, 3411481934UL, 4219871412UL, 3942567008UL,
+    esphome::fnv1_hash("device11-type-v1"), esphome::fnv1_hash("device12-type-v1"), esphome::fnv1_hash("device13-type-v1"), esphome::fnv1_hash("device14-type-v1"), esphome::fnv1_hash("device15-type-v1"), esphome::fnv1_hash("device16-type-v1"), esphome::fnv1_hash("device17-type-v1"), esphome::fnv1_hash("device18-type-v1"), esphome::fnv1_hash("device19-type-v1"), esphome::fnv1_hash("device20-type-v1"),
 };
 
 
@@ -699,6 +700,7 @@ inline std::string device_slot_label(size_t slot) {
 }
 
 inline uint32_t device_config_magic(size_t slot) {
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return 0x4F4E5841u + static_cast<uint32_t>(slot - 9);
   switch (slot) {
     case 0:
       return DEVICE1_CONFIG_MAGIC;
@@ -726,6 +728,7 @@ inline uint32_t device_config_magic(size_t slot) {
 }
 
 inline uint32_t device_config_pref_key(size_t slot) {
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return esphome::fnv1_hash("device"+std::to_string(slot+1)+"-config-v1");
   switch (slot) {
     case 0:
       return DEVICE1_CONFIG_PREF_KEY;
@@ -753,6 +756,7 @@ inline uint32_t device_config_pref_key(size_t slot) {
 }
 
 inline uint32_t device_light_runtime_pref_key(size_t slot) {
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return esphome::fnv1_hash("device"+std::to_string(slot+1)+"-light-runtime-v1");
   switch (slot) {
     case 0:
       return DEVICE1_LIGHT_RUNTIME_PREF_KEY;
@@ -780,6 +784,8 @@ inline uint32_t device_light_runtime_pref_key(size_t slot) {
 }
 
 inline esphome::ESPPreferenceObject &device_config_pref(size_t slot) {
+  static std::array<esphome::ESPPreferenceObject, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_config_pref;
@@ -805,6 +811,8 @@ inline esphome::ESPPreferenceObject &device_config_pref(size_t slot) {
 }
 
 inline esphome::ESPPreferenceObject &device_light_runtime_pref(size_t slot) {
+  static std::array<esphome::ESPPreferenceObject, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_light_runtime_pref;
@@ -830,6 +838,8 @@ inline esphome::ESPPreferenceObject &device_light_runtime_pref(size_t slot) {
 }
 
 inline bool &device_config_pref_ready(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_config_pref_ready;
@@ -855,6 +865,8 @@ inline bool &device_config_pref_ready(size_t slot) {
 }
 
 inline bool &device_light_runtime_pref_ready(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_light_runtime_pref_ready;
@@ -880,6 +892,8 @@ inline bool &device_light_runtime_pref_ready(size_t slot) {
 }
 
 inline bool &device_config_loaded(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_config_loaded;
@@ -905,6 +919,8 @@ inline bool &device_config_loaded(size_t slot) {
 }
 
 inline std::string &cached_device_entity_id(size_t slot) {
+  static std::array<std::string, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return cached_device1_entity_id;
@@ -942,6 +958,8 @@ inline size_t configured_normal_device_count() {
 }
 
 inline std::string &cached_device_custom_type(size_t slot) {
+  static std::array<std::string, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return cached_device1_custom_type;
@@ -967,6 +985,8 @@ inline std::string &cached_device_custom_type(size_t slot) {
 }
 
 inline uint32_t &cached_device_custom_light_capability_mask(size_t slot) {
+  static std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra = [] { std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> value{}; value.fill(1); return value; }();
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return cached_device1_custom_light_capability_mask;
@@ -992,6 +1012,8 @@ inline uint32_t &cached_device_custom_light_capability_mask(size_t slot) {
 }
 
 inline InferredNormalDeviceConfig &device_inferred_config(size_t slot) {
+  static std::array<InferredNormalDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return device1_inferred_config;
@@ -1487,6 +1509,8 @@ inline bool ha_ws_send_unsubscribe_request(uint32_t subscription_id) {
 }
 
 inline uint32_t &ha_ws_device_subscribe_request_id(size_t slot) {
+  static std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_subscribe_request_id;
@@ -1512,6 +1536,8 @@ inline uint32_t &ha_ws_device_subscribe_request_id(size_t slot) {
 }
 
 inline uint32_t &ha_ws_device_subscription_id(size_t slot) {
+  static std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_subscription_id;
@@ -1537,6 +1563,8 @@ inline uint32_t &ha_ws_device_subscription_id(size_t slot) {
 }
 
 inline std::string &ha_ws_device_subscribed_entity_id(size_t slot) {
+  static std::array<std::string, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_subscribed_entity_id;
@@ -1562,6 +1590,8 @@ inline std::string &ha_ws_device_subscribed_entity_id(size_t slot) {
 }
 
 inline std::string &ha_ws_device_pending_entity_id(size_t slot) {
+  static std::array<std::string, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_pending_entity_id;
@@ -1587,6 +1617,8 @@ inline std::string &ha_ws_device_pending_entity_id(size_t slot) {
 }
 
 inline uint32_t &ha_ws_device_feedback_revision(size_t slot) {
+  static std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_feedback_revision;
@@ -1612,6 +1644,8 @@ inline uint32_t &ha_ws_device_feedback_revision(size_t slot) {
 }
 
 inline uint32_t &ha_ws_device_feedback_consumed_revision(size_t slot) {
+  static std::array<uint32_t, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_feedback_consumed_revision;
@@ -1637,6 +1671,8 @@ inline uint32_t &ha_ws_device_feedback_consumed_revision(size_t slot) {
 }
 
 inline bool &ha_ws_device_online_known(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_online_known;
@@ -1662,6 +1698,8 @@ inline bool &ha_ws_device_online_known(size_t slot) {
 }
 
 inline bool &ha_ws_device_online(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_online;
@@ -1687,6 +1725,8 @@ inline bool &ha_ws_device_online(size_t slot) {
 }
 
 inline bool &ha_ws_device_power_known(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_power_known;
@@ -1712,6 +1752,8 @@ inline bool &ha_ws_device_power_known(size_t slot) {
 }
 
 inline bool &ha_ws_device_power(size_t slot) {
+  static std::array<bool, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_power;
@@ -1737,6 +1779,8 @@ inline bool &ha_ws_device_power(size_t slot) {
 }
 
 inline esphome::select::Select *&ha_ws_device_entity_select(size_t slot) {
+  static std::array<esphome::select::Select *, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:
       return ha_ws_device1_entity_select;
@@ -2326,8 +2370,11 @@ inline bool persist_device_config_to_normal_ui_storage(size_t slot, const Inferr
     return false;
   }
 
-  std::array<esphome::onx_storage::NormalUiDeviceConfig, 10> devices{};
-  std::array<InferredNormalDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT> compact_configs{};
+  auto devices_buffer=make_ram_allocated<std::array<esphome::onx_storage::NormalUiDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT>>();
+  auto configs_buffer=make_ram_allocated<std::array<InferredNormalDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT>>();
+  if(!devices_buffer || !configs_buffer)return false;
+  auto &devices=*devices_buffer;
+  auto &compact_configs=*configs_buffer;
   std::array<size_t, CONFIGURABLE_DEVICE_SLOT_COUNT> ui_slots{};
   ui_slots.fill(static_cast<size_t>(-1));
   size_t device_count = 0;

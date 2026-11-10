@@ -3,6 +3,8 @@
 #include <array>
 #include <algorithm>
 #include <cstring>
+#include <memory>
+#include <new>
 
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
@@ -22,6 +24,21 @@ namespace esphome::onx_storage {
 static const char *const TAG = "onx_storage";
 
 namespace {
+// Large configuration records use ESPHome's RAM allocator rather than the loop stack.
+template<typename T> struct RecordDeleter {
+  void operator()(T *ptr) const {
+    if(!ptr)return;
+    ptr->~T();
+    RAMAllocator<T> allocator;allocator.deallocate(ptr,1);
+  }
+};
+template<typename T> auto allocate_record() {
+  RAMAllocator<T> allocator;
+  T *ptr=allocator.allocate(1);
+  if(ptr)new(ptr) T{};
+  return std::unique_ptr<T,RecordDeleter<T>>(ptr);
+}
+
 
 #if defined(ENABLE_AUTHCODE_EFUSE) && defined(USE_ESP32)
 static const esp_efuse_desc_t EFUSE_AUTH_CODE_DESC[] = {
@@ -140,12 +157,12 @@ static constexpr size_t STORED_AUTH_SHA256_MAX_LENGTH = 64;
 
 static const uint32_t FACTORY_WIFI_PREF_KEY = fnv1_hash("onx-storage-factory-wifi");
 static const uint32_t AUTH_RECORD_PREF_KEY = fnv1_hash("onx-storage-auth-record");
-static const uint32_t NORMAL_UI_PREF_KEY = fnv1_hash("onx-storage-normal-ui-config");
-static const uint32_t NORMAL_UI_STATE_PREF_KEY = fnv1_hash("onx-storage-normal-ui-state-v2");
+static const uint32_t NORMAL_UI_PREF_KEY = fnv1_hash("onx-storage-normal-ui-config-v2");
+static const uint32_t NORMAL_UI_STATE_PREF_KEY = fnv1_hash("onx-storage-normal-ui-state-v3");
 static const uint32_t NORMAL_UI_STATE_LEGACY_PREF_KEY = fnv1_hash("onx-storage-normal-ui-state");
 static const uint32_t POWER_POLICY_PREF_KEY = fnv1_hash("onx-storage-power-policy-v1");
 static constexpr uint32_t POWER_POLICY_MAGIC = 0x4F4E5850;  // ONXP
-static constexpr size_t NORMAL_UI_DEVICE_MAX_COUNT = 10;
+static constexpr size_t NORMAL_UI_DEVICE_MAX_COUNT = 20;
 static constexpr size_t NORMAL_UI_TITLE_MAX_LENGTH = 128;
 static constexpr size_t NORMAL_UI_ICON_MAX_LENGTH = 16;
 static constexpr size_t NORMAL_UI_ENTITY_ID_MAX_LENGTH = 128;
@@ -171,7 +188,7 @@ struct StoredNormalUiStateV2 {
 };
 
 struct StoredNormalUiStateLegacy {
-  uint8_t states[NORMAL_UI_DEVICE_MAX_COUNT];
+  uint8_t states[10];
 };
 
 struct StoredPowerPolicy {
@@ -445,8 +462,26 @@ void OnxStorage::setup() {
 
   this->auth_provisioned_ = !this->auth_code_.empty();
 
-  StoredNormalUiConfig stored_normal_ui{};
-  if (this->normal_ui_pref_.load(&stored_normal_ui)) {
+  auto ui_buffer=allocate_record<StoredNormalUiConfig>();
+  if(!ui_buffer) {ESP_LOGE(TAG,"Not enough memory for UI configuration");return;}
+  auto &stored_normal_ui=*ui_buffer;
+  bool restored_ui=this->normal_ui_pref_.load(&stored_normal_ui);
+  if(!restored_ui) {
+    struct LegacyConfig {char titles[10][NORMAL_UI_TITLE_MAX_LENGTH+1];char types[10][NORMAL_UI_ICON_MAX_LENGTH+1];char entity_ids[10][NORMAL_UI_ENTITY_ID_MAX_LENGTH+1];};
+    auto pref=global_preferences->make_preference<LegacyConfig>(fnv1_hash("onx-storage-normal-ui-config"),true);
+    auto legacy_buffer=allocate_record<LegacyConfig>();
+    if(!legacy_buffer) {ESP_LOGE(TAG,"Not enough memory to migrate UI configuration");return;}
+    auto &legacy=*legacy_buffer;
+    if(pref.load(&legacy)) {
+      for(size_t i=0;i<10;++i) {
+        memcpy(stored_normal_ui.titles[i],legacy.titles[i],sizeof(legacy.titles[i]));
+        memcpy(stored_normal_ui.types[i],legacy.types[i],sizeof(legacy.types[i]));
+        memcpy(stored_normal_ui.entity_ids[i],legacy.entity_ids[i],sizeof(legacy.entity_ids[i]));
+      }
+      restored_ui=true;
+    }
+  }
+  if (restored_ui) {
     for (size_t i = 0; i < this->normal_ui_devices_.size(); i++) {
       this->normal_ui_devices_[i].title = load_string_from_buffer(stored_normal_ui.titles[i]);
       this->normal_ui_devices_[i].type = normalize_device_type(load_string_from_buffer(stored_normal_ui.types[i]));
@@ -459,14 +494,24 @@ void OnxStorage::setup() {
   }
 
   StoredNormalUiStateV2 stored_state{};
-  if (this->normal_ui_state_pref_.load(&stored_state)) {
+  bool restored_state=this->normal_ui_state_pref_.load(&stored_state);
+  if(!restored_state) {
+    struct LegacyStateV2 {NormalUiDeviceState states[10];};
+    auto pref=global_preferences->make_preference<LegacyStateV2>(fnv1_hash("onx-storage-normal-ui-state-v2"),true);
+    LegacyStateV2 legacy{};
+    if(pref.load(&legacy)) {
+      std::copy(std::begin(legacy.states),std::end(legacy.states),std::begin(stored_state.states));
+      restored_state=true;
+    }
+  }
+  if (restored_state) {
     for (size_t i = 0; i < this->normal_ui_device_states_.size(); i++) {
       this->normal_ui_device_states_[i] = stored_state.states[i];
     }
   } else {
     StoredNormalUiStateLegacy legacy_state{};
     if (this->normal_ui_state_legacy_pref_.load(&legacy_state)) {
-      for (size_t i = 0; i < this->normal_ui_device_states_.size(); i++) {
+      for (size_t i = 0; i < 10; i++) {
         set_device_power(this->normal_ui_device_states_[i], legacy_state.states[i] != 0);
       }
     }
@@ -578,6 +623,8 @@ bool OnxStorage::reset_normal_mode_config() {
 
   bool ok = true;
 #ifdef USE_ESP32
+  ok = erase_preference_key(fnv1_hash("onx-storage-normal-ui-config"), "old normal UI config") && ok;
+  ok = erase_preference_key(fnv1_hash("onx-storage-normal-ui-state-v2"), "old normal UI state") && ok;
   ok = erase_preference_key(NORMAL_UI_PREF_KEY, "normal UI config") && ok;
   ok = erase_preference_key(NORMAL_UI_STATE_PREF_KEY, "normal UI state") && ok;
   ok = erase_preference_key(NORMAL_UI_STATE_LEGACY_PREF_KEY, "legacy normal UI state") && ok;
@@ -591,7 +638,7 @@ bool OnxStorage::reset_normal_mode_config() {
   return ok;
 }
 
-bool OnxStorage::set_normal_ui_config(const std::array<NormalUiDeviceConfig, 10> &devices) {
+bool OnxStorage::set_normal_ui_config(const std::array<NormalUiDeviceConfig, 20> &devices) {
   const auto previous_devices = this->normal_ui_devices_;
   for (size_t i = 0; i < this->normal_ui_devices_.size(); i++) {
     this->normal_ui_devices_[i].title = truncate_string(devices[i].title, NORMAL_UI_TITLE_MAX_LENGTH);
@@ -980,7 +1027,9 @@ bool OnxStorage::save_auth_record_() {
 }
 
 bool OnxStorage::save_normal_ui_config_() {
-  StoredNormalUiConfig stored_normal_ui{};
+  auto ui_buffer=allocate_record<StoredNormalUiConfig>();
+  if(!ui_buffer)return false;
+  auto &stored_normal_ui=*ui_buffer;
   clear_string_rows(stored_normal_ui.titles);
   clear_string_rows(stored_normal_ui.types);
   clear_string_rows(stored_normal_ui.entity_ids);
@@ -997,7 +1046,7 @@ bool OnxStorage::save_normal_ui_config_() {
     return false;
   }
 
-  StoredNormalUiConfig verify_normal_ui{};
+  auto &verify_normal_ui=stored_normal_ui;
   if (!this->normal_ui_pref_.load(&verify_normal_ui)) {
     ESP_LOGW(TAG, "Failed to read back normal UI config from NVS");
     return false;

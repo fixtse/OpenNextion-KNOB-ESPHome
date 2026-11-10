@@ -79,7 +79,7 @@ struct Metadata {
     return "";
   }
 };
-inline std::array<Metadata, 10> metadata;
+inline std::array<Metadata, 20> metadata;
 inline std::string selected_icon(const std::string &entity) {
   for (const auto &item : metadata) if (item.entity == entity) return item.chosen();
   return "";

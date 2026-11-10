@@ -118,7 +118,7 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
       query.brightness.size() > 3 || query.standby.size() > 3 || query.sensitivity.size() > 1 ||
       query.sleep_enabled.size() > 1 || query.sleep_start.size() > 5 || query.sleep_end.size() > 5 || query.sleep_timeout.size() > 4 ||
       query.name.size() > 192 || query.area.size() > 192 || query.action_name.size() > 192 || query.type.size() > 32 ||
-      (request->hasArg("slot") && (!number(request->arg("slot"), slot) || slot >= 10)) ||
+      (request->hasArg("slot") && (!number(request->arg("slot"), slot) || slot >= 20)) ||
       (request->hasArg("offset") && (!number(request->arg("offset"), offset) || offset > 100000))) {
     respond_(request, 400, "{\"error\":\"Invalid configuration request\"}"); return;
   }

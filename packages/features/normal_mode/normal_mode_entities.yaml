@@ -468,7 +468,7 @@ switch:
     on_turn_on:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 10) {
                 id(app_storage)->set_normal_ui_device_state(i, true);
@@ -478,7 +478,7 @@ switch:
     on_turn_off:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 10) {
                 id(app_storage)->set_normal_ui_device_state(i, false);
@@ -493,7 +493,7 @@ switch:
     on_turn_on:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 11) {
                 id(app_storage)->set_normal_ui_device_state(i, true);
@@ -503,7 +503,7 @@ switch:
     on_turn_off:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 11) {
                 id(app_storage)->set_normal_ui_device_state(i, false);
@@ -518,7 +518,7 @@ switch:
     on_turn_on:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 17) {
                 id(app_storage)->set_normal_ui_device_state(i, true);
@@ -528,7 +528,7 @@ switch:
     on_turn_off:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 17) {
                 id(app_storage)->set_normal_ui_device_state(i, false);
@@ -543,7 +543,7 @@ switch:
     on_turn_on:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 18) {
                 id(app_storage)->set_normal_ui_device_state(i, true);
@@ -553,7 +553,7 @@ switch:
     on_turn_off:
       then:
         - lambda: |-
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 20; i++) {
               const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(i);
               if (local_hmi_gpio_switch_io_from_entity_id(entity_id) == 18) {
                 id(app_storage)->set_normal_ui_device_state(i, false);

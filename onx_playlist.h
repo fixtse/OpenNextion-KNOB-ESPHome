@@ -13,7 +13,7 @@ struct Config {
   uint8_t count{0};
   Entry entries[MAX_ENTRIES]{};
 };
-inline std::array<Config, 10> configs;
+inline std::array<Config, 20> configs;
 struct Browser {
   std::string entity;
   int selected{0};
