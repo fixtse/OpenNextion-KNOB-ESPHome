@@ -11,7 +11,7 @@ struct Query {
   std::string playlists;
   std::string op, entity, action, search, domain, name, area, action_name, type, icon, icon_override;
   std::string brightness, standby, sensitivity, sleep_enabled, sleep_start, sleep_end, sleep_timeout;
-  std::string timer_hidden, media_color, standby_scope, date_format, hour_format, show_ampm, secondary, secondary_text, sensor_graph;
+  std::string idle_view, timer_hidden, media_color, standby_scope, date_format, hour_format, show_ampm, secondary, secondary_text, sensor_graph;
   int slot{-1};
   unsigned offset{0};
   uint32_t ticket{0};

@@ -8,6 +8,8 @@ struct Settings {
   uint8_t standby_scope{0}; // 0 main carousel only, 1 all views, 2 disabled
 };
 inline Settings current;
+struct IdleSettings {uint32_t magic{0x4F4E5849};uint8_t media{0};};
+inline IdleSettings idle;
 struct DateTimeSettings {
   uint32_t magic{0x4F4E5854};
   uint8_t date_format{0}, hour_format{0}, show_ampm{1}; // Numeric/name month variants; 24 / 12 hour

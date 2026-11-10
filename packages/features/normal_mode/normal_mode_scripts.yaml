@@ -2297,6 +2297,10 @@ script:
     mode: restart
     then:
       - lambda: |-
+          if(onx_media::idle_popup.visible) {
+            id(normal_device_selected_index)=onx_media::idle_popup.previous_index;
+            onx_media::idle_popup.visible=false;
+          }
           if (onx_timer::popup.visible) {onx_timer::popup.visible=false;onx_timer::popup.dismissed=true;}
           if (!id(normal_device_detail_active)) {
             return;
@@ -2369,6 +2373,50 @@ script:
           id(ui_presenter)->notify_user_activity();
           id(refresh_normal_automation_detail_page).execute();
 
+  - id: check_normal_idle_media_popup
+    then:
+      - lambda: |-
+          auto &popup=onx_media::idle_popup;
+          const auto now=id(ha_time).now();
+          const bool sleep_due=now.is_valid() && id(ui_presenter)->should_enter_sleep_mode(now.hour,now.minute);
+          const bool allowed=onx_display_settings::idle.media && id(normal_ha_api_connected) &&
+              id(ui_presenter)->is_normal_mode_active() && !id(mode_manager)->is_provisioning_mode_enabled() &&
+              !id(screen_off_state) && !id(sleep_mode_state) && !sleep_due && !onx_timer::popup.visible;
+          const auto timeout=id(app_storage)->get_standby_timeout_ms();
+          if(popup.visible && id(ui_presenter)->user_idle_ms()<timeout) {
+            // Interaction takes ownership of the player as a regular detail view.
+            popup.visible=false;return;
+          }
+          auto playing=[&](int index) {
+            if(index<0 || index>=id(normal_device_count))return false;
+            const auto entity=id(ui_presenter)->get_normal_device_entity_id(index);
+            const auto *detail=custom_logic_entity_sub::entity_detail(entity);
+            return entity.rfind("media_player.",0)==0 && detail && detail->received && detail->available && detail->state=="playing";
+          };
+          int candidate=playing(id(normal_device_selected_index))?id(normal_device_selected_index):-1;
+          if(candidate<0)for(int i=0;i<id(normal_device_count) && i<20;++i)if(playing(i)) {candidate=i;break;}
+          if(popup.visible) {
+            if(!allowed || candidate<0) {
+              popup.visible=false;
+              id(normal_device_selected_index)=popup.previous_index;
+              id(exit_normal_switch_detail).execute();
+              return;
+            }
+            if(candidate!=id(normal_device_detail_index)) {
+              id(normal_device_selected_index)=candidate;
+              id(enter_normal_switch_detail).execute();
+            }
+            return;
+          }
+          const auto current_entity=id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          const bool manual_player=id(normal_device_detail_active) &&
+              id(normal_device_detail_kind)==NORMAL_DEVICE_DETAIL_KIND_AUTOMATION && current_entity.rfind("media_player.",0)==0;
+          if(!allowed || candidate<0 || (id(normal_device_detail_active) && !manual_player) || !id(ui_presenter)->is_standby_active())return;
+          popup.previous_index=id(normal_device_selected_index);
+          popup.visible=true;
+          id(normal_device_selected_index)=candidate;
+          id(enter_normal_switch_detail).execute();
+
   - id: check_normal_timer_popup
     then:
       - lambda: |-
@@ -2410,6 +2458,10 @@ script:
           if (!onx_timer::popup_due(id(ui_presenter)->user_idle_ms(), id(normal_device_detail_active), onx_timer::popup.dismissed)) return;
           // Never replace a settings page or an explicitly sleeping screen.
           if (id(normal_device_detail_active) && id(normal_device_detail_kind)!=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) return;
+          if(onx_media::idle_popup.visible) {
+            id(normal_device_selected_index)=onx_media::idle_popup.previous_index;
+            onx_media::idle_popup.visible=false;
+          }
           onx_timer::popup.previous_index=id(normal_device_selected_index);
           onx_timer::popup.entity=id(ui_presenter)->get_normal_device_entity_id(candidate);
           onx_timer::popup.visible=true;

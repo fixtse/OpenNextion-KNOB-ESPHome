@@ -24,6 +24,7 @@ template<typename F> inline std::string build_json(F &&fill) {
 }
 
 inline esphome::ESPPreferenceObject display_preference;
+inline esphome::ESPPreferenceObject idle_preference;
 inline esphome::ESPPreferenceObject datetime_preference;
 inline bool display_settings_loaded{false};
 inline void load_display_settings() {
@@ -32,6 +33,9 @@ inline void load_display_settings() {
   onx_display_settings::Settings saved{};
   if (display_preference.load(&saved) && saved.magic == 0x4F4E5844 && saved.media_color <= 0xFFFFFF && saved.standby_scope <= 2)
     onx_display_settings::current = saved;
+  idle_preference=esphome::global_preferences->make_preference<onx_display_settings::IdleSettings>(esphome::fnv1_hash("onx.idle_screen.v1"));
+  onx_display_settings::IdleSettings idle_saved{};
+  if(idle_preference.load(&idle_saved) && idle_saved.magic==0x4F4E5849 && idle_saved.media<=1)onx_display_settings::idle=idle_saved;
   datetime_preference = esphome::global_preferences->make_preference<onx_display_settings::DateTimeSettings>(esphome::fnv1_hash("onx.datetime.v2"));
   onx_display_settings::DateTimeSettings date_saved{};
   if (datetime_preference.load(&date_saved) && date_saved.magic == 0x4F4E5854 && date_saved.date_format <= 5 && date_saved.hour_format <= 1 && date_saved.show_ampm <= 1)
@@ -46,8 +50,13 @@ inline void load_display_settings() {
   }
   display_settings_loaded = true;
 }
-inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm) {
+inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm,const std::string &idle_view="") {
   load_display_settings();
+  auto idle_next=onx_display_settings::idle;
+  if(!idle_view.empty()) {
+    if(idle_view!="clock" && idle_view!="media")return false;
+    idle_next.media=idle_view=="media";
+  }
   onx_display_settings::Settings next{};
   if (!display_settings_loaded || !onx_display_settings::parse_color(color, next.media_color) ||
       !onx_display_settings::parse_scope(scope, next.standby_scope)) return false;
@@ -56,9 +65,9 @@ inline bool save_display_settings(const std::string &color, const std::string &s
       !onx_display_settings::parse_hour_format(hour_format, date_next.hour_format)) return false;
   date_next.show_ampm = show_ampm ? 1 : 0;
   if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope &&
-      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format && date_next.show_ampm == onx_display_settings::datetime.show_ampm) return true;
-  if (!datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
-  onx_display_settings::current = next; onx_display_settings::datetime = date_next; return true;
+      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format && date_next.show_ampm == onx_display_settings::datetime.show_ampm && idle_next.media==onx_display_settings::idle.media) return true;
+  if (!idle_preference.save(&idle_next) || !datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
+  onx_display_settings::current = next; onx_display_settings::datetime = date_next; onx_display_settings::idle=idle_next; return true;
 }
 
 // Keep subscriptions and compact runtime indices intact; hide only carousel entries.

@@ -24,6 +24,7 @@ interval:
           const auto now=id(ha_time).now();
           if(now.is_valid() && id(normal_ha_api_connected)) custom_logic_entity_sub::sample_sensor_history(now.timestamp);
       - script.execute: check_normal_timer_popup
+      - script.execute: check_normal_idle_media_popup
       - script.execute: refresh_normal_device_page
       # A Native API client becomes identifiable as HA only after it subscribes
       # to states, which happens after on_client_connected. Keep this derived

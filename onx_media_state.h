@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 namespace onx_media {
+struct IdlePopup {bool visible{false};int previous_index{0};};
+inline IdlePopup idle_popup;
 inline std::string volume_percent(float level) {
   if (!std::isfinite(level)) return "--";
   return std::to_string(static_cast<int>(std::lround(std::clamp(level, 0.0f, 1.0f) * 100.0f))) + "%";
