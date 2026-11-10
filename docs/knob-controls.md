@@ -117,3 +117,12 @@ play/pause and playlist selection act on release. Button edges and their origina
 timestamps are buffered during display redraws so a quick click is retained;
 contact debounce is 5ms. The 0.5-second playlist gesture and longer back/reset
 gestures continue to use the physical hold duration.
+
+## Sensor graph scale
+
+The 12-hour sensor graph shows its maximum value beside the top gridline and
+minimum beside the bottom gridline. Compact 12px labels use a narrow left gutter
+without increasing the graph height. Values use the same unit as the current
+reading above the graph. Precision expands for narrow ranges so different bounds
+remain distinguishable; constant history shows the same value at both bounds.
+The existing **12h ago / Now** labels describe the horizontal time axis.

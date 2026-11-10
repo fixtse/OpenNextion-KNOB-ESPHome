@@ -74,6 +74,13 @@ onx_config_web:
               const uint32_t now=id(ha_time).now().timestamp;
               auto points=slot["graph"].to<JsonArray>();
               for(const auto &p:onx_sensor_view::states[index].history(now)) {auto point=points.add<JsonObject>();point["t"]=p.epoch;point["value"]=p.value;}
+              const auto history=onx_sensor_view::states[index].history(now);
+              if(!history.empty()) {
+                float low=history.front().value,high=low;
+                for(const auto &point:history){low=std::min(low,point.value);high=std::max(high,point.value);}
+                const auto labels=onx_sensor_view::axis_labels(low,high);
+                slot["graph_min_label"]=labels.first;slot["graph_max_label"]=labels.second;
+              }
               slot["graph_now"]=now;
             }
           }

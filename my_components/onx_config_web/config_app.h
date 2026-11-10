@@ -61,9 +61,12 @@ function drawPreview(slot){
  if(material){const defs=svgNode('defs'),clip=svgNode('clipPath',{id:'media-art-circle'});clip.append(svgNode('circle',{cx:120,cy:120,r:120}));defs.append(clip);svg.append(defs);}
  if(view.layout==='graph'){
   const points=view.graph||[],now=view.graph_now||0,values=points.map(p=>p.value),low=Math.min(...values),high=Math.max(...values);
-  for(const y of [104,136,168])svg.append(svgNode('line',{x1:27,y1:y,x2:213,y2:y,stroke:'#344653','stroke-width':1}));
+  const bottom=view.graph_min_label??'',top=view.graph_max_label??'';
+  measure.font='12px Arial';const gutter=Math.min(66,Math.max(measure.measureText(bottom).width,measure.measureText(top).width)+5),left=27+gutter;
+  if(points.length)for(const [label,y] of [[top,104],[bottom,156]]){const node=svgNode('text',{x:left-5,y:y+10,'text-anchor':'end','font-size':12,fill:'#d2d2d2'});node.textContent=label;svg.append(node);}
+  for(const y of [104,136,168])svg.append(svgNode('line',{x1:left,y1:y,x2:213,y2:y,stroke:'#344653','stroke-width':1}));
   for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i];if(b.t-a.t>1200)continue;
-   const x=p=>27+185-(now-p.t)*185/43200,y=p=>104+(high>low?64-(p.value-low)*64/(high-low):32);
+   const x=p=>213-(now-p.t)*(186-gutter-1)/43200,y=p=>104+(high>low?64-(p.value-low)*64/(high-low):32);
    svg.append(svgNode('line',{x1:x(a),y1:y(a),x2:x(b),y2:y(b),stroke:settings.media_color||'#62B0FF','stroke-width':2}));}
  }
  if(view.icon&&/^mdi:[a-z0-9-]+$/.test(view.icon)){

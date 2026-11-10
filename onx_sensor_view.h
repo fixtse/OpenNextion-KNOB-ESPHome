@@ -9,7 +9,18 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <utility>
 namespace onx_sensor_view {
+// Keep axis labels compact without rounding distinct bounds to the same text.
+inline std::pair<std::string,std::string> axis_labels(float low,float high) {
+  char bottom[24],top[24];
+  for(int precision=4;precision<=7;++precision) {
+    snprintf(bottom,sizeof(bottom),"%.*g",precision,static_cast<double>(low==0?0:low));
+    snprintf(top,sizeof(top),"%.*g",precision,static_cast<double>(high==0?0:high));
+    if(low==high || std::string(bottom)!=top)break;
+  }
+  return {bottom,top};
+}
 struct Config {
   char primary[129]{}, secondary[129]{}, text[161]{"{value}"};
   uint8_t graph{0};

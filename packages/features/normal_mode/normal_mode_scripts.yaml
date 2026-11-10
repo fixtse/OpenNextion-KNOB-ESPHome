@@ -763,7 +763,7 @@ script:
           if (!timer_detail && entity_id.rfind("media_player.", 0) != 0) {
             auto view = onx_detail_view::build(entity_id, title);
             onx_entity_config::customize_control_view(detail_index,entity_id,view);
-            if(view.layout=="graph") onx_sensor_graph::render(lv_obj_get_parent(id(normal_automation_detail_action)),entity_id,id(ha_time).now().timestamp,onx_display_settings::current.media_color);
+            if(view.layout=="graph") onx_sensor_graph::render(lv_obj_get_parent(id(normal_automation_detail_action)),entity_id,id(ha_time).now().timestamp,onx_display_settings::current.media_color,id(fonts_MiSans_Medium_12)->get_lv_font());
             auto line = [&](lv_obj_t *label, const onx_detail_view::Line &text) {
               onx_render::label(label, text.text.c_str());
               lv_obj_set_x(label, text.x); lv_obj_set_y(label, text.y); lv_obj_set_width(label, text.width);
