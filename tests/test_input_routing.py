@@ -127,8 +127,8 @@ int main(){
  assert(onx_playlist::browser.open&&key_long_press_handled&&!onx_controls::presses&&!emit_normal_playlist_action.calls);
  key_long_press_handled=false;key_press_started_ms=1900;turn(1);
  assert(onx_playlist::browser.selected==1&&!onx_controls::rotations&&!emit_normal_media_track.calls);
- release();assert(emit_normal_playlist_action.calls==1&&!onx_controls::presses&&onx_playlist::browser.sent);
- key_long_press_handled=false;key_press_started_ms=1000;release();
+ release();assert(emit_normal_playlist_action.calls==1&&!onx_controls::presses&&!onx_playlist::browser.open);
+ key_long_press_handled=false;key_press_started_ms=1900;release();
  assert(!onx_playlist::browser.open&&emit_normal_playlist_action.calls==1);
  reset();playlist_enabled=true;key_press_started_ms=1501;release();
  assert(!onx_playlist::browser.open&&onx_controls::presses==1);

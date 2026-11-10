@@ -60,6 +60,57 @@ inline bool save_display_settings(const std::string &color, const std::string &s
   onx_display_settings::current = next; onx_display_settings::datetime = date_next; return true;
 }
 
+// Keep subscriptions and compact runtime indices intact; hide only carousel entries.
+struct TimerVisibility { char entity[129]{}; bool hidden{false}; };
+inline std::array<TimerVisibility,10> timer_visibility;
+inline std::array<esphome::ESPPreferenceObject,10> timer_visibility_preferences;
+inline bool timer_visibility_loaded=false;
+inline void load_timer_visibility() {
+  if(timer_visibility_loaded || esphome::global_preferences==nullptr)return;
+  for(size_t i=0;i<10;++i) {
+    timer_visibility_preferences[i]=esphome::global_preferences->make_preference<TimerVisibility>(
+        esphome::fnv1_hash("onx.timer.visibility.v1."+std::to_string(i)));
+    TimerVisibility saved{};
+    if(timer_visibility_preferences[i].load(&saved)) {
+      saved.entity[128]=0;
+      if(onx_config::valid_entity(saved.entity))timer_visibility[i]=saved;
+    }
+  }
+  timer_visibility_loaded=true;
+}
+inline bool timer_hidden(size_t slot,const std::string &entity) {
+  load_timer_visibility();
+  return slot<10 && !entity.empty() && timer_visibility[slot].hidden && entity==timer_visibility[slot].entity;
+}
+inline bool save_timer_visibility(size_t slot,const std::string &entity,bool hidden) {
+  load_timer_visibility();
+  if(!timer_visibility_loaded || slot>=10)return false;
+  TimerVisibility next{};
+  snprintf(next.entity,sizeof(next.entity),"%s",entity.c_str());next.hidden=hidden;
+  if(!timer_visibility_preferences[slot].save(&next)||!esphome::global_preferences->sync())return false;
+  timer_visibility[slot]=next;return true;
+}
+inline bool carousel_hidden(int ui_slot) {
+  for(size_t slot=0;slot<10;++slot)
+    if(custom_logic::normal_ui_slot_for_device_config_slot(slot)==static_cast<size_t>(ui_slot))
+      return timer_hidden(slot,custom_logic::cached_device_entity_id(slot));
+  return false;
+}
+// Settings remains at 'total', including when every configured timer is hidden.
+inline int carousel_selection(int selected,int total,int direction) {
+  while(selected>=0 && selected<total && carousel_hidden(selected))selected+=direction<0?-1:1;
+  if(selected<0) {
+    selected=0;
+    while(selected<total && carousel_hidden(selected))++selected;
+  }
+  return selected;
+}
+inline int carousel_position(int index) {
+  int visible=0;
+  for(int i=0;i<index;++i)if(!carousel_hidden(i))++visible;
+  return visible;
+}
+
 inline bool sensor_configs_loaded=false;
 inline std::array<esphome::ESPPreferenceObject,10> sensor_preferences;
 inline void load_sensor_configs() {
@@ -269,6 +320,7 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       custom_logic::load_device_config_if_needed(i);
       auto slot = slots.add<JsonObject>();
       slot["entity"] = custom_logic::cached_device_entity_id(i);
+      slot["timerHidden"] = timer_hidden(i,custom_logic::cached_device_entity_id(i))?"1":"0";
       JsonArray playlists=slot["playlists"].to<JsonArray>();
       const auto &playlist=onx_playlist::configs[i];
       if(custom_logic::cached_device_entity_id(i)==playlist.entity)

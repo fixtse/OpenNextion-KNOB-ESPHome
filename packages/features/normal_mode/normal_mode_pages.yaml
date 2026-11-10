@@ -1799,10 +1799,11 @@ lvgl:
                         src: media_overlay_pause_img
               - obj:
                   id: normal_playlist_overlay
+                  radius: 120
                   align: center
                   width: 240
                   height: 240
-                  bg_color: 0x000000
+                  bg_color: 0x1A1A1A
                   bg_opa: COVER
                   border_width: 0
                   pad_all: 0
@@ -1828,39 +1829,17 @@ lvgl:
                         text_font: fonts_MiSans_Medium_18
                         text_color: 0xFFFFFF
                         text: ""
-                    - label:
-                        id: normal_playlist_previous
-                        align: top_mid
-                        y: 70
-                        width: 196
-                        height: 26
-                        long_mode: DOT
-                        text_align: CENTER
-                        text_font: fonts_MiSans_Medium_18
-                        text_color: 0x9A9A9A
-                        text: ""
-                    - label:
-                        id: normal_playlist_selected
-                        align: top_mid
-                        y: 100
-                        width: 196
-                        height: 26
-                        long_mode: DOT
-                        text_align: CENTER
-                        text_font: fonts_MiSans_Medium_18
-                        text_color: 0x62B0FF
-                        text: ""
-                    - label:
-                        id: normal_playlist_next
-                        align: top_mid
-                        y: 130
-                        width: 196
-                        height: 26
-                        long_mode: DOT
-                        text_align: CENTER
-                        text_font: fonts_MiSans_Medium_18
-                        text_color: 0x9A9A9A
-                        text: ""
+                    - roller:
+                        id: normal_playlist_roller
+                        x: 0
+                        y: 5
+                        width: 221
+                        height: 120
+                        align: center
+                        mode: NORMAL
+                        visible_row_count: 3
+                        options:
+                          - Playlists
                     - bar:
                         id: normal_playlist_hold_bar
                         align: top_mid

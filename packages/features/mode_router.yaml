@@ -244,6 +244,9 @@ onx_config_web:
       if(d && d->received && d->available && !std::isfinite(custom_logic_entity_sub::detail_number(d->state)))
         return onx_entity_config::error("Graphs require a numeric sensor");
     }
+    if ((!query.timer_hidden.empty() && query.timer_hidden!="0" && query.timer_hidden!="1") ||
+        (query.timer_hidden=="1" && domain!="timer" && domain!="sensor"))
+      return onx_entity_config::error("Only timers and timer sensors can be hidden from the carousel");
     onx_playlist::Config playlist_config{};
     if (!onx_entity_config::parse_playlists(query.entity,query.playlists,playlist_config))
       return onx_entity_config::error("Add up to eight playlist names (48 UTF-8 bytes) and valid script or automation entity IDs");
@@ -253,6 +256,8 @@ onx_config_web:
       return onx_entity_config::error("Entity saved, but press action could not be saved; retry");
     if (!onx_entity_config::save_sensor_config(query.slot,query.entity,query.secondary,query.secondary_text,query.sensor_graph=="1"))
       return onx_entity_config::error("Could not save sensor display settings; retry");
+    if (!onx_entity_config::save_timer_visibility(query.slot,query.entity,query.timer_hidden=="1"))
+      return onx_entity_config::error("Could not save timer visibility; retry");
     if (!onx_entity_config::save_playlists(query.slot,playlist_config))
       return onx_entity_config::error("Could not save playlist actions; retry");
     if (!onx_entity_config::save_selected_metadata(query)) return onx_entity_config::error("Could not save selected entity details");

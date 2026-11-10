@@ -183,6 +183,7 @@ script:
           int selected = id(normal_device_selected_index);
           if (selected < 0) selected = 0;
           if (selected > last_selectable) selected = last_selectable;
+          if (!onx_timer::popup.visible) selected = onx_entity_config::carousel_selection(selected,total,1);
           id(normal_device_selected_index) = selected;
 
           struct EntryWidgets {
@@ -372,7 +373,7 @@ script:
               lv_obj_set_width(w.title,view.name.width);lv_obj_set_height(w.title,40);
             }
             set_hidden(w.index_icon, true);
-            const auto dots = onx_detail_view::pagination(entry_index, total + 1);
+            const auto dots = onx_detail_view::pagination(onx_entity_config::carousel_position(entry_index), onx_entity_config::carousel_position(total) + 1);
             lv_label_set_text(w.pagination, dots.c_str());
           };
 
@@ -438,6 +439,7 @@ script:
           int selected = id(normal_device_selected_index);
           if (selected < 0) selected = 0;
           if (selected > last_selectable) selected = last_selectable;
+          if (!onx_timer::popup.visible) selected = onx_entity_config::carousel_selection(selected,total,1);
           id(normal_device_selected_index) = selected;
 
           lv_obj_t *target = id(device_settings)->obj;
@@ -2772,10 +2774,8 @@ script:
             lv_obj_clear_flag(id(normal_playlist_overlay), LV_OBJ_FLAG_HIDDEN);
             lv_obj_move_foreground(id(normal_playlist_overlay));
           }
-          for (auto *widget : {id(normal_playlist_previous), id(normal_playlist_selected), id(normal_playlist_next)}) {
-            if (holding) lv_obj_add_flag(widget, LV_OBJ_FLAG_HIDDEN);
-            else lv_obj_clear_flag(widget, LV_OBJ_FLAG_HIDDEN);
-          }
+          if (holding) lv_obj_add_flag(id(normal_playlist_roller)->obj, LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_clear_flag(id(normal_playlist_roller)->obj, LV_OBJ_FLAG_HIDDEN);
           if (holding) {
             lv_obj_clear_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
             const bool ready = held >= onx_playlist::OPEN_MS;
@@ -2788,15 +2788,17 @@ script:
           } else {
             browser.selected = std::clamp(browser.selected, 0, static_cast<int>(list->count)-1);
             const int i = browser.selected;
-            const auto row = [&](int index) { return index < 0 || index >= list->count ? std::string(" ") : onx_media::display_text(list->entries[index].name); };
-            const auto heading = "Playlists " + std::to_string(i+1) + "/" + std::to_string(list->count);
-
-            onx_render::label(id(normal_playlist_heading), heading.c_str());
+            std::string options;
+            for(size_t j=0;j<list->count;++j) {
+              if(j)options+="\n";
+              options+=onx_media::display_text(list->entries[j].name);
+            }
+            auto *roller=id(normal_playlist_roller)->obj;
+            if(options!=lv_roller_get_options(roller))lv_roller_set_options(roller,options.c_str(),LV_ROLLER_MODE_NORMAL);
+            lv_roller_set_selected(roller,i,LV_ANIM_OFF);
+            onx_render::label(id(normal_playlist_heading), "Playlists");
             lv_obj_add_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
-            onx_render::label(id(normal_playlist_previous), row(i-1).c_str());
-            onx_render::label(id(normal_playlist_selected), ("> " + row(i) + " <").c_str());
-            onx_render::label(id(normal_playlist_next), row(i+1).c_str());
-            onx_render::label(id(normal_playlist_hint), browser.sent && millis()-browser.sent_ms < 1500 ? "Action sent" : "Turn, then press");
+            onx_render::label(id(normal_playlist_hint), "Turn, then press");
             lv_obj_add_flag(id(normal_playlist_hold_bar), LV_OBJ_FLAG_HIDDEN);
           }
 

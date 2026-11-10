@@ -115,7 +115,7 @@ binary_sensor:
                 auto &browser = onx_playlist::browser;
                 if (browser.selected >= 0 && browser.selected < list->count) {
                   id(emit_normal_playlist_action).execute(std::string(list->entries[browser.selected].action));
-                  browser.sent = true; browser.sent_ms = now;
+                  browser.clear();
                 }
                 id(key_long_press_handled) = true;
               }
@@ -850,7 +850,7 @@ sensor:
                        id(normal_page_index) == 0 && id(normal_device_selected_index) < last_selectable;
             then:
               - lambda: |-
-                  id(normal_device_selected_index)++;
+                  id(normal_device_selected_index) = onx_entity_config::carousel_selection(id(normal_device_selected_index)+1, id(normal_device_count), 1);
               - script.execute:
                   id: show_normal_device_entry_page
                   direction: 1
@@ -1265,7 +1265,7 @@ sensor:
                        id(normal_page_index) == 0 && id(normal_device_selected_index) > 0;
             then:
               - lambda: |-
-                  id(normal_device_selected_index)--;
+                  id(normal_device_selected_index) = onx_entity_config::carousel_selection(id(normal_device_selected_index)-1, id(normal_device_count), -1);
               - script.execute:
                   id: show_normal_device_entry_page
                   direction: -1
