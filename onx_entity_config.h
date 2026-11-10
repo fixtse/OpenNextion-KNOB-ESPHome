@@ -316,7 +316,7 @@ inline void load() {
   if (restored) {
     for (auto &slot : stored.slots) {
       slot.source[MAX_HA_ENTITY_ID_LENGTH] = '\0'; slot.action[MAX_HA_ENTITY_ID_LENGTH] = '\0';
-      if ((!std::string(slot.source).empty() && !onx_config::valid_entity(slot.source) && !custom_logic::is_local_hmi_gpio_switch_preset_option(slot.source)) || !onx_config::valid_action(slot.action)) slot = {};
+      if ((!std::string(slot.source).empty() && !onx_config::valid_entity(slot.source) && !custom_logic::is_local_hmi_gpio_switch_preset_option(slot.source)) || !onx_config::valid_press_action(slot.source,slot.action)) slot = {};
     }
     bindings = stored;
   }
@@ -337,7 +337,7 @@ inline std::string action_for_ui(int ui_slot) {
 }
 inline bool save_action(size_t slot, const std::string &entity, const std::string &action) {
   load();
-  if (!loaded || slot >= 20 || !onx_config::valid_action(action)) return false;
+  if (!loaded || slot >= 20 || !onx_config::valid_press_action(entity,action)) return false;
   auto next_buffer=custom_logic::make_ram_allocated<StoredBindings>();
   if(!next_buffer)return false;
   auto &next=*next_buffer;next=bindings;

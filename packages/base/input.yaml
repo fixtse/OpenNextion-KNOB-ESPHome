@@ -188,7 +188,13 @@ binary_sensor:
                     if (onx_media::has_playback(pressed_detail->state)) onx_controls::press(pressed_entity);
                     else {
                       const auto action = onx_entity_config::action_for_ui(id(normal_device_detail_index));
-                      if (action.rfind("script.", 0) == 0 || action.rfind("automation.", 0) == 0)
+                      if(action=="open_playlists") {
+                        const auto *list=onx_entity_config::playlists_for_ui(id(normal_device_detail_index),pressed_entity);
+                        if(list!=nullptr) {
+                          onx_playlist::browser.toggle(pressed_entity);
+                          id(refresh_normal_playlist).execute();
+                        } else ESP_LOGW("input","No playlists configured for %s",pressed_entity.c_str());
+                      } else if (action.rfind("script.", 0) == 0 || action.rfind("automation.", 0) == 0)
                         id(emit_configured_press_action).execute(id(normal_device_detail_index));
                     }
                     id(key_long_press_handled) = true;

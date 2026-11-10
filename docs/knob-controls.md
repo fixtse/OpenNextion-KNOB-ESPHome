@@ -126,3 +126,10 @@ without increasing the graph height. Values use the same unit as the current
 reading above the graph. Precision expands for narrow ranges so different bounds
 remain distinguishable; constant history shows the same value at both bounds.
 The existing **12h ago / Now** labels describe the horizontal time axis.
+
+To open playlists with a short press when the player is idle, select the media
+player slot on the configuration webpage and choose **When idle → Open playlists**,
+then save the slot. Add entries in the **Playlists** tab first. Playing or paused
+media still uses short press for play/pause; the existing hold gesture can also
+open playlists. Selecting an entry runs its configured action and returns to the
+player. The idle-press option is saved with configuration backups.

@@ -250,8 +250,8 @@ onx_config_web:
       return onx_entity_config::error("Unknown configuration request");
     if ((!query.entity.empty() && ((!onx_config::valid_entity(query.entity) && !custom_logic::is_local_hmi_gpio_switch_preset_option(query.entity)) ||
           !custom_logic::is_supported_normal_device_entity_id(query.entity.c_str()))) ||
-        !onx_config::valid_action(query.action) || (query.entity.empty() && !query.action.empty()))
-      return onx_entity_config::error("Select a supported entity and an automation or script action");
+        !onx_config::valid_press_action(query.entity,query.action) || (query.entity.empty() && !query.action.empty()))
+      return onx_entity_config::error("Select a supported entity and a valid press action");
     if ((!query.icon.empty() && !onx_icon_state::valid_icon(query.icon)) ||
         (query.icon_override != "" && query.icon_override != "0" && query.icon_override != "1"))
       return onx_entity_config::error("Choose a valid MDI icon");
