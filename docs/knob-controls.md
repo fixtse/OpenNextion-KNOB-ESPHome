@@ -99,10 +99,10 @@ Material · tonal card** and save. Classic remains the default. The selection
 applies to media detail views and the playing-media idle screen, and is included
 in configuration backups.
 
-Material maximizes the complete artwork within the round display, preserving
-its proportions; the circular edge hides only the outer corners of square art.
-A translucent tonal panel keeps the title, artist and volume readable. A compact
-playback-state pill sits above it, while the circular playback progress indicator
-retains its selected color and paused behavior. Existing knob controls and
-playlist navigation work in both views. Missing artwork falls back to the entity
-icon. The state pill is informational; press the physical knob to play or pause.
+Material fills the entire circular display with artwork, preserving proportions
+and cropping overflow when needed to avoid gaps. Each text line has its own
+compact translucent backing, including the device name. The pause icon is
+centered; there is no Playing/Paused text pill. The circular playback progress
+indicator retains its selected color and paused behavior. Existing knob controls
+and playlist navigation work in both views. Missing artwork falls back to the
+entity icon. Press the physical knob to play or pause.

@@ -2875,52 +2875,69 @@ script:
               id(normal_device_detail_kind)==NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
               entity.rfind("media_player.",0)==0 && detail!=nullptr;
           const bool material=media && onx_display_settings::media_style.material;
-          auto *card=id(normal_media_material_card);
-          auto *state=id(normal_media_material_state);
-          if(!media) {
-            lv_obj_add_flag(card,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(state,LV_OBJ_FLAG_HIDDEN);
-            return;
+          // Reset styling on shared labels before another entity uses this page.
+          for(auto *label:{id(normal_media_title),id(normal_media_artist),
+              id(normal_automation_detail_action),id(normal_automation_detail_title)}) {
+            lv_obj_set_style_bg_opa(label,LV_OPA_TRANSP,0);
+            lv_obj_set_style_pad_left(label,0,0);
+            lv_obj_set_style_pad_right(label,0,0);
+            lv_obj_set_style_pad_top(label,0,0);
+            lv_obj_set_style_pad_bottom(label,0,0);
           }
-          if(material) {
-            // A tonal surface keeps contrast predictable without sampling artwork.
-            const auto accent=lv_color_hex(onx_display_settings::current.media_color);
-            lv_obj_set_style_bg_color(card,lv_color_mix(accent,lv_color_hex(0x24262C),36),0);
-            lv_obj_set_style_bg_color(state,lv_color_mix(accent,lv_color_hex(0xFFFFFF),96),0);
-            onx_render::label(state,detail->state=="playing"?"Playing":detail->state=="paused"?"Paused":"Idle");
-            lv_obj_clear_flag(card,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(state,LV_OBJ_FLAG_HIDDEN);
-          } else {
-            lv_obj_add_flag(card,LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(state,LV_OBJ_FLAG_HIDDEN);
-          }
+          if(!media)return;
           auto *cover=id(normal_media_cover);
-          const int scale=material?256:116;
+          const int source_width=id(media_cover_image)->get_width();
+          const int source_height=id(media_cover_image)->get_height();
+          // Cover the full circle, using the shorter dimension to avoid gutters.
+          // Classic still fits the entire image into its original 100px area.
+          const int dimension=material?std::min(source_width,source_height):std::max(source_width,source_height);
+          const int scale=dimension>0?(material?(240*256+dimension-1)/dimension:100*256/dimension):256;
           lv_image_set_pivot(cover,0,0);
           lv_image_set_scale(cover,scale);
-          const int width=id(media_cover_image)->get_width()*scale/256;
-          const int height=id(media_cover_image)->get_height()*scale/256;
+          const int width=source_width*scale/256,height=source_height*scale/256;
           lv_obj_align(cover,LV_ALIGN_TOP_LEFT,(240-width)/2,material?(240-height)/2:18);
           lv_obj_set_style_clip_corner(id(normal_automation_detail_shell),true,0);
           lv_obj_set_x(id(normal_automation_detail_icon),0);
-          lv_obj_set_y(id(normal_automation_detail_icon),material?30:(media?18:40));
+          lv_obj_set_y(id(normal_automation_detail_icon),material?30:18);
           if(material)lv_image_set_scale(id(normal_automation_detail_icon),256);
-          lv_obj_set_y(id(normal_media_title),material?126:122);
-          lv_obj_set_width(id(normal_media_title),material?180:196);
-          lv_obj_set_y(id(normal_media_artist),material?148:144);
-          lv_obj_set_width(id(normal_media_artist),material?180:196);
-          // Reapply after the shared detail renderer positions the volume/name.
-          if(media) {
-            lv_obj_set_y(id(normal_automation_detail_action),material?174:166);
-            lv_obj_set_y(id(normal_automation_detail_title),material?204:192);
-            lv_obj_set_style_text_font(id(normal_automation_detail_action),
-                material?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_18)->get_lv_font(),0);
-          }
-          lv_obj_set_x(id(normal_media_transport_overlay),material?48:0);
-          lv_obj_set_y(id(normal_media_transport_overlay),material?58:44);
+          lv_obj_set_y(id(normal_media_title),material?136:122);
+          lv_obj_set_width(id(normal_media_title),196);
+          lv_obj_set_height(id(normal_media_title),21);
+          lv_obj_set_y(id(normal_media_artist),material?160:144);
+          lv_obj_set_width(id(normal_media_artist),196);
+          lv_obj_set_height(id(normal_media_artist),20);
+          lv_obj_set_y(id(normal_automation_detail_action),material?184:166);
+          lv_obj_set_y(id(normal_automation_detail_title),material?206:192);
+          lv_obj_set_width(id(normal_automation_detail_action),196);
+          lv_obj_set_width(id(normal_automation_detail_title),180);
+          lv_obj_set_style_text_font(id(normal_automation_detail_action),
+              material?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_18)->get_lv_font(),0);
+          lv_obj_set_style_text_font(id(normal_automation_detail_title),
+              material?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
+          // The pause/transport icon is centered; there is no playback-state label.
+          lv_obj_set_x(id(normal_media_transport_overlay),0);
+          lv_obj_set_y(id(normal_media_transport_overlay),material?96:44);
           if(material) {
+            auto backing=[&](lv_obj_t *label,int maximum) {
+              const auto *font=lv_obj_get_style_text_font(label,0);
+              lv_point_t size;
+              lv_text_get_size(&size,lv_label_get_text(label),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
+              lv_obj_set_width(label,std::min(maximum,static_cast<int>(size.x)+12));
+              lv_obj_set_height(label,font->line_height+4);
+              lv_obj_set_style_pad_left(label,6,0);
+              lv_obj_set_style_pad_right(label,6,0);
+              lv_obj_set_style_pad_top(label,2,0);
+              lv_obj_set_style_pad_bottom(label,2,0);
+              lv_obj_set_style_radius(label,7,0);
+              lv_obj_set_style_bg_color(label,lv_color_hex(0x14171D),0);
+              lv_obj_set_style_bg_opa(label,lv_label_get_text(label)[0]?178:LV_OPA_TRANSP,0);
+              lv_label_set_long_mode(label,LV_LABEL_LONG_DOT);
+            };
+            backing(id(normal_media_title),200);
+            backing(id(normal_media_artist),188);
+            backing(id(normal_automation_detail_action),160);
+            backing(id(normal_automation_detail_title),112);
             lv_obj_move_to_index(cover,0);
-            lv_obj_move_to_index(card,1);
           }
 
   - id: refresh_normal_media_cover

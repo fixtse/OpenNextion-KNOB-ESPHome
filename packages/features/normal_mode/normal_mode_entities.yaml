@@ -1386,7 +1386,7 @@ image:
     url: http://homeassistant.local:8123/
     format: AUTO
     type: RGB565
-    resize: 220x220
+    resize: 240x240
     update_interval: never
     on_download_finished:
       then:
