@@ -75,8 +75,9 @@ binary_sensor:
               lambda: return onx_notification::press_consumed || onx_notification::current.visible;
             then:
               - lambda: |-
+                  const bool dismiss=onx_notification::press_consumed;
                   onx_notification::press_consumed=false;
-                  onx_notification::current.dismiss();
+                  if(dismiss)onx_notification::current.dismiss();
                   id(key_pressed)=false;
                   id(key_long_press_handled)=true;
                   id(ui_presenter)->notify_user_activity();
