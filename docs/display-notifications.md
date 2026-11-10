@@ -21,6 +21,12 @@ The message appears for 60 seconds. Press the knob to dismiss it, or turn it to
 scroll longer text. Dismissing and scrolling do not operate the page underneath.
 The underlying page is retained.
 
+Holding a notification-dismiss press for 10 seconds does not reset the device or
+erase its settings. The entire press is consumed until release, including if the
+message times out or is dismissed remotely. A notification appearing during an
+existing hold also consumes that press. See [reset Wi-Fi and device configuration](knob-controls.md#reset-wi-fi-and-device-configuration)
+for the separate 10-second reset gesture in normal mode.
+
 For a custom timeout, use `show_message_with_timeout`:
 
 ```yaml

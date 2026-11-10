@@ -45,4 +45,8 @@ Display text supports accented Latin characters (for example, Beyoncé) and thes
 
 [Control guide](docs/knob-controls.md) · [Configuration & backups](docs/web-configuration.md)
 
+**Reset gesture:** In normal mode, holding the knob for 10 seconds clears saved
+Wi-Fi and device configuration and reboots. Notification-dismiss presses cannot
+trigger this reset. See the [reset instructions and exceptions](docs/knob-controls.md#reset-wi-fi-and-device-configuration).
+
 [OpenNextion Knob by fixtSE](https://fixtse.com/)

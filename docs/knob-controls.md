@@ -41,6 +41,21 @@ entity and a disconnected Home Assistant connection.
 Light color temperature now uses 100 increments over the advertised Kelvin
 range. Existing stored Kelvin values and legacy ten-step values remain readable.
 
+## Reset Wi-Fi and device configuration
+
+In normal mode, press and hold the knob for **10 seconds** to clear saved Wi-Fi
+credentials and device configuration, then reboot. You will need to reconnect
+Wi-Fi and configure your devices again, or restore a configuration backup.
+The reset is unavailable during sleep, while waking from standby, and while
+viewing an offline device. Turning while holding can also suppress the reset
+when that gesture adjusts a secondary setting.
+
+A press used to dismiss a [display notification](display-notifications.md)
+**cannot trigger this reset**, even if held for 10 seconds. This also applies
+when a notification appears while the knob is already held. The press stays
+consumed until release, even if the notification times out or Home Assistant
+dismisses it first. Release the knob before starting a separate reset hold.
+
 ## Design reference
 
 The capability-dependent fan and climate controls follow the approach used by
