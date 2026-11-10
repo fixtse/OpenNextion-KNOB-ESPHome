@@ -13,6 +13,8 @@ esphome:
           onx_runtime::start();
           onx_entity_config::load_icons();
           onx_entity_config::load_display_settings();
+          id(lcd_display)->set_hardware_orientation(onx_display_settings::orientation.turns);
+          lv_obj_invalidate(lv_scr_act());
           onx_entity_config::load_sensor_configs();
           onx_entity_config::load_gestures();
           id(ui_presenter)->set_standby_guard([]() {

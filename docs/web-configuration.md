@@ -181,3 +181,18 @@ the knob. Older supported backups receive defaults for newer settings.
 **Download diagnostics** provides firmware, uptime and connection information
 for troubleshooting, without entity names, addresses or credentials. Wireless
 updates are available through the **Firmware Update** entity in Home Assistant.
+
+## Display orientation
+
+For the ONX2424G013, choose **Device settings → Display orientation** and save.
+Supported hardware orientations are **0°**, **90° clockwise**, **180°**, and
+**270° clockwise (90° left)**, relative to the default mounting position. The
+setting applies immediately to every device screen, persists after reboot, and
+is included in configuration backups. Knob direction is unchanged.
+
+This writes the GC9A01-compatible panel's MADCTL address-order register without
+software framebuffer rotation. Arbitrary angles such as 45° are not offered.
+The webpage preview remains upright as a content preview, independent of mounting.
+
+References: [ONX2424G013 specifications](https://open-nextion-app-store.nextion.tech/devices/onx2424g013/)
+and [GC9A01A hardware rotation implementation](https://github.com/adafruit/Adafruit_GC9A01A/blob/main/Adafruit_GC9A01A.cpp).

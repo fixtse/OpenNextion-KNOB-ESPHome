@@ -26,6 +26,7 @@ template<typename F> inline std::string build_json(F &&fill) {
 }
 
 inline esphome::ESPPreferenceObject display_preference;
+inline esphome::ESPPreferenceObject orientation_preference;
 inline esphome::ESPPreferenceObject idle_preference;
 inline esphome::ESPPreferenceObject media_style_preference;
 inline esphome::ESPPreferenceObject datetime_preference;
@@ -55,10 +56,16 @@ inline void load_display_settings() {
   onx_display_settings::MediaStyle media_saved{};
   if(media_style_preference.load(&media_saved) && media_saved.magic==0x4F4E584D && media_saved.material<=1)
     onx_display_settings::media_style=media_saved;
+  orientation_preference=esphome::global_preferences->make_preference<onx_display_settings::Orientation>(esphome::fnv1_hash("onx.orientation.v1"));
+  onx_display_settings::Orientation orientation_saved{};
+  if(orientation_preference.load(&orientation_saved) && orientation_saved.magic==0x4F4E584F && orientation_saved.turns<=3)
+    onx_display_settings::orientation=orientation_saved;
   display_settings_loaded = true;
 }
-inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm,const std::string &idle_view="",const std::string &media_view="") {
+inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm,const std::string &idle_view="",const std::string &media_view="",const std::string &orientation="") {
   load_display_settings();
+  auto orientation_next=onx_display_settings::orientation;
+  if(!orientation.empty() && !onx_display_settings::parse_orientation(orientation,orientation_next.turns))return false;
   auto media_next=onx_display_settings::media_style;
   if(!media_view.empty()) {
     if(media_view!="classic" && media_view!="material")return false;
@@ -77,9 +84,9 @@ inline bool save_display_settings(const std::string &color, const std::string &s
       !onx_display_settings::parse_hour_format(hour_format, date_next.hour_format)) return false;
   date_next.show_ampm = show_ampm ? 1 : 0;
   if (next.media_color == onx_display_settings::current.media_color && next.standby_scope == onx_display_settings::current.standby_scope &&
-      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format && date_next.show_ampm == onx_display_settings::datetime.show_ampm && idle_next.media==onx_display_settings::idle.media && media_next.material==onx_display_settings::media_style.material) return true;
-  if (!media_style_preference.save(&media_next) || !idle_preference.save(&idle_next) || !datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
-  onx_display_settings::current = next; onx_display_settings::datetime = date_next; onx_display_settings::idle=idle_next; onx_display_settings::media_style=media_next; return true;
+      date_next.date_format == onx_display_settings::datetime.date_format && date_next.hour_format == onx_display_settings::datetime.hour_format && date_next.show_ampm == onx_display_settings::datetime.show_ampm && idle_next.media==onx_display_settings::idle.media && media_next.material==onx_display_settings::media_style.material && orientation_next.turns==onx_display_settings::orientation.turns) return true;
+  if (!orientation_preference.save(&orientation_next) || !media_style_preference.save(&media_next) || !idle_preference.save(&idle_next) || !datetime_preference.save(&date_next) || !display_preference.save(&next) || !esphome::global_preferences->sync()) return false;
+  onx_display_settings::current = next; onx_display_settings::datetime = date_next; onx_display_settings::idle=idle_next; onx_display_settings::media_style=media_next; onx_display_settings::orientation=orientation_next; return true;
 }
 
 // Keep subscriptions and compact runtime indices intact; hide only carousel entries.

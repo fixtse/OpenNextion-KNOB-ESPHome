@@ -8,6 +8,12 @@ struct Settings {
   uint8_t standby_scope{0}; // 0 main carousel only, 1 all views, 2 disabled
 };
 inline Settings current;
+struct Orientation {uint32_t magic{0x4F4E584F};uint8_t turns{0};};
+inline Orientation orientation;
+inline bool parse_orientation(const std::string &text,uint8_t &turns) {
+  if(text=="0")turns=0;else if(text=="90")turns=1;else if(text=="180")turns=2;else if(text=="270")turns=3;else return false;
+  return true;
+}
 struct MediaStyle {uint32_t magic{0x4F4E584D};uint8_t material{0};};
 inline MediaStyle media_style;
 struct IdleSettings {uint32_t magic{0x4F4E5849};uint8_t media{0};};

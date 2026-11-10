@@ -78,6 +78,7 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
   virtual void data(uint8_t value);
   void send_command(uint8_t command_byte, const uint8_t *data_bytes, uint8_t num_data_bytes);
   void set_color_order(display::ColorOrder color_order) { this->color_order_ = color_order; }
+  virtual void set_hardware_orientation(uint8_t) {}
   void set_swap_xy(bool swap_xy) { this->swap_xy_ = swap_xy; }
   void set_mirror_x(bool mirror_x) { this->mirror_x_ = mirror_x; }
   void set_mirror_y(bool mirror_y) { this->mirror_y_ = mirror_y; }
@@ -270,6 +271,17 @@ class ILI9XXXS3BoxLite : public ILI9XXXDisplay {
 class ILI9XXXGC9A01A : public ILI9XXXDisplay {
  public:
   ILI9XXXGC9A01A() : ILI9XXXDisplay(INITCMD_GC9A01A, 240, 240) {}
+  // Clockwise quarter turns relative to this panel's existing MX baseline.
+  // Change only MADCTL: DisplayBuffer rotation stays zero, retaining direct SPI.
+  void set_hardware_orientation(uint8_t turns) override {
+    if(turns>3 || turns==hardware_orientation_)return;
+    static constexpr bool mx[]={true,false,false,true};
+    static constexpr bool my[]={false,false,true,true};
+    set_mirror_x(mx[turns]);set_mirror_y(my[turns]);set_swap_xy(turns&1);
+    set_madctl();hardware_orientation_=turns;
+  }
+ protected:
+  uint8_t hardware_orientation_{255};
 };
 
 class ILI9XXXGC9D01N : public ILI9XXXDisplay {
