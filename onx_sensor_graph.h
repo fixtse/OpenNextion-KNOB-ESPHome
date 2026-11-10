@@ -54,7 +54,7 @@ inline void render(lv_obj_t *parent,const std::string &entity,uint32_t now,uint3
     lv_point_t lower_size,upper_size;
     lv_text_get_size(&lower_size,labels.first.c_str(),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
     lv_text_get_size(&upper_size,labels.second.c_str(),font,0,0,LV_COORD_MAX,LV_TEXT_FLAG_NONE);
-    plot_left=std::min(66,std::max(lower_size.x,upper_size.x)+5);
+    plot_left=std::min(66,static_cast<int>(std::max(lower_size.x,upper_size.x))+5);
     for(auto *label:{minimum_label,maximum_label}) {
       lv_obj_set_width(label,plot_left-5);
       lv_obj_clear_flag(label,LV_OBJ_FLAG_HIDDEN);
