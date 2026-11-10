@@ -15,7 +15,7 @@ esphome:
           onx_entity_config::load_display_settings();
           onx_entity_config::load_sensor_configs();
           id(ui_presenter)->set_standby_guard([]() {
-            return !onx_timer::popup.visible && !onx_media::idle_popup.visible && onx_display_settings::standby_allowed(onx_display_settings::current.standby_scope,
+            return !onx_notification::current.visible && !onx_timer::popup.visible && !onx_media::idle_popup.visible && onx_display_settings::standby_allowed(onx_display_settings::current.standby_scope,
                 id(normal_device_detail_active));
           });
           set_normal_ui_storage_for_custom_logic(id(app_storage));

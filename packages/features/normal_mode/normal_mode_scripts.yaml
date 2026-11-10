@@ -168,7 +168,7 @@ script:
           if (!id(ui_presenter)->is_normal_mode_active() ||
               id(ui_presenter)->is_standby_active() ||
               id(normal_page_index) != 0 || id(normal_device_detail_active) ||
-              id(screen_off_state) || id(sleep_mode_state)) {
+              id(screen_off_state) || id(sleep_mode_state) || onx_notification::current.visible) {
             onx_navigation::hide();
             lv_obj_add_flag(id(normal_device_wifi_online_widget), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
@@ -2373,9 +2373,47 @@ script:
           id(ui_presenter)->notify_user_activity();
           id(refresh_normal_automation_detail_page).execute();
 
+  - id: refresh_normal_message_popup
+    then:
+      - lambda: |-
+          auto &message=onx_notification::current;
+          const uint32_t now_ms=millis();
+          const auto now=id(ha_time).now();
+          const bool sleep_due=now.is_valid() && id(ui_presenter)->should_enter_sleep_mode(now.hour,now.minute);
+          const bool available=id(ui_presenter)->is_normal_mode_active() &&
+              !id(mode_manager)->is_provisioning_mode_enabled() && !id(sleep_mode_state) &&
+              !id(screen_off_state) && !sleep_due && !onx_timer::popup.visible;
+          if(!available)message.suspend(now_ms);
+          if(!available || !message.display(now_ms)) {
+            lv_obj_add_flag(id(normal_message_overlay),LV_OBJ_FLAG_HIDDEN);return;
+          }
+          static uint32_t rendered_revision=0;
+          if(rendered_revision!=message.revision) {
+            onx_render::label(id(normal_message_title),message.title.c_str());
+            onx_render::label(id(normal_message_text),message.body.c_str());
+            lv_obj_update_layout(id(normal_message_body));
+            lv_obj_scroll_to_y(id(normal_message_body),0,LV_ANIM_OFF);
+            rendered_revision=message.revision;
+          }
+          onx_navigation::hide();
+          lv_obj_clear_flag(id(normal_message_overlay),LV_OBJ_FLAG_HIDDEN);
+          lv_obj_move_foreground(id(normal_message_overlay));
+
+  - id: scroll_normal_message
+    parameters:
+      direction: int
+    then:
+      - lambda: |-
+          if(!onx_notification::current.visible)return;
+          auto *body=id(normal_message_body);
+          const int maximum=std::max(0,static_cast<int>(lv_obj_get_scroll_y(body)+lv_obj_get_scroll_bottom(body)));
+          lv_obj_scroll_to_y(body,std::clamp(static_cast<int>(lv_obj_get_scroll_y(body))+direction*32,0,maximum),LV_ANIM_ON);
+          id(ui_presenter)->notify_user_activity();
+
   - id: check_normal_idle_media_popup
     then:
       - lambda: |-
+          if(onx_notification::current.visible)return;
           auto &popup=onx_media::idle_popup;
           const auto now=id(ha_time).now();
           const bool sleep_due=now.is_valid() && id(ui_presenter)->should_enter_sleep_mode(now.hour,now.minute);

@@ -49,6 +49,67 @@ lvgl:
                 id: normal_action_feedback_icon
                 align: center
                 src: action_sent_img
+      - obj:
+          id: normal_message_overlay
+          x: 0
+          y: 0
+          width: 240
+          height: 240
+          radius: 120
+          bg_color: 0x1A1A1A
+          bg_opa: COVER
+          border_width: 0
+          pad_all: 0
+          clickable: false
+          scrollable: false
+          hidden: true
+          widgets:
+            - label:
+                align: top_mid
+                y: 20
+                text_font: fonts_MiSans_Bold_12
+                text_color: 0x62B0FF
+                text: "Notification"
+            - label:
+                id: normal_message_title
+                align: top_mid
+                y: 43
+                width: 184
+                height: 44
+                long_mode: WRAP
+                text_align: CENTER
+                text_font: fonts_MiSans_Medium_18
+                text_color: 0xFFFFFF
+                text: ""
+            - obj:
+                id: normal_message_body
+                align: top_mid
+                y: 94
+                width: 184
+                height: 100
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 0
+                scrollable: true
+                clickable: false
+                widgets:
+                  - label:
+                      id: normal_message_text
+                      x: 0
+                      y: 0
+                      width: 176
+                      long_mode: WRAP
+                      text_font: fonts_MiSans_Medium_16
+                      text_color: 0xFFFFFF
+                      text: ""
+            - label:
+                align: top_mid
+                y: 208
+                width: 184
+                text_align: CENTER
+                text_font: fonts_MiSans_Bold_12
+                text_color: 0xB8B8B8
+                text: "Turn to scroll · Press to dismiss"
   pages:
     - id: device_empty
       bg_color: 0x000000

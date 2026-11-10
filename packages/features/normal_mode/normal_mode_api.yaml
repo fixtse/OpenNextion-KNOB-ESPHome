@@ -11,3 +11,29 @@ api:
       # The callback runs after the departing client has been removed. Recheck
       # the remaining state-subscribing clients instead of forcing offline.
       - script.execute: refresh_normal_ha_connection_state
+  actions:
+    - action: show_message
+      description: Show a display reminder for 60 seconds, or until the knob is pressed.
+      variables:
+        title: string
+        message: string
+      then:
+        - lambda: |-
+            onx_notification::current.show(title,message,60);
+            id(refresh_normal_message_popup).execute();
+    - action: show_message_with_timeout
+      description: Show a display reminder with a custom timeout; zero means until dismissed.
+      variables:
+        title: string
+        message: string
+        timeout_seconds: int
+      then:
+        - lambda: |-
+            onx_notification::current.show(title,message,timeout_seconds);
+            id(refresh_normal_message_popup).execute();
+    - action: dismiss_message
+      description: Dismiss the current or pending display reminder.
+      then:
+        - lambda: |-
+            onx_notification::current.dismiss();
+            id(refresh_normal_message_popup).execute();
