@@ -9,3 +9,8 @@ Images and compressed buffers are RAM-only. The Python schema's buffer_size is
 accepted for compatibility; the network worker sizes its bounded PSRAM buffer
 from the response length instead. HTTP conditional-cache headers are unused;
 the knob retains its completed artwork until the supplied URL changes.
+
+Grayscale JPEGs use an explicit RGB565 callback. JPEGDEC 1.8.4's grayscale
+writer emits 16-bit pixels even when RGB8888 is requested; reading those as
+32-bit pixels corrupts the artwork. The callback respects the block row pitch
+and clipped width. Color JPEGs retain ESPHome's normal decoder path.

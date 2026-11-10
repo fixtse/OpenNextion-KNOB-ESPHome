@@ -25,11 +25,51 @@ static constexpr uint32_t WORKER_STACK_BYTES=12*1024;
 class PsramJpegDecoder final : public runtime_image::JpegDecoder {
  public:
   using runtime_image::JpegDecoder::JpegDecoder;
+  int decode(uint8_t *buffer,size_t size) override {
+    if(expected_size_>0 && size<expected_size_)return 0;
+    if(!jpeg_.openRAM(buffer,size,draw_grayscale_))return runtime_image::DECODE_ERROR_INVALID_TYPE;
+    // JPEGDEC 1.8.4's grayscale writer always emits RGB565, even when the
+    // caller requests RGB8888. ESPHome's normal callback reads two uint16_t
+    // words per pixel, producing stripes and reading beyond valid pixels.
+    // Keep its color path unchanged; decode grayscale with an explicit format.
+    const bool grayscale=jpeg_.getBpp()==8;
+    jpeg_.close();
+    if(!grayscale)return runtime_image::JpegDecoder::decode(buffer,size);
+    if(!jpeg_.openRAM(buffer,size,draw_grayscale_))return runtime_image::DECODE_ERROR_INVALID_TYPE;
+    const auto type=jpeg_.getJPEGType();
+    if(type==JPEG_MODE_INVALID || type==JPEG_MODE_PROGRESSIVE) {
+      jpeg_.close();return runtime_image::DECODE_ERROR_UNSUPPORTED_FORMAT;
+    }
+    jpeg_.setUserPointer(this);
+    jpeg_.setPixelType(RGB565_LITTLE_ENDIAN);
+    if(!set_size(jpeg_.getWidth(),jpeg_.getHeight())) {
+      jpeg_.close();return runtime_image::DECODE_ERROR_OUT_OF_MEMORY;
+    }
+    const bool okay=jpeg_.decode(0,0,0);
+    jpeg_.close();
+    if(!okay)return runtime_image::DECODE_ERROR_INTERNAL_DECODER_ERROR;
+    decoded_bytes_=size;
+    return static_cast<int>(size);
+  }
   static void *operator new(size_t size,const std::nothrow_t &) noexcept {
     return heap_caps_malloc(size,MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   }
   static void operator delete(void *p) noexcept { heap_caps_free(p); }
   static void operator delete(void *p,const std::nothrow_t &) noexcept { heap_caps_free(p); }
+ private:
+  static int draw_grayscale_(JPEGDRAW *block) {
+    auto *decoder=static_cast<PsramJpegDecoder *>(block->pUser);
+    if(!decoder || block->iBpp!=16)return 0;
+    App.feed_wdt();
+    // iWidth is the row pitch; iWidthUsed excludes padding on edge blocks.
+    for(int y=0;y<block->iHeight;++y)for(int x=0;x<block->iWidthUsed;++x) {
+      const uint16_t pixel=block->pPixels[y*block->iWidth+x];
+      const uint8_t r=(pixel>>11)&31,g=(pixel>>5)&63,b=pixel&31;
+      decoder->draw(block->x+x,block->y+y,1,1,
+          Color((r<<3)|(r>>2),(g<<2)|(g>>4),(b<<3)|(b>>2),255));
+    }
+    return 1;
+  }
 };
 #endif
 bool OnlineImage::memory_ready() {
