@@ -4,6 +4,9 @@
 
 #include "esphome/components/logger/logger.h"
 #include "esphome/components/wifi/wifi_component.h"
+#ifdef USE_IMPROV_BLE
+#include "esphome/components/improv_ble/improv_ble_component.h"
+#endif
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
 #ifdef USE_ESP32
@@ -110,7 +113,18 @@ void OnxModeManager::evaluate_runtime_mode_() {
 void OnxModeManager::update_provisioning_state_() {
   // has_sta() reports configured/restored networks even before a particular AP
   // is selected or reachable. A transient disconnect is not lost credentials.
-  const bool needs_setup = wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->has_sta();
+  auto *wifi_component = wifi::global_wifi_component;
+  bool ble_setup_active = false;
+#ifdef USE_IMPROV_BLE
+  auto *ble = improv_ble::global_improv_component;
+  ble_setup_active = ble != nullptr && ble->is_active() &&
+                     ble->get_improv_state() != improv::STATE_PROVISIONED;
+#endif
+  // Improv installs candidate credentials before they have connected. Keep the
+  // setup screen throughout authorization/connection, but a live connection
+  // always wins over stale provisioning state.
+  const bool needs_setup = wifi_component == nullptr ||
+      (!wifi_component->is_connected() && (!wifi_component->has_sta() || ble_setup_active));
   if (needs_setup != this->provisioning_mode_enabled_) {
     this->provisioning_mode_enabled_ = needs_setup;
     ESP_LOGI(TAG, "%s", needs_setup ? "Waiting for native Wi-Fi provisioning"

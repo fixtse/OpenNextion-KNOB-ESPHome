@@ -1455,8 +1455,50 @@ script:
             lv_label_set_text(obj, text.c_str());
           };
           const std::string ssid = get_provisioning_ap_ssid();
-          set_text(id(normal_provisioning_ssid), ssid);
-          set_text(id(normal_add_hmi_ssid), ssid);
+          const auto state = id(onx_improv)->get_improv_state();
+          const auto error = id(onx_improv)->get_improv_error_state();
+          const bool connected = wifi::global_wifi_component != nullptr &&
+                                 wifi::global_wifi_component->is_connected();
+          std::string address;
+          if (connected) {
+            for (const auto &ip : wifi::global_wifi_component->get_ip_addresses()) {
+              if (!ip.is_set() || !ip.is_ip4()) continue;
+              char buffer[network::IP_ADDRESS_BUFFER_SIZE] = {0};
+              ip.str_to(buffer);
+              address = std::string("http://") + buffer;
+              break;
+            }
+          }
+          set_text(id(normal_add_hmi_title), connected ? "Wi-Fi connected" : "Connecting to Wi-Fi");
+          set_text(id(normal_add_hmi_ssid), connected ? address : "Please wait");
+          set_text(id(normal_add_hmi_hint), connected
+              ? "Open this address to choose controls.\nAdd ESPHome in Home Assistant.\nTurn the knob for more options."
+              : "Saved Wi-Fi will reconnect.\nNo hotspot setup needed.");
+          std::string title = "Wi-Fi setup";
+          std::string status = ssid;
+          std::string hint = "Join this Wi-Fi hotspot.\nOpen http://192.168.4.1";
+          if (connected) {
+            title = "Wi-Fi connected";
+            status = "Ready to configure";
+            hint = "Open the device webpage\nto choose your controls.";
+          } else if (state == improv::STATE_PROVISIONING) {
+            title = "Bluetooth setup";
+            status = "Connecting to Wi-Fi";
+            hint = "Please wait.\nKeep setup open on your phone.";
+          } else if (state == improv::STATE_AWAITING_AUTHORIZATION) {
+            title = "Bluetooth setup";
+            status = "Press the knob\nto allow setup";
+            hint = "Continue on your phone, or join\n" + ssid + "\nhttp://192.168.4.1";
+          } else if (state == improv::STATE_AUTHORIZED) {
+            title = "Bluetooth setup";
+            status = error == improv::ERROR_UNABLE_TO_CONNECT ? "Could not connect" : "Ready for Wi-Fi";
+            hint = error == improv::ERROR_UNABLE_TO_CONNECT
+                ? "Check the network and password.\nTry again on your phone."
+                : "Choose your Wi-Fi network\non your phone.";
+          }
+          set_text(id(normal_provisioning_title), title);
+          set_text(id(normal_provisioning_ssid), status);
+          set_text(id(normal_provisioning_hint), hint);
 
   - id: emit_normal_switch_control_event
     mode: restart

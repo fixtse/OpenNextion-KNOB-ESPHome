@@ -89,6 +89,7 @@ esp32_ble:
 
 # BLE provisioning is authorized with a physical knob press.
 improv_ble:
+  id: onx_improv
   authorizer: key_btn
   authorized_duration: 1min
   wifi_timeout: 10s

@@ -72,6 +72,23 @@ interval:
           then:
             - lvgl.page.show: normal_provisioning_page
             - script.execute: refresh_normal_provisioning_page
+      # Always leave the setup screen once connected, including restored
+      # devices with existing entities or an already paired HA connection.
+      - if:
+          condition:
+            lambda: |-
+              return id(ui_presenter)->is_normal_mode_active() &&
+                     wifi::global_wifi_component != nullptr &&
+                     wifi::global_wifi_component->is_connected() &&
+                     lv_scr_act() == id(normal_provisioning_page)->obj;
+          then:
+            - lambda: |-
+                id(normal_page_index) = 0;
+                id(normal_device_detail_active) = false;
+                id(ui_presenter)->notify_user_activity();
+            - script.execute:
+                id: show_normal_device_entry_page
+                direction: 0
       - if:
           condition:
             lambda: |-

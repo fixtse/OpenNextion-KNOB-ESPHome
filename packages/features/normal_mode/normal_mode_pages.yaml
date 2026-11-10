@@ -3180,73 +3180,29 @@ lvgl:
             text_font: fonts_MiSans_Bold_16
             text_color: 0xFFFFFF
             text: "Connect to Device AP"
-        - obj:
-            width: 213
-            height: 42
+        - label:
+            id: normal_provisioning_ssid
+            width: 214
+            height: 58
             align: TOP_MID
-            y: 100
-            bg_color: 0x101820
-            border_color: 0x25D900
-            border_width: 1
-            radius: 6
-            pad_all: 0
-            widgets:
-              - image:
-                  src: vector_img
-                  x: 7
-                  y: 8
-              - label:
-                  id: normal_provisioning_ssid
-                  text: "ONX2424G013-xxxx"
-                  x: 37
-                  y: 10
-                  text_font: fonts_MiSans_Bold_16
-                  text_color: 0x29E800
-        - obj:
-            width: 180
-            height: 24
-            align: TOP_LEFT
-            x: 34
-            y: 151
-            bg_opa: TRANSP
-            border_width: 0
-            pad_all: 0
-            widgets:
-              - image:
-                  src: emojione_monotone_digit_one_img
-                  x: 0
-                  y: 2
-              - label:
-                  text: "Connect to Device AP"
-                  x: 23
-                  y: 2
-                  text_font: fonts_MiSans_Medium_12
-                  text_color: 0xD8D8D8
-        - obj:
-            width: 180
-            height: 24
-            align: TOP_LEFT
-            x: 34
-            y: 177
-            bg_opa: TRANSP
-            border_width: 0
-            pad_all: 0
-            widgets:
-              - image:
-                  src: emojione_monotone_digit_two_img
-                  x: 0
-                  y: 2
-              - label:
-                  text: "Open url: http://192.168.4.1"
-                  x: 23
-                  y: 2
-                  text_font: fonts_MiSans_Medium_12
-                  text_color: 0xD8D8D8
+            y: 103
+            text_align: CENTER
+            text_font: fonts_MiSans_Bold_16
+            text_color: 0x29E800
+            text: "Preparing Wi-Fi setup"
+        - label:
+            id: normal_provisioning_hint
+            width: 200
+            height: 52
+            align: TOP_MID
+            y: 166
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_12
+            text_color: 0xD8D8D8
+            text: "Use Bluetooth or the\nWi-Fi hotspot to connect."
     - id: normal_add_hmi_page
       bg_color: 0x272727
       border_width: 0
-      outline_width: 0
-      radius: 0
       pad_all: 0
       scrollable: false
       widgets:
@@ -3255,103 +3211,34 @@ lvgl:
             width: 43
             height: 43
             align: TOP_MID
-            y: 10
+            y: 15
         - label:
-            x: 0
-            y: 55
-            align: top_mid
-            text_font: fonts_MiSans_Bold_16
-            text_color: 0xFFFFFF
-            text: "Add Device to"
-        - label:
-            x: 0
-            y: 73
-            align: top_mid
-            text_font: fonts_MiSans_Bold_16
-            text_color: 0xFFFFFF
-            text: "Home Assistant"
-        - obj:
-            width: 213
-            height: 42
+            id: normal_add_hmi_title
+            y: 68
             align: TOP_MID
-            y: 100
-            bg_color: 0x101820
-            border_color: 0x25D900
-            border_width: 1
-            radius: 6
-            pad_all: 0
-            widgets:
-              - image:
-                  src: icon_edit_img
-                  x: 7
-                  y: 8
-              - label:
-                  id: normal_add_hmi_ssid
-                  text: "ONX2424G013-xxxx"
-                  x: 37
-                  y: 10
-                  text_font: fonts_MiSans_Bold_16
-                  text_color: 0x29E800
-        - obj:
-            width: 180
-            height: 24
-            align: TOP_LEFT
-            x: 34
-            y: 144
-            bg_opa: TRANSP
-            border_width: 0
-            pad_all: 0
-            widgets:
-              - image:
-                  src: emojione_monotone_digit_one_img
-                  x: 0
-                  y: 2
-              - label:
-                  text: "Open Home Assistant"
-                  x: 23
-                  y: 2
-                  text_font: fonts_MiSans_Medium_12
-                  text_color: 0xD8D8D8
-        - obj:
-            width: 190
-            height: 24
-            align: TOP_LEFT
-            x: 34
-            y: 162
-            bg_opa: TRANSP
-            border_width: 0
-            pad_all: 0
-            widgets:
-              - image:
-                  src: emojione_monotone_digit_two_img
-                  x: 0
-                  y: 2
-              - label:
-                  text: "Setting > Devices & Services"
-                  x: 23
-                  y: 2
-                  text_font: fonts_MiSans_Medium_12
-                  text_color: 0xD8D8D8
-        - obj:
-            width: 180
-            height: 24
-            align: TOP_LEFT
-            x: 34
-            y: 180
-            bg_opa: TRANSP
-            border_width: 0
-            pad_all: 0
-            widgets:
-              - image:
-                  src: emojione_monotone_digit_three_img
-                  x: 0
-                  y: 2
-              - label:
-                  text: "Add ESPHome Device"
-                  x: 23
-                  y: 2
-                  text_font: fonts_MiSans_Medium_12
-                  text_color: 0xD8D8D8
+            width: 214
+            text_align: CENTER
+            text_font: fonts_MiSans_Bold_16
+            text_color: 0xFFFFFF
+            text: "Connecting to Wi-Fi"
+        - label:
+            id: normal_add_hmi_ssid
+            y: 102
+            align: TOP_MID
+            width: 218
+            text_align: CENTER
+            text_font: fonts_MiSans_Bold_16
+            text_color: 0x29E800
+            text: "Please wait"
+        - label:
+            id: normal_add_hmi_hint
+            y: 139
+            align: TOP_MID
+            width: 204
+            text_align: CENTER
+            text_font: fonts_MiSans_Medium_12
+            text_color: 0xD8D8D8
+            text: "Saved Wi-Fi will reconnect.\nNo hotspot setup needed."
     - id: normal_setup_help_page
       bg_color: 0x272727
       border_width: 0
