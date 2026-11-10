@@ -1,4 +1,46 @@
-# Configurable knob gestures and desktop control
+# Make turning do what you want
+
+[All guides](../README.md#find-your-guide) · [Web configuration](web-configuration.md#custom-turn-actions)
+
+Turn the knob into a control for your own Home Assistant routines. For example,
+turn right to raise your computer's volume, turn left to lower it, and show the
+new volume on screen. Your computer needs to be controllable from Home Assistant
+already; this feature does not install a computer connection for you.
+
+## Choose your actions
+
+1. Open the knob webpage, select a slot and choose the entity you want on screen.
+2. Open **Gestures** and use **Choose action** for **Turn clockwise** and **Turn counterclockwise**. Pick your existing Home Assistant script or automation.
+3. Leave **Hold + turn** at Default unless you want separate actions while pressing the knob down.
+4. Set **Movement step** to how much each turn should change the value. Start with 1.
+5. Click **Save slot**, then open that control on the physical knob and turn it.
+
+Ordinary turns do **not** require holding the knob. The optional held turns are
+separate. Actions run only inside the opened control, so you can still turn to
+browse the main list. Hold without turning to go back.
+
+Choose **Default** to keep a gesture's usual behavior. To ignore a particular
+gesture, type `none` in its action field. For a climate control's short press,
+use the separate **Press action** tab; Default keeps the usual mode control.
+
+## Show the result
+
+Choose a **Feedback entity**, such as a sensor reporting computer volume. Leave
+it empty to use the displayed entity. Enable **Show a brief popup** to see the
+new value briefly after turning, without interrupting further input.
+
+If your script returns a value directly, you can enable **Read script responses**
+instead. Scripts must be prepared to return the value as shown below. You can
+leave responses and events off for a simple setup. A brief feedback popup does
+not change the Home Assistant sensor itself.
+
+If nothing happens, check the chosen action in Home Assistant and enable the
+knob's [permission to perform actions](setup.md#add-it-to-home-assistant).
+
+## Advanced automation and script examples
+
+The remaining sections are for preparing Home Assistant scripts or asking someone
+to connect an existing desktop integration. Replace example names with your own.
 
 In the knob's web configuration, choose an entity and open **Gestures**. You can
 assign a script or automation independently to:

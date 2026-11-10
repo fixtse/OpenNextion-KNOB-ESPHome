@@ -5,6 +5,6 @@
 /secrets.yaml
 __pycache__/
 
-/firmware/builds/
+/firmware/
 
 /tests/artifacts/

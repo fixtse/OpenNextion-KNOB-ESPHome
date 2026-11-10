@@ -1,4 +1,33 @@
-# Home Assistant display notifications
+# Reminders and calendar messages on your knob
+
+[All guides](../README.md#find-your-guide) · [Timers](web-configuration.md#timers-without-clutter)
+
+Put a useful message where you can see it: washing finished, a door left open,
+or your next meeting. Home Assistant sends the message; you do not need to give
+it a display slot. Press the knob to dismiss, or turn to scroll longer text.
+The underlying control is not changed by those movements.
+
+## Send your first reminder without writing YAML
+
+1. In Home Assistant, open **Settings → Automations & scenes** and create an automation.
+2. Choose when it should run, such as a time of day or a sensor changing state.
+3. Add an action and search for **show_message** under your knob's ESPHome device name.
+4. Fill in **title** (for example, “Reminder”) and **message** (“Take the washing out”).
+5. Save the automation and try its message action. The popup lasts 60 seconds unless dismissed sooner.
+
+For a different duration, choose **show_message_with_timeout** and fill in
+**timeout_seconds**. Use 120 for two minutes, or 0 to keep it until you dismiss it.
+Use **dismiss_message** in an automation to clear it remotely. If the actions
+are missing, update the knob and let its ESPHome integration reconnect.
+
+Timers take priority over messages. Messages wait while the screen is deliberately
+off, during scheduled sleep or during setup. Only the newest message is kept,
+and messages do not survive restarting the knob.
+
+## Copy-and-adapt examples
+
+These examples are for Home Assistant's YAML editor. The calendar example below
+shows a meeting title automatically, rather than needing to type it each time.
 
 The knob exposes ESPHome actions in Home Assistant for reminders, calendar events,
 and messages from other automations. Install the firmware and let Home Assistant

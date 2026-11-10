@@ -1,45 +1,81 @@
-# Native knob controls
+# Using your knob
 
-These controls use ESPHome's Native API. Enable **Allow the device to perform
-Home Assistant actions** for the device in Home Assistant. A connected API alone
-does not grant permission to run actions.
+[All guides](../README.md#find-your-guide) · [Change your settings](web-configuration.md)
 
-| Entity | Rotate | Short press | Hold and rotate |
+Turn to browse your controls, then press to open one. Turn again to adjust it.
+Hold without turning to return to the list. The curved icons along the lower
+edge help you find your place; the current page stays in the center.
+
+## Everyday controls
+
+| Control | Turn | Short press | Hold and turn |
 | --- | --- | --- | --- |
-| Climate | Adjust selected temperature, range endpoint, or humidity | Cycle advertised HVAC modes, or confirm a previewed option | Choose temperature, whole range, low/high endpoint, preset, fan, swing, or humidity |
-| Fan | Adjust percentage using `percentage_step`, or preview a secondary option | Toggle power, or confirm the preview | Choose speed, preset, oscillation, or direction |
-| Number / input number | Adjust on the advertised min/max/step grid | No additional action | — |
-| Select / input select | Preview an option | Apply preview | — |
-| Scene / button / input button | — | Activate | — |
-| Media player | Adjust volume | Play/pause a loaded track; run the configured automation/script when idle | Next track clockwise; previous track counterclockwise |
+| Lights | Adjust the selected light setting | Switch on/off | Choose another supported light setting |
+| Climate | Adjust the selected temperature or setting | Change heating/cooling mode, confirm an option, or run your custom press action | Choose temperature, range endpoints, preset, fan, swing or humidity where supported |
+| Fans | Adjust speed or preview an option | Switch on/off or confirm an option | Choose speed, preset, oscillation or direction where supported |
+| Numbers | Adjust the value | No extra action needed | — |
+| Choices | Browse the options | Confirm your choice | — |
+| Scenes and buttons | — | Activate | — |
+| Media players | Adjust volume | Play/pause; run your chosen action when idle | Next track clockwise; previous track counterclockwise |
+| Weather | Browse readings and daily forecasts | Retry unavailable forecasts | — |
 
-Secondary settings appear only when Home Assistant advertises the capability
-and its required attributes. Release the knob after choosing a setting, then
-turn it normally to adjust. Hold without turning to return to the device list.
-Scenes and buttons show **Action sent**, rather than claiming device execution
-has been confirmed. Their initial `unknown` timestamp does not disable activation.
+Some devices offer fewer options. Hold and turn to choose a secondary setting,
+release, then turn normally to adjust it. Home Assistant must allow the knob to
+perform actions: see [connection setup](setup.md#add-it-to-home-assistant).
 
-Climate mode lists and other options accept both the Python-style strings
-sent through ESPHome and JSON lists. A thermostat's operating activity (such as
-`heating` or `idle`) is distinct from the HVAC mode requested by a short press.
+A brief checkmark means the request was sent, rather than a guarantee that the
+other device finished it. If **No confirmation** appears, check the device and
+permissions in Home Assistant. Missing or unavailable readings show clearly;
+reconnecting does not replay your old turns.
 
-Requested values appear immediately. Rotation is combined into updates at most
-five times per second per control, with the final detent retained. Temperature
-and HVAC mode requests remain independent, so pressing while a temperature
-command is pending does not discard that temperature. Feedback acknowledges the
-requested value; intermediate feedback updates the confirmed cache without
-replacing the requested display. After five seconds without confirmation, the
-confirmed value returns and **No confirmation** appears briefly. Check the HA
-action permission if every command times out.
+## Music and playlists
 
-Leaving the detail page, losing the HA connection, or making the entity
-unavailable cancels queued commands and previews. Reconnecting waits for a fresh
-state subscription before enabling controls; it never replays old input.
-The offline overlay distinguishes missing initial state from an unavailable
-entity and a disconnected Home Assistant connection.
+Open a media player to see its artwork, track details and progress ring.
+Turn for volume; press to play/pause a loaded track. When idle, pressing can
+run the script or automation you selected under **Press action**.
 
-Light color temperature now uses 100 increments over the advertised Kelvin
-range. Existing stored Kelvin values and legacy ten-step values remain readable.
+[Add playlists or radio stations](web-configuration.md#playlists-and-stations)
+in that player's **Playlists** tab first. On the knob:
+
+1. Hold until **Release now / Open playlists** appears (about half a second), then release.
+2. Turn through the list to highlight what you want.
+3. Press to start it. The screen returns to the media player automatically.
+
+Continue holding past the playlist cue (about 1.5 seconds total) to return to the
+device list instead. You can also use the playlist hold-and-release gesture to
+close the list. Without playlists configured, the normal shorter return hold applies.
+Holding and turning in the player skips tracks where the player supports it.
+
+## Your own turn and press actions
+
+The webpage's **Gestures** tab can replace ordinary clockwise/counterclockwise
+turns independently. Optional held turns are configured separately. For example,
+a sensor can show computer volume while turning runs the Home Assistant script
+that changes it. Custom turns work while that control is opened, so main-list
+navigation stays familiar.
+
+Climate controls also accept a custom **Press action**. Choose **Default** to keep
+their normal mode control. [Set up custom actions and feedback](gesture-controls.md).
+
+## Timers and reminders
+
+Active supported timers can appear automatically, even when their normal pages
+are hidden. Turn to return to browsing; an active timer may return after ten idle
+seconds. Start, pause or cancel it in Home Assistant or on the originating speaker.
+[Timer setup](web-configuration.md#timers-without-clutter).
+
+A Home Assistant reminder appears over your current page. **Press to dismiss**
+or **turn to scroll** longer text. Those movements do not operate the control
+underneath. Only the latest message is kept; timer popups have priority.
+[Create reminders and calendar messages](display-notifications.md).
+
+## When you leave it idle
+
+Choose **Clock** or **Playing media** in **Device settings → Idle screen**.
+Playing media uses an actively playing configured player from the main carousel
+and falls back to the clock when stopped. Timers and scheduled sleep keep priority.
+The automatic idle view and scheduled screen-off hours are separate settings.
+[Display and sleep options](web-configuration.md#display-and-idle-screen).
 
 ## Reset Wi-Fi and device configuration
 
@@ -55,55 +91,3 @@ A press used to dismiss a [display notification](display-notifications.md)
 when a notification appears while the knob is already held. The press stays
 consumed until release, even if the notification times out or Home Assistant
 dismisses it first. Release the knob before starting a separate reset hold.
-
-## Design reference
-
-The capability-dependent fan and climate controls follow the approach used by
-[OpenHAPanel entity handlers](https://github.com/OpenNextion/OpenHAPanel/tree/main/main/entity_handlers).
-The shared confirmed-state/request separation adapts the
-[entity-store design](https://github.com/OpenNextion/OpenHAPanel/tree/main/components/ha_entity_store)
-to this project's ESPHome Native API and rotary input. No OpenHAPanel board
-firmware or touchscreen layout is used.
-
-## Validation
-
-In the project's Codespace, run `c++ -std=c++17 tests/test_control_state.cpp -o
-/tmp/test_control_state && /tmp/test_control_state`, the existing C++ and Python
-regressions, the configuration browser tests, and ESPHome 2026.10.2 configuration
-validation and compilation. Hardware and live HA behavior still require a device.
-
-## Playlist and station menu
-
-On the knob's configuration webpage, choose a media player slot and add entries
-in the **Playlists** tab. Choose a script or automation with the shared action
-picker; its name fills automatically and can be customized. Configure that action
-to start the playlist or station on the intended player. Up to eight
-entries per slot are saved on the knob and included in configuration backups.
-Automation conditions are respected. These actions do not receive a player
-parameter: choose the player in the Home Assistant script or automation itself.
-
-With entries configured, press and hold in the media player view. A visible bar
-fills; at **0.5 seconds**, **Release now / Open playlists** appears. Release while
-that cue is visible to open the list. Rotate to highlight an entry and short-press
-to run it. **Action sent** acknowledges the request, not confirmed playback.
-Medium-press again to return to the player. Continue holding to **1.5 seconds** to
-return to the device list. Without entries configured, the usual 688ms back
-threshold remains. No double press is needed.
-
-Short presses on the player view still play/pause or run its idle action. Holding
-and turning there still skips tracks. In the playlist menu, turning while holding
-is ignored and suppresses the release action. Disconnecting, leaving the player,
-or entering standby cancels the menu; reconnecting never launches an entry.
-
-## Press feedback
-
-Executable entity presses show a small checkmark icon for 900ms, without text.
-The icon appears after an action is sent through the API or a local GPIO action
-completes. It covers climate/fan controls, select confirmations, scenes/buttons,
-media play/pause, script/automation bindings, playlist entries, light/switch
-power toggles, sensor press events, and cover commands. It acknowledges dispatch,
-not successful Home Assistant execution or playback. Existing pending-state and
-timeout messages remain available in the detail view. Navigation, unavailable
-actions, and bindings set to **No action** do not show the icon. Leaving the
-entity or entering standby clears it. The icon is bundled with firmware and
-requires no network download.

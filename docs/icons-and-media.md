@@ -1,4 +1,22 @@
-# Entity icons and music progress
+# Icons, album art and playback progress
+
+[All guides](../README.md#find-your-guide) · [Playlists](web-configuration.md#playlists-and-stations)
+
+The knob uses the icons you chose in Home Assistant and shows album art when
+your media player provides it. Around the player, a colored ring follows the
+track's progress. Live radio or tracks without a known duration do not show a
+made-up progress ring.
+
+## Change the look
+
+- Change an entity's icon in Home Assistant, then open the knob webpage's **Home Assistant** section and click **Refresh entity list** to sync saved controls.
+- Pick the progress-ring color in **Device settings → Media progress ring**, then **Save device settings**. Paused playback uses the same color at lower brightness.
+- If an icon cannot load, a built-in icon keeps the control recognizable. New downloaded icons need internet access.
+- If artwork is missing, check whether that player provides artwork in Home Assistant. **Download diagnostics** can help someone investigate a persistent problem.
+
+[Display settings](web-configuration.md#display-and-idle-screen) · [Media controls](knob-controls.md#music-and-playlists)
+
+## Technical details
 
 The knob displays the MDI icon chosen for each Home Assistant entity. On the
 configuration page, refresh the entity list and save the affected slots to copy
@@ -23,7 +41,7 @@ its artwork access parameter where provided; no device-stored bearer token is us
 The media detail page has a full circular progress ring at the screen edge. It
 uses Home Assistant's `media_position`, `media_position_updated_at`, and
 `media_duration`, with smooth local updates every 100ms while playing. Pausing
-freezes the ring and changes it to amber; seek feedback and track changes reset
+freezes the ring and dims the selected color; seek feedback and track changes reset
 the progress anchor. Idle, unavailable, disconnected, and unknown-duration/live
 streams hide the ring instead of displaying invented progress. This indicator
 shows progress and does not seek when operated.

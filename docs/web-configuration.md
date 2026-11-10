@@ -1,222 +1,183 @@
-# Knob web configuration
+# Make the knob yours
 
-Open the knob's IP address or its ESPHome **Visit** link. The embedded interface
-has separate pages for display slots, Home Assistant, device settings, and backups.
-All browser assets are served by the knob; no frontend build or external CDN is required.
+[All guides](../README.md#find-your-guide) · [First-time setup](setup.md) · [Using the knob](knob-controls.md)
 
-## Display slots
+Open **Visit** on the knob's Home Assistant device page, or open the web address
+shown on the knob. Use a phone or computer on a network that can reach it.
+Settings stay on the knob after you save them.
 
-Choose entities by name, ID, domain, or room. Each slot can have a custom display
-name and an automation/script press action. Climate and media players retain their
-native controls; media players can run a configured action when idle. Entity
-control types are detected automatically; the advanced type selector is removed.
-Manual entity IDs
-remain available when the catalogue cannot be loaded.
+## Add and arrange controls
 
-Move slots earlier or later, or duplicate one into an empty slot. A dot marks
-unsaved slots. **Save slot** applies the selected slot; **Save all** saves dirty
-slots sequentially. If a save fails, successful slots stay saved and the remaining
-changes stay dirty. Discard restores the last successfully saved values.
-The round preview describes configuration and controls, not live device state.
+1. Open **Display & actions** and select a slot. A slot is a place for one control.
+2. In **Display**, click **Choose entity**. Search by name or room and select the Home Assistant item you want.
+3. Give it a shorter **Display name** if you like, then click **Save slot**.
+4. Use **Add slot** for more controls, up to **20**. Move controls earlier/later or duplicate one into an empty slot.
 
-Drafts are kept in this browser tab's session storage, with a recovery prompt after
-reload or Home Assistant sign-in. Closing with pending changes prompts the user.
-A browser that blocks storage cannot guarantee recovery. The theme preference
-(system, light, or dark) is stored locally.
+Start with a few favorites. Empty slots do not need to be filled. The main screen
+shows readings as you browse, and the curved row of icons keeps the selected page
+in the center. Press to open a control.
 
-## Connections and settings
+**Save slot** saves the selected control. **Save all** saves all changed slots.
+Unsaved changes are marked; **Discard changes** restores the last saved version.
+If a save fails, already saved slots stay saved and the others remain marked.
+The browser can offer to recover an unsaved draft after a reload—still save your
+work before closing it.
 
-The status strip distinguishes reachability of the knob, the knob's Home Assistant
-Native API connection, and browser sign-in/catalogue loading. A connected Native API
-does not prove Home Assistant has granted action permissions; the connection page
-explains where to enable them. Status refreshes every 30 seconds while visible.
+The **On your knob** preview shows live readings when available. Switch between
+**Main screen** and **Opened entity** to see each layout. A new entity needs to be
+saved before its readings can load.
 
-Browser sign-in loads the entity catalogue directly from Home Assistant and does
-not set the knob's HA credentials or register its ESPHome integration.
-Only selected entity metadata is persisted on the knob.
+## Press actions
 
-Device settings include brightness (10–100%), standby timeout (1–900 seconds),
-knob sensitivity, standby weather, and scheduled sleep (1–3600 seconds idle).
-Sleep times use Home Assistant's clock; matching start/end times mean all day.
-Saving brightness wakes the backlight. Firmware updates continue through Home
-Assistant's **Firmware Update** entity.
+Open a slot's **Press action** tab to choose what a short press does.
 
-## Backups
+- **Default** keeps the control's usual behavior.
+- **Choose action** lets supported controls run a Home Assistant script or automation.
+- **No action** disables the custom press where supported.
 
-Export downloads the last successfully saved slots and settings, excluding
-credentials. JSON backups have schema version 2 (version 1 imports migrate with defaults) and model ONX2424G013. Imports
-are limited to 64 KB and validated before replacing the local draft. Importing
-never writes to the knob: review, then save slots and device settings separately.
+For **climate** controls, Default keeps the normal heating/cooling mode control;
+you can choose a script or automation instead. For **media players**, the custom
+action runs when the player is idle; a loaded playing or paused track keeps
+play/pause. Some controls need their own press behavior and do not allow an override.
+Automation conditions still apply.
 
-Diagnostics downloads contain firmware, uptime, reset reason, and connection
-flags. They exclude entity names, HA addresses, tokens, and Wi-Fi credentials.
+[Everyday press controls](knob-controls.md) · [Custom climate and turn actions](gesture-controls.md)
 
-## Display feedback and icons
+## Custom turn actions
 
-Command confirmations and errors clear after 2.5 seconds, restoring normal entity
-metadata such as the media artist. Pending commands remain visible until Home
-Assistant confirms them or they time out.
+In **Gestures**, choose separate actions for **Turn clockwise** and **Turn
+counterclockwise**. These are ordinary turns. **Hold + turn** is a separate,
+optional pair of actions. Assignments apply only while that control is opened;
+browsing the main list still works normally.
 
-Opening or refreshing the signed-in browser catalogue also synchronizes the icons
-for saved slots, including icons changed in Home Assistant. Unsaved slot edits are
-preserved. The device downloads MDI icons after its clock has synchronized, retries
-failed downloads with backoff, and tries a second HTTPS source if needed. Built-in
-entity icons remain visible while downloading or when an icon is unavailable. The
-browser connection retry also clears failed icon download delays.
+For example, show a computer-volume sensor and make turning run the Home
+Assistant script that changes your computer's volume. Choose an optional
+**Feedback entity** to show the resulting value, and enable the brief popup if
+you want a quick confirmation. Leave a gesture at **Default** to keep its usual
+behavior. Advanced script responses and event routing are optional.
 
-Icon selection also reads Home Assistant's integration icon resources and
-device-class definitions, which can supply the dashboard icon even when no
-explicit `icon` attribute exists. Native sensor device-class updates provide a
-useful default without browser sign-in. Explicit Home Assistant overrides take
-priority. **Download diagnostics** includes per-slot configured, runtime and
-selected MDI names, download status and the last download error; entity names and
-IDs remain excluded. Registry and integration icons sync when the signed-in
-browser catalogue loads or refreshes.
+[Set up gestures and feedback, with desktop examples](gesture-controls.md)
 
-SVG parsing, rasterizer scratch space, and cached pixels all use PSRAM. This avoids
-large parser allocations failing in the device's constrained internal heap even
-when the icon has downloaded successfully.
+## Playlists and stations
 
-## Live display previews
+1. Choose a media player slot and open **Playlists**.
+2. Click **Add playlist or station** and choose the script or automation that starts it.
+3. Edit the friendly name if needed, arrange the entries and **Save slot**.
 
-The slot preview reads live values from the knob and uses the same presentation
-model as the display. Sensor readings are prominent, names have two lines, and
-icons are compact. Climate and fan controls include mode symbols; media previews
-show the current artwork, artist, volume and playback ring. New entities show a
-clear save-to-load state instead of invented readings. Preview refreshes pause
-while the page is hidden or a configuration save is in progress.
+You can add up to **eight entries per player**. Set the intended player and music
+source in the Home Assistant action itself; adding a row does not create a music
+playlist in Home Assistant.
 
-The configuration page uses an orange/slate palette in light and dark themes,
-with Nunito typography when the browser can load it and a local system fallback.
+On the knob, open the player, hold until **Release now / Open playlists** appears,
+then release. Turn through the Settings-style list and press your choice. The
+knob sends the action and **returns to the player automatically**. A checkmark
+means the request was sent; the player may take a moment to start.
 
-Sensor values are also visible in the main device carousel, without opening the
-entity. The preview's screen selector switches between the carousel and opened
-entity layouts. Media volume always displays a whole-number percentage.
+[Media controls and holding gestures](knob-controls.md#music-and-playlists)
 
-Choose the media progress ring color in **Device settings**, using a preset or
-the custom color picker. The default remains blue; paused playback uses the same
-color at reduced opacity. The color is stored on the knob and included in backups.
+## Sensors and graphs
 
-The weather view's inactivity timer defaults to **From the main screen only**,
-so an opened entity or settings page stays visible. Choose **From any screen**
-for the previous behavior, or **Never automatically** to disable that transition.
-The scheduled sleep timer is configured separately.
+Choose a sensor slot and open **Display**. Keep **Value** for a simple reading,
+or choose **12-hour graph when opened** for a numeric sensor. The main screen
+still shows its current value. Graphs use Home Assistant's recorded statistics
+where available; otherwise they show readings collected since the knob started.
+Some sensors do not have recorded statistics. Gaps stay empty, and locally
+collected history is lost on restart.
 
-Every configured entity now shows a state or value in the main carousel. Lights
-show power and brightness, covers show position and movement, climate and fans
-show their target/speed and mode, and media players show playback state and track.
-Unavailable entities show `--` rather than a stale reading.
+Add a **Secondary entity** for a second piece of information beneath the main
+reading. **Secondary text** can turn that reading into a useful sentence:
 
-Web assets are served directly from flash; the HTML nonce is inserted into a
-chunked response without copying the full page into internal RAM. Live previews
-request only the selected entity. Configuration JSON is measured and serialized
-completely (up to 16 KB), so large configurations never receive a truncated JSON
-response from ESPHome's generic serializer.
+| Write this | What it shows |
+| --- | --- |
+| `{value} {unit}` | The secondary reading and its unit |
+| `Resets {relative}` | A relative time for a date/time entity |
+| `Resets {relative} ({time})` | Relative time plus the clock time |
+| `Next: {date}` | A date using your chosen format |
+| `{datetime}` | Both the date and time |
 
-Carousel readings, context, names and dot pagination are children of each page,
-so they move together during rotary navigation. Compact dots replace the numeric
-page counter. Names have a separate bottom margin, and scaled icon coordinates
-account for LVGL's center pivot. Sensor detail icons sit below the reading while
-the sensor heading remains centered.
+For example, show remaining allowance as the main sensor and its reset time as
+the secondary entity. Secondary text replaces the usual name below the reading.
+Missing data is shown explicitly rather than as a made-up reading.
 
-## Media player gestures
+## Timers without clutter
 
-Turn to adjust volume. While a track is playing, paused or buffering, a short
-press pauses/resumes playback. When idle/off, the short press runs the automation
-or script selected under **When idle** on the website; choose **No action** to
-disable it. A paused track resumes instead of running the idle action.
+Add a Home Assistant timer or a supported voice/speaker timer sensor to a slot.
+Then select **Hide timer from carousel** in **Display** if you do not want a
+regular page for it. It still counts toward the **20 configured slots**, and its
+automatic popup stays active.
 
-Press and turn clockwise for the next track, counterclockwise for the previous
-track. Releasing after that gesture sends no additional action. Long press still
-returns to the main screen. Playback/track actions respect Home Assistant's
-advertised capabilities.
+The knob supports Home Assistant `timer.*`, compatible Voice PE/SoundSense voice
+timer sensors and Google Home integration timer sensors. Ordinary text sensors
+are not automatically treated as timers.
 
-Paused playback displays a pause badge over the cover. Sending a next/previous
-track action shows its badge for one second, then restores the pause badge if
-still paused. The badge clears on leaving the media view or losing its connection.
+Ringing timers take priority, followed by the nearest running timer and paused
+timers. Active timers appear while browsing, or after ten idle seconds on an
+opened control. Turn to return to browsing; an active timer can return after ten
+idle seconds. Timer control remains in Home Assistant or the originating speaker.
+Settings, scheduled sleep and a deliberately switched-off screen are not interrupted.
 
-Climate views use a larger centered HVAC emoji/mode heading without a separate
-entity icon. With preset, fan or swing mode selected, pressing cycles that selected
-feature; temperature controls retain the HVAC-mode press action.
+## Display and idle screen
 
-### Opened weather pages
+Open **Device settings**, make your choices, then **Save device settings**.
 
-Open a weather entity and turn the dial to browse current temperature, feels-like
-and humidity; wind, pressure, visibility and UV; then daily forecasts for up to
-five days, with high/low temperatures and rain probability. Missing measurements
-show a dash. The live preview uses the same selected page as the screen.
+| Setting | Choose what suits you |
+| --- | --- |
+| Screen brightness | 10–100%. Saving brightness turns the screen on. |
+| Knob sensitivity | Fast, Balanced or Fine. |
+| Standby after | How long to wait before the automatic idle view, from 1–900 seconds. |
+| Automatic idle screen | Allow it from the main screen only, from any screen, or never automatically. |
+| Idle screen | **Clock** is the default. **Playing media** shows an actively playing configured player from the main carousel, with the clock when stopped. |
+| Standby weather | Choose the weather entity used by the standby display. |
+| Date and clock | Choose day/month order, named months, 12/24-hour time and optional AM/PM. |
+| Media progress ring | Pick a preset or your own color for playback and timer rings. |
 
-Daily forecasts use Home Assistant's native `weather.get_forecasts` action,
-without a device access token. Enable permission for the device to perform
-Home Assistant actions. Providers without daily forecast support show
-“Not available”; press to retry (requests are limited to once per 20 seconds).
-Opening the entity refreshes forecasts cached for more than 15 minutes.
+The media idle view uses a player already configured on the knob. Timers and
+scheduled sleep keep priority. Turn or press to leave the idle view before using
+the underlying control.
 
-### Dates, clocks and weather icons
+### Scheduled sleep
 
-In **Device settings**, choose numeric dates or abbreviated-month dates such as
-**10 Nov**, **Nov 10**, or **2026-Nov-10**, and a **12 hour** (with optional AM/PM)
-or **24 hour** clock. Defaults are DD-MM and 24 hour. Standby dates, forecasts,
-primary date sensors and secondary `{date}` / `{datetime}` text follow the saved
-format. Backups
-include them, and older backups receive the defaults. The sleep schedule retains
-its existing times regardless of the display clock format.
+Enable the sleep schedule, choose its start/end times, and set how long to wait
+before switching off the screen during those hours. The schedule uses Home
+Assistant's clock. Matching start/end times mean all day. This is separate from
+the idle clock/media view.
 
-The weather carousel shows Home Assistant's icon when supplied, otherwise the
-current condition's MDI icon (sun, partly cloudy, rain, night, etc.). A manually
-selected icon override takes priority. Download failures retain a built-in icon.
+## Reminders and calendar messages
 
-### Automatic timer display
+Home Assistant automations can show a message over the current view, such as
+“Take the washing out” or “Meeting in 10 minutes.” No display slot is needed.
+Press to dismiss it, or turn to scroll longer text. A normal reminder lasts
+60 seconds; an automation can choose a different duration or keep it until dismissed.
 
-Add a native Home Assistant `timer.*`, a Voice PE/SoundSense `Voice timer`
-sensor (`onx.timer.v1`), or a Google Home integration timers sensor to a display
-slot. Configured timers are monitored automatically; unrelated sensor states
-are not treated as timers. The nearest running timer is preferred, with ringing
-first and paused timers after running timers. Google Home's `timers` attribute
-supplies duration, finish time, paused remaining time and status.
+Timer popups take priority. Messages wait during setup, scheduled sleep or when
+the screen is deliberately off. Only the latest message is kept.
 
-An active timer opens automatically while browsing or after ten seconds without
-input on an entity page. Turn the dial to dismiss it and resume browsing. After
-ten idle seconds it returns if still active. Settings, scheduled sleep and an
-explicitly switched-off screen are not interrupted. Timer rings use the selected
-media progress color and flash at completion. Timer control stays in Home
-Assistant or on the originating voice/speaker device.
+[Create a reminder or calendar popup](display-notifications.md)
 
-### Secondary sensor information and graphs
+## Home Assistant connection
 
-For a sensor slot, open the **Display** tab. Use **Choose secondary entity**
-or enter an entity ID, then edit **Secondary text**. It replaces the name under
-the main value and stays small beneath an opened graph. Text and numeric secondary
-entities support `{value}` and `{unit}`. Date/time entities also support `{relative}`,
-`{time}`, `{date}`, and `{datetime}`; formatting follows the device date/clock settings.
-For example, pair `sensor.openai_codex_5_hour_remaining` with
-`sensor.openai_codex_5_hour_reset` and use `Resets {relative} ({time})`.
-Missing or unavailable secondary data is reported explicitly.
+The **Home Assistant** section lets your browser sign in to search entities and
+sync their icons. This is separate from adding the knob's ESPHome integration.
+Enable **Allow the device to perform Home Assistant actions** in that integration
+so the knob can control devices.
 
-Select **12-hour graph when opened** for a numeric sensor. The main carousel keeps
-its current reading; the opened view plots the preceding 12 hours and shows the
-secondary information below it. The knob requests bounded five-minute Recorder
-statistics from HA on opening (at most every five minutes), downsampled to ten-minute
-points. `recorder.get_statistics` requires a statistics-enabled sensor and suitable
-HA action permission. Without those statistics, the graph uses live readings
-collected since boot, up to 12 hours. Missing intervals remain gaps; history is not
-persisted across restarts. Text/date sensors can be secondary information but cannot
-be plotted as numeric graphs.
+The status strip shows three different connections: reaching the knob, the
+knob's connection to Home Assistant, and browser sign-in. Use **Refresh entity
+list** after changing an icon or name in Home Assistant. **Retry knob entity
+states** asks for fresh readings without restarting or replaying old commands.
 
-In **Device settings**, **Show AM/PM with 12-hour time** is independently selectable.
-Older date/clock preferences migrate while keeping their selected formats. Sensor
-settings and the AM/PM preference are included in backups; older backups get defaults.
+[Connection troubleshooting](setup.md#if-something-does-not-work) · [Icons and album art](icons-and-media.md)
 
-### Slot tabs and playlist actions
+## Backups and diagnostics
 
-Slot settings use **Display**, **Press action**, and media-only **Playlists** tabs.
-The same searchable entity picker serves display entities, press bindings,
-secondary sensors and playlist actions. Playlist searches show scripts and
-automations. Choosing one supplies its display name automatically; you can
-customize that name without typing the script ID. Existing entries, their order,
-and backups remain compatible. Cancelling the picker adds no empty entry.
+In **Backup & diagnostics**, click **Download saved configuration** before making
+large changes. Backups include saved controls, names, press/turn actions,
+playlists, sensor display choices and device settings. They exclude credentials.
 
-Playlist rows have padded name/action fields and icon buttons for moving entries
-up/down or removing them. Every icon button has a tooltip and accessible label.
-The shared picker supports Escape to close, and tab navigation supports arrow
-keys, Home and End. Preview polling pauses while choosing an entity.
+**Import configuration** opens a backup as an unsaved draft. Review it, then save
+slots and device settings separately to apply it. Importing alone does not change
+the knob. Older supported backups receive defaults for newer settings.
+
+**Download diagnostics** provides firmware, uptime and connection information
+for troubleshooting, without entity names, addresses or credentials. Wireless
+updates are available through the **Firmware Update** entity in Home Assistant.
