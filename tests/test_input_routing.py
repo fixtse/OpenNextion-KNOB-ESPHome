@@ -11,11 +11,15 @@ class InputRouting(unittest.TestCase):
     def test_settings_presses_are_not_consumed_by_entity_controls(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / 'packages/base/input.yaml').read_text()
-        start = source.index('        - lambda: |-\n', source.index('    on_release:')) + len('        - lambda: |-\n')
-        body = textwrap.dedent(source[start:source.index('\n        - if:', start)])
+        start = source.index('                  if (id(sleep_mode_state)) {', source.index('    on_release:'))
+        body = textwrap.dedent(source[start:source.index('\n              - if:', start)])
         scripts = (root / 'packages/features/normal_mode/normal_mode_scripts.yaml').read_text()
         start = scripts.index('      - lambda: |-\n', scripts.index('  - id: adjust_normal_entity_control')) + len('      - lambda: |-\n')
         rotation = textwrap.dedent(scripts[start:scripts.index('\n  - id:',start)])
+        start = scripts.index('          id(normal_device_detail_active) = true;', scripts.index('  - id: enter_normal_switch_detail'))
+        entry = textwrap.dedent(scripts[start:scripts.index('          if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_SETTINGS)', start)])
+        start = scripts.index('          const bool active =', scripts.index('  - id: refresh_normal_media_overlay'))
+        overlay = textwrap.dedent(scripts[start:scripts.index('          onx_media::transport.observe', start)])
         header = (root / 'custom_logic.h').read_text()
         start = header.index('enum NormalDeviceDetailKind')
         kinds = header[start:header.index('};', start) + 2]
@@ -31,9 +35,10 @@ uint32_t millis(){return clock_ms;}
 bool sleep_mode_state=false,sleep_wakeup_pending=false,standby_wakeup_pending=false;
 bool screen_off_state=false,key_long_press_handled=false,detail_long_press_exit_fired=false;
 bool normal_clear_wifi_allowed=true,ha_light_active=false,ha_light_selected_slider=false,normal_knob_event_pass=true;
-struct Key {bool state=false;} key_btn;
+struct Key {bool state=false;uint32_t event_time_ms(){return clock_ms;}} key_btn;
 bool normal_device_detail_active=true,normal_device_detail_online=true,normal_ha_api_connected=true;
 bool normal_device_detail_curtain_adjust_active=false,normal_detail_light_mode_adjusting=false,normal_detail_light_mode_rotated=false;
+bool normal_detail_exit_switch_ready=false,normal_detail_exit_light_ready=false,normal_detail_exit_settings_ready=false,normal_detail_exit_allowed=false;
 int normal_device_detail_kind=5,normal_device_detail_index=0,normal_page_index=1,normal_detail_light_mode_count=0;
 uint32_t key_press_started_ms=1900,key_last_release_ms=0;
 std::string configured_entity="media_player.room",bound_action;
@@ -75,6 +80,18 @@ BODY
 }
 void turn(int direction){
 ROTATION
+}
+void enter_detail(int detail_kind){
+ENTRY
+}
+bool normal_media_title=false,normal_playlist_overlay=true;
+constexpr int LV_OBJ_FLAG_HIDDEN=1;
+bool lv_obj_has_flag(bool hidden,int){return hidden;}
+bool transport_visible(){
+ const std::string entity=configured_entity;
+ auto *detail=&custom_logic_entity_sub::detail;
+OVERLAY
+ return active;
 }
 void reset(){
  key_long_press_handled=false;detail_long_press_exit_fired=false;
@@ -120,6 +137,20 @@ int main(){
  turn(1);assert(custom_logic_entity_sub::detail.weather_page==0);
  release();assert(request_normal_weather_forecast.calls==1&&custom_logic_entity_sub::detail.weather_page==2&&key_long_press_handled);
  reset();configured_entity="media_player.room";turn(1);assert(onx_controls::rotations==1&&!emit_normal_media_track.calls);
+ // A long-press exit followed by automatic media entry has no new button press.
+ // Execute the production entry initialization, then exercise both directions.
+ reset();configured_entity="media_player.room";detail_long_press_exit_fired=true;
+ turn(1);assert(!onx_controls::rotations);
+ enter_detail(NORMAL_DEVICE_DETAIL_KIND_AUTOMATION);
+ assert(!detail_long_press_exit_fired&&key_long_press_handled);
+ turn(1);turn(-1);assert(onx_controls::rotations==2&&!emit_normal_media_track.calls);
+ // Pause feedback belongs to the player, never over playlists or the hold cue.
+ for(const auto &state : {"playing","paused"}){
+  reset();custom_logic_entity_sub::detail.state=state;assert(transport_visible());
+  onx_playlist::browser.toggle(configured_entity);assert(!transport_visible());
+  onx_playlist::browser.clear();normal_playlist_overlay=false;assert(!transport_visible());
+  normal_playlist_overlay=true;assert(transport_visible());
+ }
  normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_SETTINGS;reset();turn(1);assert(!onx_controls::rotations&&!onx_controls::cycles&&!emit_normal_media_track.calls);
  reset();normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
  configured_entity="media_player.room";playlist_enabled=true;playlist.count=2;
@@ -142,7 +173,7 @@ int main(){
 
 
 }
-'''.replace('KINDS', kinds).replace('BODY', body).replace('ROTATION', rotation)
+'''.replace('KINDS', kinds).replace('BODY', body).replace('ROTATION', rotation).replace('ENTRY', entry).replace('OVERLAY', overlay)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             (path / 'test.cpp').write_text(code)
