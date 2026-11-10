@@ -18,6 +18,9 @@ binary_sensor:
             then:
               - lambda: |-
                   onx_notification::press_consumed=true;
+                  id(key_press_started_ms)=millis();
+                  id(key_pressed)=false;
+                  id(normal_clear_wifi_allowed)=false;
                   id(key_long_press_handled)=true;
                   id(ui_presenter)->notify_user_activity();
             else:
@@ -690,7 +693,10 @@ interval:
       - if:
           condition:
             lambda: |-
-              return id(key_btn).state &&
+              // A popup owns its entire press, even if it expires or is dismissed by HA.
+              // Require a normal press timestamp before allowing destructive reset.
+              return id(key_btn).state && id(key_pressed) &&
+                     !onx_notification::current.visible && !onx_notification::press_consumed &&
                      !id(sleep_mode_state) &&
                      !id(standby_wakeup_pending) &&
                      id(ui_presenter)->is_normal_mode_active() &&

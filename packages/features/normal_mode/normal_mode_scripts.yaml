@@ -2395,7 +2395,14 @@ script:
             lv_obj_scroll_to_y(id(normal_message_body),0,LV_ANIM_OFF);
             rendered_revision=message.revision;
           }
-          if(id(key_btn).state)id(key_long_press_handled)=true;
+          if(id(key_btn).state) {
+            // An arriving popup also takes ownership of an already-held press.
+            // Keep it consumed through release if the popup disappears first.
+            onx_notification::press_consumed=true;
+            id(key_pressed)=false;
+            id(normal_clear_wifi_allowed)=false;
+            id(key_long_press_handled)=true;
+          }
           onx_navigation::hide();
           lv_obj_clear_flag(id(normal_message_overlay),LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(id(normal_message_overlay));
