@@ -1135,13 +1135,17 @@ inline void subscribe_gesture_feedback(esphome::api::APIServer *api,size_t slot,
     if(!onx_gesture::states[slot].received)for(const std::string attribute:{std::string(""),std::string("unit_of_measurement")}) {
       esphome::api::SubscribeHomeAssistantStateResponse request;
       request.entity_id=esphome::StringRef(entity);request.attribute=esphome::StringRef(attribute);request.once=true;
-      for(const auto &client:api->active_clients())if(client && client->is_connection_setup())client->send_message(request);
+      bool sent=false;
+      for(const auto &client:api->active_clients())
+        if(client && client->is_connection_setup())sent=client->send_message(request) || sent;
+      if(!sent)ESP_LOGD(TAG,"Gesture feedback refresh could not be queued");
     }
     return;
   }
   for(const std::string attribute:{std::string(""),std::string("unit_of_measurement")})
     api->subscribe_home_assistant_state(entity,esphome::optional<std::string>(attribute),
-        [slot,primary,entity,attribute](const std::string &value) {
+        [slot,primary,entity,attribute](esphome::StringRef raw) {
+          const std::string value=raw.str();
           const auto &current=onx_gesture::configs[slot];
           if(custom_logic::cached_device_entity_id(slot)!=primary || primary!=current.entity ||
               entity!=(current.feedback[0]?std::string(current.feedback):primary))return;
