@@ -13,6 +13,7 @@ external_components:
       - onx_ui
       - onx_config_web
       - onx_icons
+      - onx_button
 
 # Shared runtime state for all future modes.
 onx_app_state:

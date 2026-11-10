@@ -111,3 +111,9 @@ When the media player reports **off**, its detail view closes and returns to the
 main carousel in either appearance. **Idle** and **paused** keep the player view
 open. Losing the connection or receiving an unavailable state does not trigger
 this automatic return.
+
+A short press means press and release, without waiting for a hold cue. Media
+play/pause and playlist selection act on release. Button edges and their original
+timestamps are buffered during display redraws so a quick click is retained;
+contact debounce is 5ms. The 0.5-second playlist gesture and longer back/reset
+gestures continue to use the physical hold duration.

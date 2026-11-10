@@ -1,5 +1,5 @@
 binary_sensor:
-  - platform: gpio
+  - platform: onx_button
     id: key_btn
     internal: true
     pin:
@@ -8,8 +8,6 @@ binary_sensor:
         input: true
         pullup: true
       inverted: true
-    filters:
-      - delayed_off: 5ms
     on_press:
       then:
         - if:
@@ -18,7 +16,7 @@ binary_sensor:
             then:
               - lambda: |-
                   onx_notification::press_consumed=true;
-                  id(key_press_started_ms)=millis();
+                  id(key_press_started_ms)=id(key_btn).event_time_ms();
                   id(key_pressed)=false;
                   id(normal_clear_wifi_allowed)=false;
                   id(key_long_press_handled)=true;
@@ -26,7 +24,7 @@ binary_sensor:
             else:
               - logger.log: "KEY press"
               - lambda: |-
-                  id(key_press_started_ms) = millis();
+                  id(key_press_started_ms) = id(key_btn).event_time_ms();
                   id(key_pressed) = true;
                   id(key_long_press_handled) = false;
                   id(detail_long_press_exit_fired) = false;
@@ -100,7 +98,7 @@ binary_sensor:
                     id(standby_wakeup_pending) = false;
                     return;
                   }
-                  const uint32_t now = millis();
+                  const uint32_t now = id(key_btn).event_time_ms();
                   const uint32_t held_ms = now - id(key_press_started_ms);
                   ESP_LOGI("input", "KEY held for %u ms", static_cast<unsigned int>(held_ms));
                   if (now - id(key_last_release_ms) < 400) {
@@ -228,7 +226,7 @@ binary_sensor:
                              (!id(key_long_press_handled) || id(normal_device_detail_curtain_adjust_active)) &&
                              id(normal_device_detail_active) &&
                              id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_CURTAIN &&
-                             (id(normal_device_detail_online) || (millis() - id(key_press_started_ms)) >= 688);
+                             (id(normal_device_detail_online) || (id(key_btn).event_time_ms() - id(key_press_started_ms)) >= 688);
                   then:
                     - if:
                         condition:
@@ -254,7 +252,7 @@ binary_sensor:
                           - if:
                               condition:
                                 lambda: |-
-                                  return (millis() - id(key_press_started_ms)) >= 688;
+                                  return (id(key_btn).event_time_ms() - id(key_press_started_ms)) >= 688;
                               then:
                                 - script.execute: exit_normal_switch_detail
                                 - lambda: |-
@@ -278,7 +276,7 @@ binary_sensor:
                                     id(normal_device_detail_curtain_target_position) = target_position;
                                     std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
                                     ESP_LOGI("input", "curtain detail short press: pause/stop, held_ms=%u, index=%d, entity_id=%s",
-                                             static_cast<unsigned int>(millis() - id(key_press_started_ms)),
+                                             static_cast<unsigned int>(id(key_btn).event_time_ms() - id(key_press_started_ms)),
                                              detail_index,
                                              entity_id.c_str());
                                     if (entity_id.empty()) {
@@ -369,7 +367,7 @@ binary_sensor:
                               id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION);
                   then:
                     - lambda: |-
-                        const uint32_t held_ms = millis() - id(key_press_started_ms);
+                        const uint32_t held_ms = id(key_btn).event_time_ms() - id(key_press_started_ms);
                         const int kind = id(normal_device_detail_kind);
                         if (kind == NORMAL_DEVICE_DETAIL_KIND_SWITCH || kind == NORMAL_DEVICE_DETAIL_KIND_PLUG) {
                           if (held_ms < 688) {
@@ -432,7 +430,7 @@ binary_sensor:
                     - if:
                         condition:
                           lambda: |-
-                            const uint32_t held_ms = millis() - id(key_press_started_ms);
+                            const uint32_t held_ms = id(key_btn).event_time_ms() - id(key_press_started_ms);
                             if (held_ms >= 688) {
                               id(normal_detail_exit_settings_ready) = true;
                               id(normal_detail_exit_switch_ready) = false;
@@ -487,7 +485,7 @@ binary_sensor:
                     - if:
                         condition:
                           lambda: |-
-                            const uint32_t held_ms = millis() - id(key_press_started_ms);
+                            const uint32_t held_ms = id(key_btn).event_time_ms() - id(key_press_started_ms);
                             if (held_ms >= 688) {
                               id(normal_detail_exit_settings_ready) = true;
                               id(normal_detail_exit_switch_ready) = false;
@@ -529,7 +527,7 @@ binary_sensor:
                     - if:
                         condition:
                           lambda: |-
-                            const uint32_t held_ms = millis() - id(key_press_started_ms);
+                            const uint32_t held_ms = id(key_btn).event_time_ms() - id(key_press_started_ms);
                             if (held_ms >= 688) {
                               id(normal_detail_exit_settings_ready) = true;
                               id(normal_detail_exit_switch_ready) = false;
@@ -571,7 +569,7 @@ binary_sensor:
                     - if:
                         condition:
                           lambda: |-
-                            const uint32_t held_ms = millis() - id(key_press_started_ms);
+                            const uint32_t held_ms = id(key_btn).event_time_ms() - id(key_press_started_ms);
                             if (held_ms >= 688) {
                               id(normal_detail_exit_settings_ready) = true;
                               id(normal_detail_exit_switch_ready) = false;
@@ -661,7 +659,7 @@ binary_sensor:
                              !id(key_long_press_handled) &&
                              id(normal_page_index) == 4 &&
                              !id(ha_light_active) &&
-                             (millis() - id(key_press_started_ms) < 1000);
+                             (id(key_btn).event_time_ms() - id(key_press_started_ms) < 1000);
                   then:
                     - lambda: |-
                         id(ha_light_active) = true;
@@ -703,7 +701,7 @@ interval:
             lambda: |-
               // A popup owns its entire press, even if it expires or is dismissed by HA.
               // Require a normal press timestamp before allowing destructive reset.
-              return id(key_btn).state && id(key_pressed) &&
+              return id(key_btn).state && id(key_btn).is_physically_pressed() && id(key_pressed) &&
                      !onx_notification::current.visible && !onx_notification::press_consumed &&
                      !id(sleep_mode_state) &&
                      !id(standby_wakeup_pending) &&
@@ -741,7 +739,7 @@ interval:
           condition:
             lambda: |-
               return !id(screen_off_state) &&
-                     id(key_btn).state &&
+                     id(key_btn).state && id(key_btn).is_physically_pressed() &&
                      id(ui_presenter)->is_normal_mode_active() &&
                      !id(ui_presenter)->is_standby_active() &&
                      !id(detail_long_press_exit_fired) &&
@@ -776,7 +774,7 @@ interval:
           condition:
             lambda: |-
               return !id(screen_off_state) &&
-                     id(key_btn).state &&
+                     id(key_btn).state && id(key_btn).is_physically_pressed() &&
                      id(ui_presenter)->is_normal_mode_active() &&
                      !id(ui_presenter)->is_standby_active() &&
                      id(normal_page_index) == 4 &&
