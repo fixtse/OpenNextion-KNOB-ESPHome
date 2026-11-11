@@ -133,6 +133,14 @@ inline View build(const std::string &entity, const std::string &name) {
     v.value.size = v.value.text.size() > 12 ? 24 : 32;
     v.value.y = 84; v.badge.x = 0;
     v.icon_x = 0; v.icon_y = 134; v.icon_size = 40;
+  } else if (has_prefix(entity,"script.") || has_prefix(entity,"automation.")) {
+    const bool script = has_prefix(entity,"script.");
+    v.badge.x = 0;
+    v.badge.text = script ? "Script" : "Automation";
+    v.value.text = d->state == "on" ? (script ? "Running" : "Enabled") :
+                   d->state == "off" ? (script ? "Idle" : "Disabled") : label(d->state);
+    v.icon_x = 0; v.icon_y = 134; v.icon_size = 40;
+    v.hint.y = 116; v.hint.size = 12;
   } else if (has_prefix(entity,"media_player.")) {
     v.layout = "media"; v.icon_x=0; v.icon_y=18; v.icon_size=80;
     const float volume = onx_control::number(onx_controls::effective(*d,"volume_level"));

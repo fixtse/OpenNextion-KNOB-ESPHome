@@ -368,9 +368,8 @@ inline void customize_control_view(int ui_slot,const std::string &entity,onx_det
   const int slot=gesture_slot_for_ui(ui_slot);
   if(slot<0)return;
   const auto &config=onx_gesture::configs[slot];
-  if(config.actions[0][0] || config.actions[1][0] || config.events)view.hint.text="Turn: custom control";
-  if(config.actions[2][0] || config.actions[3][0])view.hint.text+="\nHold + turn: custom control";
-  if(entity.rfind("sensor.",0)==0 && config.feedback[0] && onx_gesture::states[slot].received) {
+  if((entity.rfind("sensor.",0)==0 || entity.rfind("script.",0)==0 || entity.rfind("automation.",0)==0) &&
+      config.feedback[0] && onx_gesture::states[slot].received) {
     const auto &state=onx_gesture::states[slot];
     view.value.text=state.value+(state.unit.empty()?"":" "+state.unit);
   }
