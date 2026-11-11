@@ -372,6 +372,8 @@ inline void customize_control_view(int ui_slot,const std::string &entity,onx_det
       config.feedback[0] && onx_gesture::states[slot].received) {
     const auto &state=onx_gesture::states[slot];
     view.value.text=state.value+(state.unit.empty()?"":" "+state.unit);
+    view.value_ring=-1;
+    if(state.unit=="%")onx_detail_view::set_value_ring(view,state.value,0,100);
   }
 }
 inline std::string error(const char *message) {

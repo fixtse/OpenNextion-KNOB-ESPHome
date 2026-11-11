@@ -2973,8 +2973,20 @@ script:
           const bool visible = id(normal_device_detail_active) && !id(screen_off_state) &&
                                !onx_playlist::browser.open &&
                                id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() &&
-                               entity.rfind("media_player.", 0) == 0 && detail != nullptr;
+                               id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION && detail != nullptr;
           if (!visible) { lv_obj_add_flag(id(normal_media_progress_arc), LV_OBJ_FLAG_HIDDEN); return; }
+          if(entity.rfind("media_player.",0)!=0) {
+            auto numeric=onx_detail_view::build(entity,"");
+            onx_entity_config::customize_control_view(id(normal_device_detail_index),entity,numeric);
+            if(numeric.value_ring<0 || !id(normal_ha_api_connected) || !detail->available || !id(normal_device_detail_online)) {
+              lv_obj_add_flag(id(normal_media_progress_arc),LV_OBJ_FLAG_HIDDEN);return;
+            }
+            lv_arc_set_value(id(normal_media_progress_arc),numeric.value_ring);
+            lv_obj_set_style_arc_color(id(normal_media_progress_arc),lv_color_hex(onx_display_settings::current.media_color),LV_PART_INDICATOR);
+            lv_obj_set_style_arc_opa(id(normal_media_progress_arc),LV_OPA_COVER,LV_PART_INDICATOR);
+            lv_obj_clear_flag(id(normal_media_progress_arc),LV_OBJ_FLAG_HIDDEN);
+            return;
+          }
           const auto now = id(ha_time).now();
           // ESPHome wall time is whole seconds; retain the fractional part with millis()
           // so a 100ms refresh never turns into a one-second stepping animation.

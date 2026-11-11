@@ -650,7 +650,8 @@ binary_sensor:
                                    device_type == "dimming" || device_type == "automation" ||
                                    device_type == "sensor" || device_type == "binary_sensor" ||
                                    device_type == "climate" || device_type == "script" ||
-                                   device_type == "weather" || device_type == "timer" || device_type == "media_player";
+                                   device_type == "weather" || device_type == "timer" || device_type == "media_player" ||
+                                   onx_controls::handles(id(ui_presenter)->get_normal_device_entity_id(selected));
                         then:
                           - script.execute: enter_normal_switch_detail
                           - lambda: |-

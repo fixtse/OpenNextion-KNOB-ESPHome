@@ -11,8 +11,17 @@ struct View {
        hint{"", 147, 14, 198}, name{"", 185, 16, 180};
   uint32_t accent{0x62B0FF};
   int icon_y{32}, icon_size{28}, icon_x{-62};
+  int value_ring{-1};
   bool available{false};
 };
+// Use a common range projection for the device and browser preview.
+inline void set_value_ring(View &view, const std::string &raw, float minimum, float maximum) {
+  view.value_ring = -1;
+  const float value = onx_control::number(raw);
+  if (!view.available || view.layout == "graph" || !std::isfinite(value) ||
+      !std::isfinite(minimum) || !std::isfinite(maximum) || maximum <= minimum) return;
+  view.value_ring = static_cast<int>(std::lround(std::clamp((value - minimum) / (maximum - minimum), 0.0f, 1.0f) * 1000));
+}
 inline std::string compact(const std::string &value) {
   const float n = onx_control::number(value);
   if (!std::isfinite(n)) return value;
@@ -111,6 +120,7 @@ inline View build(const std::string &entity, const std::string &name) {
       v.hint.text = condition(f.condition) + "\nRain chance " + reading(f.rain, "%");
     }
   } else if (has_prefix(entity, "fan.")) {
+    v.icon.clear(); v.badge.x = 0;
     const auto state = onx_controls::effective(*d,"state");
     v.symbol = state == "off" ? "⏸" : "🌀";
     v.badge.text = v.symbol + (state == "off" ? " Off" : " Fan");
@@ -150,10 +160,20 @@ inline View build(const std::string &entity, const std::string &name) {
     v.badge.text.clear(); v.name.y=192; v.name.width=180;
   } else if (onx_controls::handles(entity)) {
     const auto key = selected_setting(*d);
-    v.badge.text = label(key);
+    const bool number = has_prefix(entity,"number.") || has_prefix(entity,"input_number.");
+    const bool selection = has_prefix(entity,"select.") || has_prefix(entity,"input_select.");
+    const bool button = has_prefix(entity,"button.") || has_prefix(entity,"input_button.");
+    const bool scene = has_prefix(entity,"scene.");
+    v.badge.x = 0;
+    v.badge.text = number ? "Value" : selection ? "Selection" : button ? "Button" : scene ? "Scene" : label(key);
     v.value.text = compact(onx_controls::effective(*d,key));
+    if (selection && control_entity == entity && !control_preview.empty()) v.value.text = control_preview;
+    if (button || scene) v.value.text = "Ready";
     if (!d->unit.empty()) v.value.text += " " + d->unit;
-    if (v.hint.text.empty() && (has_prefix(entity,"select.") || has_prefix(entity,"input_select."))) v.hint.text = "Turn to choose · Press to confirm";
+    v.value.y = 84;
+    v.icon_x = 0; v.icon_y = 134; v.icon_size = 40;
+    v.hint.y = 60; v.hint.size = 12;
+    if (v.hint.text.empty() && selection) v.hint.text = "Press to confirm";
   }
   if (has_prefix(entity,"sensor.")) {
     const int i=onx_sensor_view::index(entity);
@@ -169,13 +189,19 @@ inline View build(const std::string &entity, const std::string &name) {
       }
     }
   }
+  if (has_prefix(entity,"number.") || has_prefix(entity,"input_number."))
+    set_value_ring(v, onx_controls::effective(*d,"state"), d->minimum, d->maximum);
+  else if (has_prefix(entity,"sensor.") && d->unit == "%")
+    set_value_ring(v, d->state, 0, 100);
+  else if (has_prefix(entity,"fan.") && selected_setting(*d) == "percentage")
+    set_value_ring(v, onx_controls::effective(*d,"percentage"), 0, 100);
   if (v.value.text.size() > 14) v.value.size = std::min(v.value.size, 24);
   v.badge.color = v.accent;
   return v;
 }
 inline View carousel(const std::string &entity, const std::string &name) {
   using namespace custom_logic_entity_sub;
-  auto v = build(entity, name); v.layout = "carousel";
+  auto v = build(entity, name); v.layout = "carousel"; v.value_ring = -1;
   const auto badge = v.badge.text;
   v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
   v.icon_x = 0; v.icon_y = 34; v.icon_size = 40;

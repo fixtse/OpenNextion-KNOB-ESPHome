@@ -55,6 +55,7 @@ onx_config_web:
           target["layout"] = view.layout; target["available"] = view.available;
           target["icon"] = view.icon; target["accent"] = view.accent;
           target["icon_x"] = view.icon_x; target["icon_y"] = view.icon_y; target["icon_size"] = view.icon_size;
+          target["value_ring"] = view.value_ring;
           JsonArray lines = target["lines"].to<JsonArray>();
           for (const auto *line : {&view.badge, &view.value, &view.context, &view.hint, &view.name}) {
             auto item = lines.add<JsonObject>();

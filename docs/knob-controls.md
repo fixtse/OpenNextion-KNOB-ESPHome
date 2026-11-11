@@ -133,3 +133,16 @@ then save the slot. Add entries in the **Playlists** tab first. Playing or pause
 media still uses short press for play/pause; the existing hold gesture can also
 open playlists. Selecting an entry runs its configured action and returns to the
 player. The idle-press option is saved with configuration backups.
+
+## Numeric value rings
+
+Opening a `number` or `input_number` shows its value and a ring around the screen
+edge. The ring uses the minimum and maximum advertised by Home Assistant and
+updates immediately with a requested dial adjustment. Percentage sensors, such
+as PC audio volume, use a 0–100 ring that follows their live reading or configured
+feedback value. Fan percentage controls use the same ring. Sensor graphs retain
+their graph presentation. Missing values or invalid ranges hide the ring.
+
+Number, input number, fan, selection, scene and button controls can all be opened
+from the main list. Their detail icons and labels stay clear of the value and
+confirmation text.
