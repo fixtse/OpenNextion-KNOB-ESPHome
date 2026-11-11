@@ -48,6 +48,8 @@ onx_config_web:
     if (query.op == "state") return onx_entity_config::state(id(ha_host).state, id(normal_wifi_connected), id(normal_ha_api_connected), id(wifi_rssi).state, id(media_cover_image)->last_error());
     if (query.op == "preview") {
       return onx_entity_config::build_json([&](JsonObject root) {
+        const auto clock = id(ha_time).now();
+        root["clock_epoch"] = clock.is_valid() ? double(clock.timestamp) : 0;
         JsonArray slots = root["slots"].to<JsonArray>();
         auto encode = [&](JsonObject target, const onx_detail_view::View &view) {
           target["layout"] = view.layout; target["available"] = view.available;
@@ -104,9 +106,19 @@ onx_config_web:
             }
           }
           if (const auto *detail = custom_logic_entity_sub::entity_detail(entity)) {
+            if (custom_logic_entity_sub::is_timer_detail(entity)) {
+              time_t finish = 0;
+              const bool has_finish = custom_logic_entity_sub::parse_ha_datetime_epoch(detail->timer_finishes_at, &finish);
+              auto timer = slot["timer"].to<JsonObject>();
+              timer["state"] = detail->state;
+              timer["finishes_at"] = detail->timer_finishes_at;
+              timer["remaining"] = detail->timer_remaining;
+              timer["duration"] = detail->timer_duration;
+              if (has_finish && clock.is_valid()) timer["deadline_seconds_left"] = double(finish) - clock.timestamp;
+            }
             const auto now = id(ha_time).now();
             auto projection = detail->progress;
-            const auto progress = projection.view(millis(), now.is_valid() ? now.timestamp : NAN,
+            const auto progress = projection.view(millis(), now.is_valid() ? static_cast<double>(now.timestamp) : NAN,
                 id(normal_ha_api_connected) && detail->available);
             slot["progress"] = progress.visible ? progress.permille : -1;
             slot["playing"] = detail->state == "playing";

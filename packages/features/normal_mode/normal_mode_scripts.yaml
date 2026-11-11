@@ -2798,7 +2798,7 @@ script:
             }
             const double clock = now.is_valid() ? now.timestamp + (millis() - clock_tick_ms) / 1000.0 : 0;
             view = onx_timer::view(detail->state, onx_timer::duration_seconds(detail->timer_duration),
-                onx_timer::duration_seconds(detail->timer_remaining), has_finish ? finish : NAN, clock);
+                onx_timer::duration_seconds(detail->timer_remaining), onx_timer::deadline_epoch(has_finish, finish), clock);
           }
           if (!id(normal_ha_api_connected) || !id(normal_device_detail_online)) view.ready = false;
           const std::string text = view.ready ? onx_timer::countdown(view.seconds_left) : "--:--";

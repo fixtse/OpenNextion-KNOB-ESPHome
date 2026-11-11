@@ -64,6 +64,12 @@ struct View {
   double fraction{0};
 };
 
+// NAN is a float. A conditional mixing it with an integer Unix timestamp
+// rounds modern deadlines to 128-second steps before conversion to double.
+inline double deadline_epoch(bool available, int64_t epoch) {
+  return available ? static_cast<double>(epoch) : std::numeric_limits<double>::quiet_NaN();
+}
+
 inline View view(const std::string &state, double duration, double remaining,
                  double finishes_at, double now) {
   if (state == "idle" || state == "ringing") return {true, 0, 0};

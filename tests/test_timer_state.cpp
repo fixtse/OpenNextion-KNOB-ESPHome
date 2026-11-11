@@ -15,6 +15,16 @@ int main() {
   auto active = view("active", 120, 120, 1100, 1050.5);
   assert(active.ready && active.seconds_left == 49.5 && active.fraction == 49.5 / 120);
   assert(countdown(active.seconds_left) == "00:50");
+  // Real Nest deadline: float promotion used to round this down by 16s.
+  const int64_t nest_finish = 1794403600;
+  assert(deadline_epoch(true, nest_finish) == 1794403600.0);
+  assert(std::isnan(deadline_epoch(false, nest_finish)));
+  assert(countdown(view("active", 900, NAN, deadline_epoch(true, nest_finish),
+                        1794402733.0).seconds_left) == "14:27");
+  // Neighboring deadlines can round up too; preserve every second.
+  for (int64_t finish = nest_finish - 128; finish <= nest_finish + 128; ++finish)
+    assert(view("active", 900, NAN, deadline_epoch(true, finish),
+                static_cast<double>(finish - 60)).seconds_left == 60);
   assert(countdown(3601) == "1:00:01");
   assert(countdown(NAN) == "--:--");
   assert(!view("active", 60, 60, NAN, 10).ready);
