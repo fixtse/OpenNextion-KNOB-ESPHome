@@ -2633,8 +2633,8 @@ script:
             lv_obj_set_style_text_font(id(normal_message_title),with_image?
                 id(fonts_MiSans_Medium_16)->get_lv_font():id(fonts_MiSans_Medium_18)->get_lv_font(),0);
             lv_label_set_long_mode(id(normal_message_title),with_image?LV_LABEL_LONG_DOT:LV_LABEL_LONG_WRAP);
-            lv_obj_set_y(id(normal_message_body),with_image?142:94);
-            lv_obj_set_height(id(normal_message_body),with_image?44:92);
+            lv_obj_set_y(id(normal_message_body),with_image?138:94);
+            lv_obj_set_height(id(normal_message_body),with_image?64:110);
             lv_obj_set_style_text_font(id(normal_message_text),with_image?
                 id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
             if(with_image) {

@@ -91,8 +91,8 @@ lvgl:
                 id: normal_message_body
                 align: top_mid
                 y: 94
-                width: 184
-                height: 92
+                width: 168
+                height: 110
                 bg_opa: TRANSP
                 border_width: 0
                 pad_all: 0
@@ -103,20 +103,21 @@ lvgl:
                       id: normal_message_text
                       x: 0
                       y: 0
-                      width: 176
+                      width: 160
+                      text_line_space: 2
                       long_mode: WRAP
                       text_font: fonts_MiSans_Medium_16
                       text_color: 0xFFFFFF
                       text: ""
             - label:
                 align: top_mid
-                y: 190
-                width: 140
-                height: 32
+                y: 212
+                width: 120
+                height: 16
                 text_align: CENTER
                 text_font: fonts_MiSans_Bold_12
                 text_color: 0xB8B8B8
-                text: "Turn to scroll\nPress to dismiss"
+                text: "Press to dismiss"
       - obj:
           id: normal_gesture_feedback
           align: bottom_mid

@@ -146,3 +146,15 @@ uses the full text-only layout if the image fails, is invalid, or exceeds a limi
 Only the newest notification is retained. A replacement, dismissal, or expiry
 cancels the old download, detaches its display buffer before freeing it, and
 rejects late results. Media artwork downloads wait while a notification is visible.
+
+## Message formatting
+
+HTML line breaks (`<br>`, `<br/>`, `<br />`, including uppercase and escaped
+forms) become real newlines. Paragraphs, divisions, and list items introduce line
+breaks; inline markup is removed. Common HTML entities and numeric character
+references are decoded. Literal newlines, accented text, and UTF-8 characters
+remain intact within the message length limit.
+
+The popup keeps only a small **Press to dismiss** footer. Turning still scrolls
+long messages. Image notifications show at least three text lines at once, and
+text-only notifications use the larger body area.
