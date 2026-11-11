@@ -13,23 +13,18 @@ api:
       - script.execute: refresh_normal_ha_connection_state
   actions:
     - action: show_message
-      description: Show a display reminder for 60 seconds, or until the knob is pressed.
+      description: Show a reminder with optional image; empty image_url is text only, timeout_seconds zero waits for dismissal.
       variables:
         title: string
         message: string
+        image_url: string
+        timeout_seconds:
+          type: int
+          description: Seconds to display the message; use 60 for one minute or zero until dismissed.
+          example: "60"
       then:
         - lambda: |-
-            onx_notification::current.show(title,message,60);
-            id(refresh_normal_message_popup).execute();
-    - action: show_message_with_timeout
-      description: Show a display reminder with a custom timeout; zero means until dismissed.
-      variables:
-        title: string
-        message: string
-        timeout_seconds: int
-      then:
-        - lambda: |-
-            onx_notification::current.show(title,message,timeout_seconds);
+            onx_notification::current.show(title,message,timeout_seconds,image_url);
             id(refresh_normal_message_popup).execute();
     - action: dismiss_message
       description: Dismiss the current or pending display reminder.

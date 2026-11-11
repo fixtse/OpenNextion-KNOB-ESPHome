@@ -2581,7 +2581,22 @@ script:
     then:
       - lambda: |-
           auto &message=onx_notification::current;
+          auto &picture=onx_notification::image;
           const uint32_t now_ms=millis();
+          auto release_picture=[&]() {
+            // Detach LVGL before freeing pixels, even if the popup is hidden.
+            lv_obj_add_flag(id(normal_message_image),LV_OBJ_FLAG_HIDDEN);
+            onx_render::image(id(normal_message_image),id(fallback_music_note_img)->get_lv_image_dsc());
+            lv_image_cache_drop(id(notification_image)->get_lv_image_dsc());
+            lv_image_header_cache_drop(id(notification_image)->get_lv_image_dsc());
+            id(notification_image)->release();
+            picture.attempted=picture.downloading=picture.ready=false;
+            id(entity_icon_downloader)->set_artwork_busy(onx_media::downloading);
+          };
+          if(picture.revision!=message.revision) {
+            release_picture();
+            picture={};picture.revision=message.revision;
+          }
           const auto now=id(ha_time).now();
           const bool sleep_due=now.is_valid() && id(ui_presenter)->should_enter_sleep_mode(now.hour,now.minute);
           const bool available=id(ui_presenter)->is_normal_mode_active() &&
@@ -2589,15 +2604,48 @@ script:
               !id(screen_off_state) && !sleep_due && !onx_timer::popup.visible;
           if(!available)message.suspend(now_ms);
           if(!available || !message.display(now_ms)) {
+            if(!message.pending && (picture.attempted || picture.ready)) {
+              release_picture();picture={};picture.revision=message.revision;
+            }
             lv_obj_add_flag(id(normal_message_overlay),LV_OBJ_FLAG_HIDDEN);return;
           }
+          if(!message.image_url.empty() && !picture.ready && !picture.failed) {
+            if(!picture.waiting) {picture.waiting=true;picture.started_ms=now_ms;}
+            if(now_ms-picture.started_ms>=8000) {
+              release_picture();picture.failed=true;
+            } else if(!picture.attempted && !id(notification_image)->is_busy() &&
+                !onx_media::downloading && !id(media_cover_image)->is_busy() &&
+                !id(entity_icon_downloader)->busy() && id(notification_image)->memory_ready()) {
+              picture.attempted=picture.downloading=true;
+              id(notification_image)->set_source_pixel_limit(1024*1024);
+              id(notification_image)->set_url(message.image_url);
+              id(entity_icon_downloader)->set_artwork_busy(true);
+              id(notification_image)->update();
+            }
+          }
+          if(picture.failed && picture.attempted && !picture.downloading)release_picture();
           static uint32_t rendered_revision=0;
-          if(rendered_revision!=message.revision) {
+          static bool rendered_image=false;
+          if(rendered_revision!=message.revision || rendered_image!=picture.ready) {
+            const bool with_image=picture.ready;
+            lv_obj_set_y(id(normal_message_title),with_image?40:43);
+            lv_obj_set_height(id(normal_message_title),with_image?24:44);
+            lv_obj_set_style_text_font(id(normal_message_title),with_image?
+                id(fonts_MiSans_Medium_16)->get_lv_font():id(fonts_MiSans_Medium_18)->get_lv_font(),0);
+            lv_label_set_long_mode(id(normal_message_title),with_image?LV_LABEL_LONG_DOT:LV_LABEL_LONG_WRAP);
+            lv_obj_set_y(id(normal_message_body),with_image?142:94);
+            lv_obj_set_height(id(normal_message_body),with_image?44:92);
+            lv_obj_set_style_text_font(id(normal_message_text),with_image?
+                id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
+            if(with_image) {
+              onx_render::image(id(normal_message_image),id(notification_image)->get_lv_image_dsc());
+              lv_obj_clear_flag(id(normal_message_image),LV_OBJ_FLAG_HIDDEN);
+            } else lv_obj_add_flag(id(normal_message_image),LV_OBJ_FLAG_HIDDEN);
             onx_render::label(id(normal_message_title),message.title.c_str());
             onx_render::label(id(normal_message_text),message.body.c_str());
             lv_obj_update_layout(id(normal_message_body));
             lv_obj_scroll_to_y(id(normal_message_body),0,LV_ANIM_OFF);
-            rendered_revision=message.revision;
+            rendered_revision=message.revision;rendered_image=with_image;
           }
           if(id(key_btn).state) {
             // An arriving popup also takes ownership of an already-held press.
@@ -3021,6 +3069,8 @@ script:
   - id: refresh_normal_media_cover
     then:
       - lambda: |-
+          // Notification pictures take priority over cosmetic media fetches.
+          if(onx_notification::current.visible || onx_notification::image.downloading)return;
           onx_media::artwork_wait_reason.clear();
           const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
           auto *detail = custom_logic_entity_sub::entity_detail(entity);

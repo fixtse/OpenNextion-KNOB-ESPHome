@@ -1408,3 +1408,26 @@ image:
             onx_media::last_artwork_end_ms = millis();
             onx_media::artwork_refresh_pending = true;
             onx_runtime::record("artwork_error");
+
+  - platform: online_image
+    id: notification_image
+    url: http://homeassistant.local:8123/
+    format: AUTO
+    type: RGB565
+    resize: 112x64
+    update_interval: never
+    on_download_finished:
+      then:
+        - lambda: |-
+            auto &picture=onx_notification::image;
+            if(picture.revision!=onx_notification::current.revision || !onx_notification::current.pending)return;
+            picture.downloading=false;
+            picture.failed=millis()-picture.started_ms>=8000;picture.ready=!picture.failed;
+            id(entity_icon_downloader)->set_artwork_busy(onx_media::downloading);
+    on_error:
+      then:
+        - lambda: |-
+            auto &picture=onx_notification::image;
+            if(picture.revision!=onx_notification::current.revision)return;
+            picture.downloading=false;picture.failed=true;
+            id(entity_icon_downloader)->set_artwork_busy(onx_media::downloading);

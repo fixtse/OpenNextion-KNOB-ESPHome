@@ -81,6 +81,12 @@ lvgl:
                 text_font: fonts_MiSans_Medium_18
                 text_color: 0xFFFFFF
                 text: ""
+            - image:
+                id: normal_message_image
+                align: top_mid
+                y: 70
+                src: notification_image
+                hidden: true
             - obj:
                 id: normal_message_body
                 align: top_mid

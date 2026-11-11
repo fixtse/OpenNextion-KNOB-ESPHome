@@ -21,6 +21,7 @@ class OnlineImage final : public PollingComponent,
   void set_url(const std::string &url) { if (validate_url_(url)) url_=url; }
   void release();
   bool is_busy() const { return busy_; }
+  void set_source_pixel_limit(uint32_t pixels) { source_pixel_limit_=pixels; }
   static bool memory_ready();
   const std::string &last_error() const { return last_error_; }
   template<typename V> void add_request_header(const std::string &header,V value) {
@@ -51,6 +52,7 @@ class OnlineImage final : public PollingComponent,
   uint32_t generation_{0}, completed_generation_{0};
   uint8_t *completed_data_{nullptr};
   size_t completed_size_{0};
+  uint32_t source_pixel_limit_{0};
   std::string completed_error_, last_error_;
 };
 }

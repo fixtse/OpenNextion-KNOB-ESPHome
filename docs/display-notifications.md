@@ -12,11 +12,10 @@ The underlying control is not changed by those movements.
 1. In Home Assistant, open **Settings → Automations & scenes** and create an automation.
 2. Choose when it should run, such as a time of day or a sensor changing state.
 3. Add an action and search for **show_message** under your knob's ESPHome device name.
-4. Fill in **title** (for example, “Reminder”) and **message** (“Take the washing out”).
-5. Save the automation and try its message action. The popup lasts 60 seconds unless dismissed sooner.
+4. Fill in **title** (for example, “Reminder”) and **message** (“Take the washing out”). Set **image_url** to a reachable image URL, or an empty string for text only.
+5. Set **timeout_seconds** to 60, save the automation, and try its message action.
 
-For a different duration, choose **show_message_with_timeout** and fill in
-**timeout_seconds**. Use 120 for two minutes, or 0 to keep it until you dismiss it.
+For a different duration, change **timeout_seconds**. Use 120 for two minutes, or 0 to keep it until you dismiss it.
 Use **dismiss_message** in an automation to clear it remotely. If the actions
 are missing, update the knob and let its ESPHome integration reconnect.
 
@@ -44,6 +43,8 @@ action: esphome.onx2424g013_dbbc54_show_message
 data:
   title: Reminder
   message: Take the washing out.
+  image_url: ""
+  timeout_seconds: 60
 ```
 
 The message appears for 60 seconds. Press the knob to dismiss it, or turn it to
@@ -56,13 +57,14 @@ message times out or is dismissed remotely. A notification appearing during an
 existing hold also consumes that press. See [reset Wi-Fi and device configuration](knob-controls.md#reset-wi-fi-and-device-configuration)
 for the separate 10-second reset gesture in normal mode.
 
-For a custom timeout, use `show_message_with_timeout`:
+For a custom timeout, use `show_message`:
 
 ```yaml
-action: esphome.onx2424g013_dbbc54_show_message_with_timeout
+action: esphome.onx2424g013_dbbc54_show_message
 data:
   title: Next meeting
   message: Team catch-up in ten minutes. Bring the project notes.
+  image_url: ""
   timeout_seconds: 120
 ```
 
@@ -95,6 +97,8 @@ actions:
     data:
       title: Meeting in 10 minutes
       message: "{{ trigger.calendar_event.summary }}"
+      image_url: ""
+      timeout_seconds: 60
 mode: queued
 ```
 
@@ -112,3 +116,33 @@ after a timer popup closes.
 References: [ESPHome user-defined actions](https://esphome.io/components/api/#user-defined-actions),
 [Home Assistant calendar automations](https://www.home-assistant.io/integrations/calendar/),
 and [calendar trigger data](https://www.home-assistant.io/docs/automation/trigger-data/#calendar).
+
+## Include an image
+
+The single `show_message` action accepts `image_url` and `timeout_seconds`. Set the URL to
+an empty string (`""`) for a text-only notification. After this update, add that
+field and `timeout_seconds` to existing Home Assistant calls. The separate
+`show_message_with_timeout` action has been consolidated into `show_message`. The URL must be an absolute HTTP or HTTPS
+address reachable directly from the knob; browser sign-in and Home Assistant
+session cookies are not forwarded.
+
+```yaml
+action: esphome.onx2424g013_dbbc54_show_message
+data:
+  title: Front door
+  message: Someone is at the door.
+  image_url: "https://example.com/door-snapshot.jpg"
+  timeout_seconds: 60
+```
+
+Use a publicly readable or privately hosted image URL that the knob can access
+without authentication. JPEG, PNG, and BMP are supported where the decoder can
+read them; progressive JPEG is unsupported. Downloads are limited to 512 KiB,
+source images to 1,048,576 pixels, and the display image to a 112 × 64 pixel box.
+The image attempt, including waiting for downloader memory or other image work,
+expires after eight seconds. Text appears immediately, remains scrollable, and
+uses the full text-only layout if the image fails, is invalid, or exceeds a limit.
+
+Only the newest notification is retained. A replacement, dismissal, or expiry
+cancels the old download, detaches its display buffer before freeing it, and
+rejects late results. Media artwork downloads wait while a notification is visible.

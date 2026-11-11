@@ -10,15 +10,16 @@ inline std::string clipped(const std::string &text,size_t limit) {
   return text.substr(0,end);
 }
 struct Message {
-  std::string title,body;
+  std::string title,body,image_url;
   bool pending{false},visible{false};
   uint32_t remaining_ms{60000},shown_ms{0},revision{0};
   void dismiss() {pending=false;visible=false;}
-  bool show(const std::string &heading,const std::string &text,int seconds) {
+  bool show(const std::string &heading,const std::string &text,int seconds,const std::string &image="") {
     if(text.empty())return false;
     title=clipped(heading.empty()?"Reminder":heading,96);
     for(char &ch:title)if(ch=='\r' || ch=='\n')ch=' ';
     body=clipped(text,768);
+    image_url=image.size()<=1024 && (image.rfind("http://",0)==0 || image.rfind("https://",0)==0) ? image : "";
     remaining_ms=static_cast<uint32_t>(seconds<0?60:std::min(seconds,3600))*1000;
     pending=true;visible=false;++revision;return true;
   }
@@ -39,5 +40,10 @@ struct Message {
 };
 // Only the newest message is retained, so unattended notifications stay bounded.
 inline Message current;
+struct ImageState {
+  uint32_t revision{0},started_ms{0};
+  bool waiting{false},attempted{false},downloading{false},ready{false},failed{false};
+};
+inline ImageState image;
 inline bool press_consumed{false};
 }  // namespace onx_notification

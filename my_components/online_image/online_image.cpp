@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 #include "online_image.h"
+#include "image_limits.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 #ifdef USE_RUNTIME_IMAGE_JPEG
@@ -196,6 +197,10 @@ void OnlineImage::loop() {
   busy_=false;
   if(generation!=generation_) {heap_caps_free(data);return;}
   if(!data) {last_error_=error;ESP_LOGW(TAG,"Artwork unavailable: %s",error.c_str());failed_.call();return;}
+  if(!source_pixels_within_limit(data,size,source_pixel_limit_)) {
+    heap_caps_free(data);last_error_="Image source dimensions exceed limit or are invalid";
+    failed_.call();return;
+  }
   runtime_image::ImageFormat format=get_format();
   if(format==runtime_image::AUTO) {
     if(size>=3 && data[0]==0xFF && data[1]==0xD8 && data[2]==0xFF) format=runtime_image::JPEG;
