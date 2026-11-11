@@ -41,6 +41,11 @@ action runs when the player is idle; a loaded playing or paused track keeps
 play/pause. Some controls need their own press behavior and do not allow an override.
 Automation conditions still apply.
 
+Enable **Show the returned value after pressing** to display a script's returned
+`value` and optional `unit` as a brief popup. For automations, send the value back
+using the knob's feedback action. This option is independent of turn feedback.
+[Response examples](gesture-controls.md#press-action-results).
+
 [Everyday press controls](knob-controls.md) · [Custom climate and turn actions](gesture-controls.md)
 
 ## Custom turn actions

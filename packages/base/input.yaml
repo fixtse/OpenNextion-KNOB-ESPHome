@@ -839,6 +839,8 @@ sensor:
                           id(exit_normal_switch_detail).execute();
                         }
                         int threshold = id(normal_knob_applied_value);
+                        // Playlist selection follows every encoder detent.
+                        if (onx_playlist::browser.open && id(normal_device_detail_active)) threshold = 1;
                         if (threshold != 1 && threshold != 2 && threshold != 4) {
                           threshold = 1;
                         }
@@ -1277,6 +1279,8 @@ sensor:
                           id(exit_normal_switch_detail).execute();
                         }
                         int threshold = id(normal_knob_applied_value);
+                        // Playlist selection follows every encoder detent.
+                        if (onx_playlist::browser.open && id(normal_device_detail_active)) threshold = 1;
                         if (threshold != 1 && threshold != 2 && threshold != 4) {
                           threshold = 1;
                         }

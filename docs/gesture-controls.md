@@ -202,3 +202,40 @@ behavior; movement variables are supplied by turn actions.
 References: [ESPHome Home Assistant actions and responses](https://esphome.io/components/api/#homeassistantaction-action),
 [Home Assistant scripts and returned data](https://www.home-assistant.io/docs/script/),
 and [automation trigger implementation](https://github.com/home-assistant/core/blob/dev/homeassistant/components/automation/services.py).
+
+## Press action results
+
+In **Press action**, enable **Show the returned value after pressing** for a
+script or automation. This setting is independent of the gesture popup checkbox
+and is off by default. Existing gesture bindings are preserved on upgrade.
+
+A script must be called directly to return data. With this option enabled, the
+knob calls your selected script directly, without adding arguments, and reads
+`value` and optional `unit` from its returned mapping. For example:
+
+```yaml
+alias: Check room temperature
+sequence:
+  - variables:
+      result:
+        value: "{{ states('sensor.madrid_piso_temperature') }}"
+        unit: "°C"
+  - stop: Temperature read
+    response_variable: result
+```
+
+Automations do not return a value through `automation.trigger`. With the option
+enabled, the knob supplies `knob_entity` as an automation variable. Send the
+result back from the automation using:
+
+```yaml
+action: esphome.onx2424g013_dbbc54_show_control_feedback
+data:
+  entity_id: "{{ knob_entity }}"
+  value: "{{ states('sensor.madrid_piso_temperature') }}"
+  unit: "°C"
+```
+
+Replace the device action prefix with yours. Results appear as the same brief,
+non-blocking popup used for gesture feedback. Playback controls retain their
+normal behavior; a media player's custom press action runs only when idle.

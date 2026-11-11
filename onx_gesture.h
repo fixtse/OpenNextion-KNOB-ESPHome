@@ -7,14 +7,16 @@
 #include "onx_notification.h"
 
 namespace onx_gesture {
-struct Config {
+struct LegacyConfig {
   uint32_t magic{0x4F4E5847};
   char entity[129]{},actions[4][129]{},feedback[129]{};
   uint8_t popup{1},responses{0},events{0},step{1};
 };
+// A new preference key preserves existing v1 gesture settings on upgrade.
+struct Config : LegacyConfig { uint8_t press_responses{0}; };
 struct State {
   std::string value,unit,notice;
-  bool received{false};
+  bool received{false},press_request{false};
   uint32_t requested_ms{0},feedback_ms{0},token{0};
 };
 inline onx_memory::StateArray<Config,20> configs;
@@ -48,6 +50,7 @@ inline void feedback(int slot,const std::string &value,const std::string &unit,u
   const auto text=onx_notification::clipped(value,128);
   const bool changed=state.received && (text!=state.value || unit!=state.unit);
   state.notice.clear();state.value=text;state.unit=onx_notification::clipped(unit,24);state.received=true;
-  if(configs[slot].popup && (response || (changed && state.token && now-state.requested_ms<5000)))state.feedback_ms=now;
+  const bool popup=state.press_request ? configs[slot].press_responses : configs[slot].popup;
+  if(popup && (response || (changed && state.token && now-state.requested_ms<5000)))state.feedback_ms=now;
 }
 }  // namespace onx_gesture

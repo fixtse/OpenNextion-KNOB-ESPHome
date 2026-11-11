@@ -638,6 +638,13 @@ script:
             return;
           }
 
+          // Playlist input updates only the menu; avoid redrawing artwork and
+          // the entire player underneath it on every periodic refresh.
+          if (onx_playlist::browser.open) {
+            id(refresh_normal_playlist).execute();
+            return;
+          }
+
           lv_obj_add_flag(id(normal_device_wifi_online_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
@@ -2461,7 +2468,7 @@ script:
           }
           const auto &config=onx_gesture::configs[request.slot];
           auto &state=onx_gesture::states[request.slot];
-          state.requested_ms=millis();++state.token;
+          state.requested_ms=millis();state.press_request=false;++state.token;
           const auto *detail=custom_logic_entity_sub::entity_detail(config.entity);
           const std::string value=state.received?state.value:!config.feedback[0] && detail?detail->state:"";
           const std::string unit=state.received?state.unit:!config.feedback[0] && detail?detail->unit:"";
@@ -2772,27 +2779,80 @@ script:
       detail_index: int
     then:
       - lambda: |-
-          onx_runtime::record("media_idle_action", id(ui_presenter)->get_normal_device_entity_id(detail_index));
-      - if:
-          condition:
-            lambda: return onx_entity_config::action_for_ui(detail_index).rfind("automation.", 0) == 0;
-          then:
-            - homeassistant.service:
-                service: automation.trigger
-                data:
-                  entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);
-                  skip_condition: "false"
-            - script.execute: show_normal_action_sent
-      - if:
-          condition:
-            lambda: return onx_entity_config::action_for_ui(detail_index).rfind("script.", 0) == 0;
-          then:
-            - homeassistant.service:
-                service: script.turn_on
-                data:
-                  entity_id: !lambda return onx_entity_config::action_for_ui(detail_index);
+          const auto entity=id(ui_presenter)->get_normal_device_entity_id(detail_index);
+          const auto action=onx_entity_config::action_for_ui(detail_index);
+          const int slot=onx_entity_config::gesture_slot_for_ui(detail_index);
+          if(!id(normal_ha_api_connected))return;
+          bool responses=false;
+          uint32_t token=0;
+          if(slot>=0 && slot<20) {
+            auto &state=onx_gesture::states[slot];
+            state.requested_ms=millis();state.press_request=true;token=++state.token;
+            state.feedback_ms=0;state.notice.clear();
+            responses=onx_gesture::configs[slot].press_responses;
+          }
+          onx_runtime::record("press_action",entity);
+          id(emit_normal_press_action).execute(slot,entity,action,token,responses);
 
+  - id: emit_normal_press_action
+    mode: parallel
+    max_runs: 4
+    parameters:
+      slot: int
+      entity: string
+      action: string
+      token: int
+      responses: bool
+    then:
+      - if:
+          condition:
+            lambda: return action.rfind("automation.",0)==0;
+          then:
+            - homeassistant.action:
+                action: automation.trigger
+                data:
+                  entity_id: !lambda return action;
+                  skip_condition: "false"
+                data_template:
+                  variables: !lambda |-
+                    return responses ? "{{ dict(knob_entity='"+entity+"') }}" : "{{ dict() }}";
             - script.execute: show_normal_action_sent
+      - if:
+          condition:
+            lambda: return action.rfind("script.",0)==0 && !responses;
+          then:
+            - homeassistant.action:
+                action: script.turn_on
+                data:
+                  entity_id: !lambda return action;
+            - script.execute: show_normal_action_sent
+      - if:
+          condition:
+            lambda: return action.rfind("script.",0)==0 && responses;
+          then:
+            - homeassistant.action:
+                action: !lambda return action;
+                capture_response: true
+                on_success:
+                  - lambda: |-
+                      if(slot<0 || slot>=20 || entity!=onx_gesture::configs[slot].entity ||
+                          !onx_gesture::configs[slot].press_responses ||
+                          onx_gesture::states[slot].token!=static_cast<uint32_t>(token))return;
+                      const auto result=response["response"];
+                      if(result["value"].isNull())return;
+                      std::string text;
+                      if(result["value"].is<const char *>())text=result["value"].as<std::string>();
+                      else serializeJson(result["value"],text);
+                      onx_gesture::feedback(slot,text,result["unit"] | "",millis(),true);
+                      id(refresh_normal_gesture_feedback).execute();
+                on_error:
+                  - lambda: |-
+                      if(slot<0 || slot>=20 || entity!=onx_gesture::configs[slot].entity ||
+                          !onx_gesture::configs[slot].press_responses ||
+                          onx_gesture::states[slot].token!=static_cast<uint32_t>(token))return;
+                      onx_gesture::states[slot].notice="Action failed";
+                      onx_gesture::states[slot].feedback_ms=millis();
+                      id(refresh_normal_gesture_feedback).execute();
   - id: retry_normal_entity_state
     then:
       - lambda: |-
@@ -2863,6 +2923,7 @@ script:
           const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
           auto *detail = custom_logic_entity_sub::entity_detail(entity);
           const bool visible = id(normal_device_detail_active) && !id(screen_off_state) &&
+                               !onx_playlist::browser.open &&
                                id(ui_presenter)->is_normal_mode_active() && !id(ui_presenter)->is_standby_active() &&
                                entity.rfind("media_player.", 0) == 0 && detail != nullptr;
           if (!visible) { lv_obj_add_flag(id(normal_media_progress_arc), LV_OBJ_FLAG_HIDDEN); return; }
@@ -3137,10 +3198,14 @@ script:
               options+=onx_media::display_text(list->entries[j].name);
             }
             auto *roller=id(normal_playlist_roller)->obj;
-            onx_render::settings_roller(roller,id(fonts_MiSans_Medium_16)->get_lv_font(),
-                id(fonts_MiSans_Medium_18)->get_lv_font(),false);
+            static lv_obj_t *styled_roller=nullptr;
+            if(styled_roller!=roller) {
+              onx_render::settings_roller(roller,id(fonts_MiSans_Medium_16)->get_lv_font(),
+                  id(fonts_MiSans_Medium_18)->get_lv_font(),false);
+              styled_roller=roller;
+            }
             if(options!=lv_roller_get_options(roller))lv_roller_set_options(roller,options.c_str(),LV_ROLLER_MODE_NORMAL);
-            if(lv_roller_get_selected(roller)!=i)lv_roller_set_selected(roller,i,LV_ANIM_ON);
+            if(lv_roller_get_selected(roller)!=i)lv_roller_set_selected(roller,i,LV_ANIM_OFF);
             onx_render::label(id(normal_playlist_heading), "Playlists");
             lv_obj_add_flag(id(normal_playlist_rows), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(normal_playlist_hint),LV_OBJ_FLAG_HIDDEN);

@@ -236,12 +236,18 @@ inline std::array<esphome::ESPPreferenceObject,20> gesture_preferences;
 inline void load_gestures() {
   if(gestures_loaded || esphome::global_preferences==nullptr)return;
   for(size_t i=0;i<20;++i) {
-    gesture_preferences[i]=esphome::global_preferences->make_preference<onx_gesture::Config>(esphome::fnv1_hash("onx.gestures.v1."+std::to_string(i)));
+    gesture_preferences[i]=esphome::global_preferences->make_preference<onx_gesture::Config>(esphome::fnv1_hash("onx.gestures.v2."+std::to_string(i)));
     onx_gesture::Config saved{};
-    if(!gesture_preferences[i].load(&saved) || saved.magic!=0x4F4E5847)continue;
+    if(!gesture_preferences[i].load(&saved)) {
+      auto legacy_preference=esphome::global_preferences->make_preference<onx_gesture::LegacyConfig>(esphome::fnv1_hash("onx.gestures.v1."+std::to_string(i)));
+      onx_gesture::LegacyConfig legacy{};
+      if(!legacy_preference.load(&legacy))continue;
+      static_cast<onx_gesture::LegacyConfig &>(saved)=legacy;
+    }
+    if(saved.magic!=0x4F4E5847)continue;
     saved.entity[128]=saved.feedback[128]=0;
     bool valid=(onx_config::valid_entity(saved.entity) || custom_logic::is_local_hmi_gpio_switch_preset_option(saved.entity)) && (!saved.feedback[0] || onx_config::valid_entity(saved.feedback)) &&
-        saved.popup<=1 && saved.responses<=1 && saved.events<=1 && saved.step>=1 && saved.step<=100;
+        saved.press_responses<=1 && saved.popup<=1 && saved.responses<=1 && saved.events<=1 && saved.step>=1 && saved.step<=100;
     for(auto &action:saved.actions) {action[128]=0;valid=valid && onx_config::valid_action(action);}
     if(valid)onx_gesture::configs[i]=saved;
   }
@@ -261,11 +267,12 @@ inline bool parse_gestures(const std::string &entity,const std::string &raw,onx_
   const std::string feedback=doc["feedback"] | "";
   if(!feedback.empty() && !onx_config::valid_entity(feedback))return false;
   snprintf(next.feedback,sizeof(next.feedback),"%s",feedback.c_str());
-  for(const auto key:{"popup","responses","events"}) {
+  for(const auto key:{"popup","responses","events","pressResponses"}) {
     const std::string value=doc[key] | (std::string(key)=="popup"?"1":"0");
     if(value!="0" && value!="1")return false;
     if(std::string(key)=="popup")next.popup=value=="1";
     if(std::string(key)=="responses")next.responses=value=="1";
+    if(std::string(key)=="pressResponses")next.press_responses=value=="1";
     if(std::string(key)=="events")next.events=value=="1";
   }
   unsigned step=1;
@@ -462,6 +469,7 @@ inline std::string state(const std::string &host = "", bool wifi_connected = fal
       gestures["feedback"]=bound?control.feedback:"";
       gestures["popup"]=!bound || control.popup?"1":"0";
       gestures["responses"]=bound && control.responses?"1":"0";
+      gestures["pressResponses"]=bound && control.press_responses?"1":"0";
       gestures["events"]=bound && control.events?"1":"0";
       gestures["step"]=std::to_string(bound?control.step:1);
       slot["timerHidden"] = timer_hidden(i,custom_logic::cached_device_entity_id(i))?"1":"0";
