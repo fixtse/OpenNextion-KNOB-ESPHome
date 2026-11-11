@@ -1,6 +1,7 @@
 interval:
   - interval: 100ms
     then:
+      - script.execute: refresh_standby_seconds_ring
       - script.execute: refresh_normal_message_popup
       - script.execute: dispatch_normal_gesture_queue
       - script.execute: refresh_normal_gesture_feedback
@@ -18,7 +19,7 @@ interval:
       - lambda: |-
           // Warm configured icons in the background after input has settled.
           // RAM caching remains bounded and does not write icons into NVS.
-          if (id(ui_presenter)->is_normal_mode_active() && !id(sleep_mode_state) &&
+          if (id(ui_presenter)->is_normal_mode_active() && !id(sleep_mode_state) && !id(screen_off_state) &&
               id(ui_presenter)->user_idle_ms() > 2000 && !onx_media::downloading) {
             for (const auto &meta : onx_icon_state::metadata)
               id(entity_icon_downloader)->prefetch(meta.chosen());

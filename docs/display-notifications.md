@@ -19,8 +19,11 @@ For a different duration, change **timeout_seconds**. Use 120 for two minutes, o
 Use **dismiss_message** in an automation to clear it remotely. If the actions
 are missing, update the knob and let its ESPHome integration reconnect.
 
-Timers take priority over messages. Messages wait while the screen is deliberately
-off, during scheduled sleep or during setup. Only the newest message is kept,
+Notifications cover timer popups by default; timers keep counting underneath and
+reappear when the message closes. In website **Device settings → Notifications**,
+turn off **Allow notifications to cover timers** to give timer popups priority.
+Messages wait while the screen is deliberately off, during scheduled sleep or
+during setup. Only the newest message is kept,
 and messages do not survive restarting the knob.
 
 ## Copy-and-adapt examples
@@ -158,3 +161,10 @@ remain intact within the message length limit.
 The popup keeps only a small **Press to dismiss** footer. Turning still scrolls
 long messages. Image notifications show at least three text lines at once, and
 text-only notifications use the larger body area.
+
+## Expiry ring
+
+Timed notifications show a ring around the screen edge. It starts full and
+shrinks as the timeout approaches. A notification with timeout zero stays until
+dismissed and has no expiry ring. If a message is suspended by sleep or timer
+priority, its timeout pauses and the ring resumes from the remaining time.

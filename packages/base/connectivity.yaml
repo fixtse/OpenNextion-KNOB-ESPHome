@@ -33,6 +33,7 @@ wifi:
     then:
       - lambda: |-
           id(normal_wifi_connected) = true;
+          if(onx_power::sleeping)onx_power::apply_radio_sleep();
       - delay: 2s
       - if:
           condition:

@@ -1,0 +1,60 @@
+# Connected sleep keeps Home Assistant reachable; no automatic entry on boot.
+switch:
+  - platform: template
+    id: low_power_sleep
+    name: "Low Power Sleep"
+    icon: mdi:power-sleep
+    optimistic: true
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - if:
+          condition:
+            lambda: return id(boot_finished) && id(ui_presenter)->is_normal_mode_active() && !id(mode_manager)->is_provisioning_mode_enabled();
+          then:
+            - script.execute: enter_low_power_sleep
+          else:
+            - lambda: id(low_power_sleep).publish_state(false);
+    on_turn_off:
+      - if:
+          condition:
+            lambda: return onx_power::sleeping || onx_power::waking;
+          then:
+            - script.execute: wake_low_power_sleep
+
+script:
+  - id: enter_low_power_sleep
+    mode: restart
+    then:
+      - script.stop: wake_low_power_sleep
+      - switch.turn_on: ha_screen_off
+      - lvgl.pause:
+          show_snow: false
+      - lambda: |-
+          custom_logic_entity_sub::cancel_controls();
+          onx_notification::current.suspend(millis());
+          onx_power::enter();
+          id(lcd_display)->command(0x28);  // Display off.
+          id(lcd_display)->command(0x10);  // Panel sleep, beyond backlight off.
+          onx_runtime::record("connected_sleep");
+
+  - id: wake_low_power_sleep
+    mode: restart
+    then:
+      - script.stop: enter_low_power_sleep
+      - lambda: |-
+          onx_power::waking=true;
+          onx_power::restore_radio();
+          id(lcd_display)->command(0x11);  // Sleep out requires settling time.
+      - delay: 120ms
+      - lambda: |-
+          id(lcd_display)->command(0x29);
+          id(sleep_mode_state)=false;
+          id(sleep_wakeup_pending)=false;
+          id(standby_wakeup_pending)=false;
+          id(ui_presenter)->notify_user_activity();
+      - lvgl.resume:
+      - switch.turn_off: ha_screen_off
+      - lambda: |-
+          lv_obj_invalidate(lv_scr_act());
+          onx_power::waking=false;
+          onx_runtime::record("connected_wake");

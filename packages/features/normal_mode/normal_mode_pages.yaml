@@ -64,6 +64,27 @@ lvgl:
           scrollable: false
           hidden: true
           widgets:
+            - arc:
+                id: normal_message_countdown_arc
+                align: center
+                width: 240
+                height: 240
+                pad_all: 0
+                border_width: 0
+                adjustable: false
+                clickable: false
+                min_value: 0
+                max_value: 1000
+                value: 1000
+                start_angle: 0
+                end_angle: 360
+                rotation: 270
+                arc_width: 4
+                arc_color: 0x414850
+                indicator:
+                  arc_width: 4
+                  arc_color: 0x62B0FF
+                hidden: true
             - label:
                 align: top_mid
                 y: 20
@@ -2950,6 +2971,27 @@ lvgl:
       pad_all: 0
       scrollable: false
       widgets:
+        - arc:
+            id: standby_seconds_arc
+            align: center
+            width: 240
+            height: 240
+            pad_all: 0
+            border_width: 0
+            adjustable: false
+            clickable: false
+            min_value: 0
+            max_value: 1000
+            value: 0
+            start_angle: 0
+            end_angle: 360
+            rotation: 270
+            arc_width: 4
+            arc_color: 0x414850
+            indicator:
+              arc_width: 4
+              arc_color: 0x62B0FF
+            hidden: true
         - image:
             id: standby_wifi_online_widget
             x: -13

@@ -2577,6 +2577,22 @@ script:
           lv_obj_clear_flag(id(normal_gesture_feedback),LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(id(normal_gesture_feedback));
 
+  - id: refresh_standby_seconds_ring
+    then:
+      - lambda: |-
+          const auto now=id(ha_time).now();
+          const bool show=onx_display_settings::behavior.clock_seconds && now.is_valid() &&
+              id(ui_presenter)->is_normal_mode_active() && id(ui_presenter)->is_standby_active() &&
+              !id(screen_off_state) && !id(sleep_mode_state);
+          if(!show) {lv_obj_add_flag(id(standby_seconds_arc),LV_OBJ_FLAG_HIDDEN);return;}
+          static time_t last_second=0;
+          static uint32_t tick_ms=0;
+          if(last_second!=now.timestamp) {last_second=now.timestamp;tick_ms=millis();}
+          const uint32_t fraction=std::min<uint32_t>(999,millis()-tick_ms);
+          lv_arc_set_value(id(standby_seconds_arc),(now.second*1000+fraction)/60);
+          lv_obj_set_style_arc_color(id(standby_seconds_arc),lv_color_hex(onx_display_settings::current.media_color),LV_PART_INDICATOR);
+          lv_obj_clear_flag(id(standby_seconds_arc),LV_OBJ_FLAG_HIDDEN);
+
   - id: refresh_normal_message_popup
     then:
       - lambda: |-
@@ -2601,7 +2617,8 @@ script:
           const bool sleep_due=now.is_valid() && id(ui_presenter)->should_enter_sleep_mode(now.hour,now.minute);
           const bool available=id(ui_presenter)->is_normal_mode_active() &&
               !id(mode_manager)->is_provisioning_mode_enabled() && !id(sleep_mode_state) &&
-              !id(screen_off_state) && !sleep_due && !onx_timer::popup.visible;
+              !id(screen_off_state) && !sleep_due &&
+              (onx_display_settings::behavior.cover_timers || !onx_timer::popup.visible);
           if(!available)message.suspend(now_ms);
           if(!available || !message.display(now_ms)) {
             if(!message.pending && (picture.attempted || picture.ready)) {
@@ -2624,6 +2641,13 @@ script:
             }
           }
           if(picture.failed && picture.attempted && !picture.downloading)release_picture();
+          const int countdown=message.countdown(now_ms);
+          if(countdown<0)lv_obj_add_flag(id(normal_message_countdown_arc),LV_OBJ_FLAG_HIDDEN);
+          else {
+            lv_arc_set_value(id(normal_message_countdown_arc),countdown);
+            lv_obj_set_style_arc_color(id(normal_message_countdown_arc),lv_color_hex(onx_display_settings::current.media_color),LV_PART_INDICATOR);
+            lv_obj_clear_flag(id(normal_message_countdown_arc),LV_OBJ_FLAG_HIDDEN);
+          }
           static uint32_t rendered_revision=0;
           static bool rendered_image=false;
           if(rendered_revision!=message.revision || rendered_image!=picture.ready) {

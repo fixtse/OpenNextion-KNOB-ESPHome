@@ -201,3 +201,25 @@ The webpage preview remains upright as a content preview, independent of mountin
 
 References: [ONX2424G013 specifications](https://open-nextion-app-store.nextion.tech/devices/onx2424g013/)
 and [GC9A01A hardware rotation implementation](https://github.com/adafruit/Adafruit_GC9A01A/blob/main/Adafruit_GC9A01A.cpp).
+
+## Clock seconds and connected sleep
+
+Device settings are grouped into Screen & controls, Clock & idle screen,
+Media & ring appearance, Notifications, and Sleep & wake.
+
+Under **Clock & idle screen**, enable **Show seconds around the clock edge** to
+fill the edge ring once each minute. It is off by default and needs a valid
+Home Assistant time. The shared **Ring color** also applies to clock seconds,
+notification expiry, numeric values and media playback.
+
+The Home Assistant **Low Power Sleep** switch keeps the device reachable while
+sleeping the display panel, switching off the backlight, pausing LVGL rendering
+and enabling Wi-Fi modem power saving. Turn the switch off or press the knob to
+wake. The wake press is consumed and does not trigger an entity action. Turning
+the display light on also leaves this mode. Rebooting starts awake.
+
+This is connected low-power sleep, not ESP32 deep sleep: Home Assistant can wake
+it because Wi-Fi remains active. Actual power savings depend on the hardware and
+network and have not been measured. Your existing sleep schedule still controls
+screen-only sleep; automate the Low Power Sleep switch in Home Assistant for a
+night-time power-saving routine.

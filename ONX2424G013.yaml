@@ -25,6 +25,7 @@ packages:
   diagnostics: !include packages/base/diagnostics.yaml
   mode_router: !include packages/features/mode_router.yaml
   boot_status: !include packages/features/boot_status.yaml
+  low_power: !include packages/features/low_power.yaml
   normal_mode: !include packages/features/normal_mode.yaml
 
 preferences:
@@ -32,6 +33,7 @@ preferences:
 
 esphome:
   includes:
+    - onx_power_state.h
     - onx_memory.h
     - onx_render.h
     - onx_navigation.h

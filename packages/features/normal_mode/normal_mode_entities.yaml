@@ -600,6 +600,11 @@ switch:
               ha_call.perform();
               id(ha_display_light_syncing) = false;
             }
+        - if:
+            condition:
+              lambda: return onx_power::sleeping && !onx_power::waking;
+            then:
+              - switch.turn_off: low_power_sleep
   - platform: template
     name: "2. Sleep mode enabled"
     id: sleep_mode_enabled

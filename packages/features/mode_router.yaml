@@ -195,6 +195,8 @@ onx_config_web:
         root["media_color"] = onx_display_settings::color_text(onx_display_settings::current.media_color);
         root["orientation"] = std::to_string(onx_display_settings::orientation.turns*90);
         root["media_view"] = onx_display_settings::media_style.material?"material":"classic";
+        root["clock_seconds_ring"] = onx_display_settings::behavior.clock_seconds?"1":"0";
+        root["notifications_cover_timers"] = onx_display_settings::behavior.cover_timers?"1":"0";
         root["idle_view"] = onx_display_settings::idle.media?"media":"clock";
         root["standby_scope"] = onx_display_settings::scope_text(onx_display_settings::current.standby_scope);
         root["sensitivity"] = std::to_string(id(normal_knob_applied_value));
@@ -210,6 +212,8 @@ onx_config_web:
       const auto date_text = query.date_format.empty() ? onx_display_settings::date_format_text(onx_display_settings::datetime.date_format) : query.date_format;
       const auto hour_text = query.hour_format.empty() ? (onx_display_settings::datetime.hour_format == 1 ? "12" : "24") : query.hour_format;
       if ((!query.orientation.empty() && !onx_display_settings::parse_orientation(query.orientation,orientation)) ||
+          (!query.clock_seconds_ring.empty() && query.clock_seconds_ring!="0" && query.clock_seconds_ring!="1") ||
+          (!query.notifications_cover_timers.empty() && query.notifications_cover_timers!="0" && query.notifications_cover_timers!="1") ||
           (!query.media_view.empty() && query.media_view!="classic" && query.media_view!="material") ||
           (!query.idle_view.empty() && query.idle_view!="clock" && query.idle_view!="media") ||
           (!query.show_ampm.empty() && query.show_ampm!="0" && query.show_ampm!="1") ||
@@ -231,7 +235,7 @@ onx_config_web:
       if (!id(app_storage)->set_standby_timeout_ms(standby * 1000U) ||
           !id(app_storage)->set_sleep_mode_config(enabled, start_minutes, end_minutes, sleep_timeout * 1000U))
         return onx_entity_config::error("Could not persist display settings; retry");
-      if (!onx_entity_config::save_display_settings(query.media_color, query.standby_scope, date_text, hour_text, query.show_ampm.empty() ? onx_display_settings::datetime.show_ampm!=0 : query.show_ampm=="1",query.idle_view,query.media_view,query.orientation))
+      if (!onx_entity_config::save_display_settings(query.media_color, query.standby_scope, date_text, hour_text, query.show_ampm.empty() ? onx_display_settings::datetime.show_ampm!=0 : query.show_ampm=="1",query.idle_view,query.media_view,query.orientation,query.notifications_cover_timers,query.clock_seconds_ring))
         return onx_entity_config::error("Could not persist appearance settings; retry");
       id(lcd_display)->set_hardware_orientation(onx_display_settings::orientation.turns);
       lv_obj_invalidate(lv_scr_act());

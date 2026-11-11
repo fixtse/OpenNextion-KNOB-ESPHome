@@ -12,10 +12,13 @@ binary_sensor:
       then:
         - if:
             condition:
-              lambda: return onx_notification::current.visible;
+              lambda: return onx_notification::current.visible || onx_power::sleeping || onx_power::waking;
             then:
               - lambda: |-
-                  onx_notification::press_consumed=true;
+                  if(onx_power::sleeping || onx_power::waking) {
+                    onx_power::wake_press=true;
+                    if(id(low_power_sleep).state)id(low_power_sleep).turn_off();
+                  } else onx_notification::press_consumed=true;
                   id(key_press_started_ms)=id(key_btn).event_time_ms();
                   id(key_pressed)=false;
                   id(normal_clear_wifi_allowed)=false;
@@ -73,9 +76,14 @@ binary_sensor:
       then:
         - if:
             condition:
-              lambda: return onx_notification::press_consumed || onx_notification::current.visible;
+              lambda: return onx_power::wake_press || onx_notification::press_consumed || onx_notification::current.visible;
             then:
               - lambda: |-
+                  if(onx_power::wake_press) {
+                    onx_power::wake_press=false;
+                    id(key_pressed)=false;id(key_long_press_handled)=true;
+                    id(ui_presenter)->notify_user_activity();return;
+                  }
                   const bool dismiss=onx_notification::press_consumed;
                   onx_notification::press_consumed=false;
                   if(dismiss)onx_notification::current.dismiss();
@@ -813,7 +821,7 @@ sensor:
       then:
         - if:
             condition:
-              lambda: return onx_notification::current.visible || onx_notification::press_consumed;
+              lambda: return onx_power::sleeping || onx_power::waking || onx_notification::current.visible || onx_notification::press_consumed;
             then:
               - script.execute:
                   id: scroll_normal_message
@@ -1253,7 +1261,7 @@ sensor:
       then:
         - if:
             condition:
-              lambda: return onx_notification::current.visible || onx_notification::press_consumed;
+              lambda: return onx_power::sleeping || onx_power::waking || onx_notification::current.visible || onx_notification::press_consumed;
             then:
               - script.execute:
                   id: scroll_normal_message
