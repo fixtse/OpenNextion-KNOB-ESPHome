@@ -160,12 +160,33 @@ function selectedPickerEntity(){const s=slots[active];return mode==='gesture'?s.
 function closePicker(){if($('entity-picker').open)$('entity-picker').close()}
 $('close-picker').onclick=closePicker;
 $('entity-picker').addEventListener('click',event=>{if(event.target!==$('entity-picker'))return;const r=event.target.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)closePicker()});
+function slotIcon(slot){
+ const holder=element('span','','slot-icon');holder.setAttribute('aria-hidden','true');
+ const domain=slot.entity.split('.')[0];
+ const paths={
+  sensor:'M3 3v18h18v-2H5V3H3m4 12 4-4 4 3 5-7-2-1-4 5-3-3-5 5 1 2Z',
+  media_player:'M3 4v14h7v2h4v-2h7V4H3m2 2h14v10H5V6m4 2v6l6-3-6-3Z',
+  weather:'M6 10a6 6 0 0 1 11-3 5 5 0 0 1 0 10H6a4 4 0 0 1 0-8v1m0 2a2 2 0 0 0 0 4h11a3 3 0 0 0 0-6h-1l-1-2a4 4 0 0 0-7 3v1H6Z',
+  climate:'M10 3a3 3 0 0 1 6 0v10a5 5 0 1 1-6 0V3m2 0v11l-1 1a3 3 0 1 0 4 0l-1-1V3a1 1 0 0 0-2 0Z',
+  timer:'M9 1h6v2H9V1m3 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18m0 2a7 7 0 1 1 0 14 7 7 0 0 1 0-14m-1 2h2v6h-2V8Z'
+ };
+ const fallback=svgNode('svg',{viewBox:'0 0 24 24',focusable:'false'});
+ fallback.append(svgNode('path',{d:paths[domain]||'M4 4h6v6H4V4m10 0h6v6h-6V4M4 14h6v6H4v-6m10 0h6v6h-6v-6Z'}));holder.append(fallback);
+ const defaults={sensor:'chart-line',binary_sensor:'checkbox-marked-circle-outline',media_player:'music-note',weather:'weather-partly-cloudy',climate:'thermostat',timer:'timer-outline',light:'lightbulb',switch:'toggle-switch',cover:'window-shutter',fan:'fan',script:'script-text',automation:'robot',number:'numeric',input_number:'numeric',select:'format-list-bulleted',input_select:'format-list-bulleted',button:'gesture-tap-button',input_button:'gesture-tap-button',scene:'palette'};
+ const icon=slot.icon||ha.items.find(item=>item.entity===slot.entity)?.icon||'mdi:'+(defaults[domain]||'view-grid-outline');
+ if(slot.entity && /^mdi:[a-z0-9-]{1,76}$/.test(icon)){
+  const img=document.createElement('img');img.alt='';img.width=20;img.height=20;img.hidden=true;img.decoding='async';
+  img.onload=()=>{fallback.style.display='none';img.hidden=false};img.onerror=()=>img.remove();
+  img.src='https://api.iconify.design/mdi/'+icon.slice(4)+'.svg?color=%2394a3b8';holder.append(img);
+ }
+ return holder;
+}
 function render(){
  const icon=slots[active].icon;$('icon-hint').textContent=!slots[active].entity?'':icon?'Home Assistant icon: '+icon:'Using the entity default. Sign in and refresh the entity list to sync Home Assistant icons.';
  visibleSlots=Math.max(visibleSlots,active+1,slots.reduce((last,s,i)=>s.entity?i+1:last,1));
  $('add-slot').disabled=busy||!initialized||visibleSlots>=MAX_SLOTS;
  $('slot-capacity').textContent=slots.filter(s=>s.entity).length+' configured · up to '+MAX_SLOTS;
- $('slots').replaceChildren(...slots.slice(0,visibleSlots).map((s,i)=>{const b=element('button','');b.append(element('b',String(i+1)),element('span',s.name||s.entity||'Empty slot'));if(dirtySlot(i))b.append(element('span','●','dirty-dot'));b.setAttribute('aria-label','Slot '+(i+1)+': '+(s.name||s.entity||'Empty')+(dirtySlot(i)?', unsaved':''));b.setAttribute('aria-current',String(i===active));b.disabled=busy;b.onclick=()=>{active=i;slotTab='display';playlistTarget=-1;render();search();refreshPreview()};return b}));
+ $('slots').replaceChildren(...slots.slice(0,visibleSlots).map((s,i)=>{const b=element('button','');b.append(element('b',String(i+1)),slotIcon(s),element('span',s.name||s.entity||'Empty slot'));b.title=s.name||s.entity||'Empty slot';if(dirtySlot(i))b.append(element('span','●','dirty-dot'));b.setAttribute('aria-label','Slot '+(i+1)+': '+(s.name||s.entity||'Empty')+(dirtySlot(i)?', unsaved':''));b.setAttribute('aria-current',String(i===active));b.disabled=busy;b.onclick=()=>{active=i;slotTab='display';playlistTarget=-1;render();search();refreshPreview()};return b}));
  const s=slots[active],restricted=nativePress(s.entity),count=slots.filter((_,i)=>dirtySlot(i)).length;
  $('slot-title').textContent='Slot '+(active+1);$('unsaved-count').textContent=count?count+' unsaved slot'+(count===1?'':'s'):'';
  $('action-binding').querySelector('h3').textContent=s.entity.startsWith('media_player.')?'When idle':'When pressed';
