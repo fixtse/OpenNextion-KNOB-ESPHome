@@ -190,7 +190,7 @@ inline bool save_sensor_config(size_t i,const std::string &primary,const std::st
   load_sensor_configs();if(!sensor_configs_loaded||i>=20)return false;
   onx_sensor_view::Config next{};
   snprintf(next.primary,sizeof(next.primary),"%s",primary.c_str());snprintf(next.secondary,sizeof(next.secondary),"%s",secondary.c_str());
-  snprintf(next.text,sizeof(next.text),"%s",text.empty()?"{value}":text.c_str());next.graph=graph;
+  snprintf(next.text,sizeof(next.text),"%s",text.empty()?"{value}":text.c_str());next.graph=primary.rfind("switch.",0)==0 ? !secondary.empty() : graph;
   if(!sensor_preferences[i].save(&next)||!esphome::global_preferences->sync())return false;
   onx_sensor_view::configs[i]=next;onx_sensor_view::states[i].bind(next);return true;
 }
@@ -378,6 +378,7 @@ inline bool save_action(size_t slot, const std::string &entity, const std::strin
 }
 inline void customize_control_view(int ui_slot,const std::string &entity,onx_detail_view::View &view) {
   const auto press=action_for_ui(ui_slot);
+  if(entity.rfind("switch.",0)==0 && view.layout=="graph" && !press.empty())view.name.text=press=="none"?"Press: no action":"Press: custom action";
   if(entity.rfind("climate.",0)==0 && !press.empty())
     view.hint.text=press=="none"?"Press: no action":"Press: custom action";
   const int slot=gesture_slot_for_ui(ui_slot);

@@ -56,6 +56,7 @@ onx_config_web:
           target["icon"] = view.icon; target["accent"] = view.accent;
           target["icon_x"] = view.icon_x; target["icon_y"] = view.icon_y; target["icon_size"] = view.icon_size;
           target["value_ring"] = view.value_ring;
+          target["light_mode"] = view.light_mode; target["selector_value"] = view.selector_value;
           JsonArray lines = target["lines"].to<JsonArray>();
           for (const auto *line : {&view.badge, &view.value, &view.context, &view.hint, &view.name}) {
             auto item = lines.add<JsonObject>();
@@ -69,6 +70,11 @@ onx_config_web:
           const auto title = custom_logic::ha_entity_title_from_registry_cache(entity);
           auto view = onx_detail_view::build(entity, title);
           onx_entity_config::customize_control_view(custom_logic::normal_ui_slot_for_device_config_slot(i),entity,view);
+          if(entity.rfind("light.",0)==0) {
+            const int ui=custom_logic::normal_ui_slot_for_device_config_slot(i);
+            const int mode=id(normal_device_detail_active) && id(normal_device_detail_index)==ui ? id(normal_detail_light_mode) : 0;
+            view=onx_detail_view::light_view(entity,title,id(app_storage)->normal_device_slot(ui).light(),mode);
+          }
           auto slot = slots.add<JsonObject>();
           slot["entity"] = entity; encode(slot, view);
           if(view.layout=="graph") {
@@ -285,11 +291,12 @@ onx_config_web:
           (domain == "cover" && (query.type == "Cover (Preset Off)" || query.type == "Cover (Preset On)"));
       if (!allowed) return onx_entity_config::error("Choose a type supported by this entity");
     }
-    if ((!query.secondary.empty() && (!onx_config::valid_entity(query.secondary) || query.entity.rfind("sensor.",0)!=0)) ||
+    if ((!query.secondary.empty() && (!onx_config::valid_entity(query.secondary) || (domain!="sensor" && domain!="switch") || (domain=="switch" && query.secondary.rfind("sensor.",0)!=0))) ||
         (!query.sensor_graph.empty() && query.sensor_graph!="0" && query.sensor_graph!="1") ||
-        (query.sensor_graph=="1" && query.entity.rfind("sensor.",0)!=0))
-      return onx_entity_config::error("Secondary information and graphs require a sensor; choose a valid secondary entity");
-    if(query.sensor_graph=="1") {
+        (query.sensor_graph=="1" && domain!="sensor" && domain!="switch") ||
+        (domain=="switch" && query.sensor_graph=="1" && query.secondary.empty()))
+      return onx_entity_config::error("Choose a sensor, or a switch with a secondary power/energy sensor");
+    if(query.sensor_graph=="1" && domain=="sensor") {
       const auto *d=custom_logic_entity_sub::entity_detail(query.entity);
       if(d && d->received && d->available && !std::isfinite(custom_logic_entity_sub::detail_number(d->state)))
         return onx_entity_config::error("Graphs require a numeric sensor");

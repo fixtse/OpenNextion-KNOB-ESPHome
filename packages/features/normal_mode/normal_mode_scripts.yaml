@@ -17,7 +17,7 @@ script:
             - homeassistant.action:
                 action: recorder.get_statistics
                 variables:
-                  sensor_entity: !lambda return entity;
+                  sensor_entity: !lambda return onx_sensor_view::history_entity(entity);
                 data_template:
                   statistic_ids: "{{ [sensor_entity] }}"
                   start_time: "{{ (now() - timedelta(hours=12)).isoformat() }}"
@@ -25,7 +25,8 @@ script:
                   types: "{{ ['mean', 'state'] }}"
                 capture_response: true
                 response_template: !lambda |-
-                  return "{% set ns = namespace(points=[]) %}{% for p in response.get('statistics', response).get('"+entity+"', [])[::2][:73] %}{% set y = p.get('mean') if p.get('mean') is not none else p.get('state') %}{% if y is number %}{% set ns.points = ns.points + [dict(t=as_timestamp(p['start']), y=y)] %}{% endif %}{% endfor %}{{ dict(points=ns.points) | to_json }}";
+                  const auto history_entity=onx_sensor_view::history_entity(entity);
+                  return "{% set ns = namespace(points=[]) %}{% for p in response.get('statistics', response).get('"+history_entity+"', [])[::2][:73] %}{% set y = p.get('mean') if p.get('mean') is not none else p.get('state') %}{% if y is number %}{% set ns.points = ns.points + [dict(t=as_timestamp(p['start']), y=y)] %}{% endif %}{% endfor %}{{ dict(points=ns.points) | to_json }}";
                 on_success:
                   - lambda: |-
                       const int i=onx_sensor_view::index(entity);if(i<0)return;
@@ -1034,6 +1035,30 @@ script:
             lv_arc_set_value(id(normal_light_rgb_value_arc), value_pct);
           }
 
+          const auto view=onx_detail_view::light_view(device_entity_id,device_title,detail_slot.light(),id(normal_detail_light_mode));
+          lv_obj_set_style_bg_color(page,lv_color_hex(0x000000),0);
+          lv_obj_set_style_bg_color(shell,lv_color_hex(0x000000),0);
+          onx_render::label(id(normal_light_control_label),view.badge.text.c_str());
+          set_hidden(id(normal_light_control_label),!is_on);
+          onx_render::label(id(normal_light_detail_state),view.value.text.c_str());
+          lv_obj_set_y(id(normal_light_detail_state),view.value.y);
+          lv_obj_set_width(id(normal_light_detail_state),view.value.width);
+          lv_obj_set_style_text_align(id(normal_light_detail_state),LV_TEXT_ALIGN_CENTER,0);
+          lv_obj_set_style_text_font(id(normal_light_detail_state),view.value.size==24?id(fonts_MiSans_Medium_24)->get_lv_font():id(fonts_MiSans_Medium_32)->get_lv_font(),0);
+          lv_obj_set_y(id(normal_light_detail_title),view.name.y);
+          lv_obj_set_width(id(normal_light_detail_title),view.name.width);
+          lv_obj_set_style_text_font(id(normal_light_detail_title),id(fonts_MiSans_Medium_14)->get_lv_font(),0);
+          set_hidden(id(normal_light_dimming_light_detail_arc),!is_on || view.value_ring<0);
+          if(view.value_ring>=0)lv_arc_set_value(id(normal_light_dimming_light_detail_arc),view.value_ring/10);
+          lv_obj_set_style_arc_color(id(normal_light_dimming_light_detail_arc),lv_color_hex(view.accent),LV_PART_INDICATOR);
+          set_hidden(id(normal_light_cct_gradient),!is_on || !show_cct_bar);
+          set_hidden(id(normal_light_rgb_gradient),!is_on || !show_rgb_bar);
+          set_hidden(id(normal_light_cct_value_arc),!is_on || !show_cct_bar);
+          set_hidden(id(normal_light_rgb_value_arc),!is_on || !show_rgb_bar);
+          lv_image_set_scale(id(normal_light_rgb_gradient),274);
+          lv_image_set_scale(id(normal_light_cct_gradient),274);
+          set_hidden(id(normal_light_detail_mode_text_shell),!is_on || !has_adjustable_mode);
+
       - lambda: |-
           if (!id(normal_device_detail_active) || (id(normal_device_detail_kind) != NORMAL_DEVICE_DETAIL_KIND_LIGHT)) return;
           lv_obj_add_flag(id(normal_light_device_detail_switch_on), LV_OBJ_FLAG_HIDDEN);
@@ -1046,6 +1071,8 @@ script:
           id(apply_normal_entity_icon).execute(id(normal_light_entity_icon),
               id(ui_presenter)->get_normal_device_entity_id(slot),
               id(ui_presenter)->get_normal_device_type(slot), id(normal_device_detail_is_on));
+          if(id(normal_device_detail_is_on))lv_obj_add_flag(id(normal_light_entity_icon),LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_clear_flag(id(normal_light_entity_icon),LV_OBJ_FLAG_HIDDEN);
 
   - id: update_normal_detail_exit_ready_flags
     mode: restart
@@ -1617,6 +1644,15 @@ script:
           then:
             - if:
                 condition:
+                  lambda: return id(ui_presenter)->get_normal_device_entity_id(detail_index).rfind("switch.",0)==0;
+                then:
+                  - homeassistant.action:
+                      action: switch.toggle
+                      data:
+                        entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                  - script.execute: show_normal_action_sent
+            - if:
+                condition:
                   lambda: |-
                     const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
                     return entity.rfind("sensor.", 0) == 0 || entity.rfind("binary_sensor.", 0) == 0;
@@ -2013,6 +2049,10 @@ script:
           } else if (device_type == "automation" || device_type == "sensor" || device_type == "binary_sensor" || device_type == "climate" || device_type == "script" || device_type == "weather" || device_type == "timer" || device_type == "media_player" || device_type == "fan" || device_type == "number" || device_type == "input_number" || device_type == "select" || device_type == "input_select" || device_type == "scene" || device_type == "button" || device_type == "input_button") {
             detail_kind = NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
           }
+          const auto graph_entity=id(ui_presenter)->get_normal_device_entity_id(detail_index);
+          const int graph_index=onx_sensor_view::index(graph_entity);
+          if(graph_entity.rfind("switch.",0)==0 && graph_index>=0 && onx_sensor_view::configs[graph_index].secondary[0] && onx_sensor_view::configs[graph_index].graph)
+            detail_kind=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;
           if (detail_kind == NORMAL_DEVICE_DETAIL_KIND_NONE) {
             ESP_LOGI("normal_mode",
                      "detail entry ignored: selected item is not a switch, plug, light, curtain or automation");

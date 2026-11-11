@@ -331,18 +331,11 @@ bool NormalLightState::supports_color_temperature() const { return (this->capabi
 
 bool NormalLightState::supports_rgb() const { return (this->capability_mask & 0x8) != 0; }
 
-bool NormalLightState::custom_supports_brightness() const {
-  return this->supports_brightness() && (normalize_light_capability_mask(this->custom_capability_mask) & 0x2) != 0;
-}
-
-bool NormalLightState::custom_supports_color_temperature() const {
-  return this->supports_color_temperature() &&
-         (normalize_light_capability_mask(this->custom_capability_mask) & 0x4) != 0;
-}
-
-bool NormalLightState::custom_supports_rgb() const {
-  return this->supports_rgb() && (normalize_light_capability_mask(this->custom_capability_mask) & 0x8) != 0;
-}
+// Home Assistant capabilities remain authoritative even for old on/off-only
+// presentation selections. A saved display type must not disable native controls.
+bool NormalLightState::custom_supports_brightness() const {return this->supports_brightness();}
+bool NormalLightState::custom_supports_color_temperature() const {return this->supports_color_temperature();}
+bool NormalLightState::custom_supports_rgb() const {return this->supports_rgb();}
 
 uint8_t NormalLightState::color_temperature_step() const {
   uint16_t min_kelvin = this->min_color_temperature_kelvin;

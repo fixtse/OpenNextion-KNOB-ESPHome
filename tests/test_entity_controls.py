@@ -16,6 +16,7 @@ class EntityControls(unittest.TestCase):
                                  if not line.startswith(('#include', '#pragma')))
         harness = r'''
 #include "onx_control_state.h"
+#include "onx_light_state.h"
 #include "onx_media_state.h"
 #include "onx_icon_state.h"
 #include "onx_display_settings.h"

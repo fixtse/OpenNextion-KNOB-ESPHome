@@ -2070,6 +2070,15 @@ lvgl:
             pad_all: 0
             scrollable: false
             widgets:
+              - label:
+                  id: normal_light_control_label
+                  align: top_mid
+                  y: 48
+                  width: 196
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_16
+                  text_color: 0x62B0FF
+                  text: "Brightness"
               - image:
                   id: normal_light_entity_icon
                   align: top_mid
@@ -2122,23 +2131,25 @@ lvgl:
                   x: 0
                   y: 0
                   align: center
-                  width: 224
-                  height: 224
+                  width: 240
+                  height: 240
+                  pad_all: 0
+                  border_width: 0
                   adjustable: false
                   min_value: 0
                   max_value: 100
                   value: 50
                   start_angle: 0
-                  end_angle: 270
-                  rotation: 135
-                  arc_width: 8
+                  end_angle: 360
+                  rotation: 270
+                  arc_width: 4
                   arc_rounded: true
                   arc_color: 0x5A5A5A
                   indicator:
                     arc_color: 0x62B0FF
                   knob:
-                    width: 16
-                    height: 16
+                    width: 0
+                    height: 0
                     radius: 8
                     bg_color: 0xFFFFFF
                     bg_opa: COVER
@@ -2165,8 +2176,10 @@ lvgl:
                   x: 0
                   y: 0
                   align: center
-                  width: 224
-                  height: 224
+                  width: 240
+                  height: 240
+                  pad_all: 0
+                  border_width: 0
                   adjustable: true
                   clickable: false
                   min_value: 0
@@ -2197,12 +2210,14 @@ lvgl:
                   x: 0
                   y: 0
                   align: center
-                  width: 224
-                  height: 224
+                  width: 240
+                  height: 240
+                  pad_all: 0
+                  border_width: 0
                   adjustable: true
                   clickable: false
                   min_value: 0
-                  max_value: 35
+                  max_value: 36
                   value: 0
                   start_angle: 0
                   end_angle: 360

@@ -1,5 +1,6 @@
 #pragma once
 #include "onx_entity_controls.h"
+#include "onx_light_state.h"
 #include "onx_icon_state.h"
 #include "onx_display_settings.h"
 #include <cstdio>
@@ -11,7 +12,7 @@ struct View {
        hint{"", 147, 14, 198}, name{"", 185, 16, 180};
   uint32_t accent{0x62B0FF};
   int icon_y{32}, icon_size{28}, icon_x{-62};
-  int value_ring{-1};
+  int value_ring{-1},light_mode{-1},selector_value{-1};
   bool available{false};
 };
 // Use a common range projection for the device and browser preview.
@@ -189,6 +190,18 @@ inline View build(const std::string &entity, const std::string &name) {
       }
     }
   }
+  if(has_prefix(entity,"switch.")) {
+    const int i=onx_sensor_view::index(entity);
+    if(i>=0 && onx_sensor_view::configs[i].graph && onx_sensor_view::configs[i].secondary[0]) {
+      const auto &s=onx_sensor_view::states[i];
+      const bool reading=s.received && s.available && (s.unit=="W" || s.unit=="kWh");
+      v.layout="graph";v.icon.clear();v.badge={onx_media::display_text(name),30,16,184,v.accent};
+      v.value={(d->state=="on"?std::string("On"):std::string("Off"))+" · "+(reading?compact(s.value)+" "+s.unit:"—"),61,24,196};
+      v.context.text.clear();v.hint={"12h ago                         Now",174,14,196,0xAAAAAA};
+      if(s.history(std::time(nullptr)).size()<2)v.hint.text="Collecting history…";
+      v.name={"Press to toggle",198,12,156};
+    }
+  }
   if (has_prefix(entity,"number.") || has_prefix(entity,"input_number."))
     set_value_ring(v, onx_controls::effective(*d,"state"), d->minimum, d->maximum);
   else if (has_prefix(entity,"sensor.") && d->unit == "%")
@@ -199,9 +212,36 @@ inline View build(const std::string &entity, const std::string &name) {
   v.badge.color = v.accent;
   return v;
 }
+// The same light model drives the physical controls and browser preview.
+template<typename Light> inline View light_view(const std::string &entity,const std::string &name,const Light &state,int mode) {
+  auto v=build(entity,name);v.layout="light";v.light_mode=mode;
+  v.badge={"",48,16,196,0x62B0FF};v.context.text.clear();v.hint.text.clear();
+  v.value={"Off",120,32,190};v.name={onx_media::display_text(name),198,14,144};
+  v.icon_x=0;v.icon_y=40;v.icon_size=80;
+  if(!v.available || !state.is_on) {v.light_mode=-1;return v;}
+  const auto *detail=custom_logic_entity_sub::entity_detail(entity);
+  const float hue=detail && std::isfinite(detail->light_hue)?detail->light_hue:state.hue_degrees();
+  const float saturation=detail && std::isfinite(detail->light_saturation)?detail->light_saturation:100;
+  v.accent=(mode==1 || (detail && detail->light_temperature)) && state.color_temperature_kelvin>0 ?
+      onx_light::kelvin(state.color_temperature_kelvin):state.supports_rgb()?onx_light::hsv(hue,saturation):0xFFFFFF;
+  v.icon.clear();v.value.y=100;v.badge.x=0;
+  if(mode==2) {
+    v.badge.text="RGB";v.value.text=onx_light::rgb_text(v.accent);v.value.size=24;
+    v.selector_value=int(state.rgb_tick)*1000/36;
+  } else if(mode==1) {
+    v.badge.text="Color temperature";v.value.text=std::to_string(state.color_temperature_kelvin)+" K";
+    v.selector_value=int(state.color_temperature_step())*10;
+  } else {
+    v.badge.text=state.custom_supports_brightness()?"Brightness":"Light";
+    v.value.text=state.custom_supports_brightness()?std::to_string(state.brightness_pct)+"%":"On";
+    if(state.custom_supports_brightness())v.value_ring=int(state.brightness_pct)*10;
+  }
+  return v;
+}
 inline View carousel(const std::string &entity, const std::string &name) {
   using namespace custom_logic_entity_sub;
   auto v = build(entity, name); v.layout = "carousel"; v.value_ring = -1;
+  if(entity.rfind("switch.",0)==0)v.name.text=onx_media::display_text(name);
   const auto badge = v.badge.text;
   v.badge.text.clear(); v.context.text.clear(); v.hint.text.clear();
   v.icon_x = 0; v.icon_y = 34; v.icon_size = 40;
@@ -211,6 +251,16 @@ inline View carousel(const std::string &entity, const std::string &name) {
   if(secondary_index>=0 && onx_sensor_view::configs[secondary_index].secondary[0]) {v.name.size=14;v.name.width=198;}
   const auto *d = entity_detail(entity);
   if (!d || !d->received || !d->available) return v;
+  if(entity.rfind("switch.",0)==0) {
+    const int i=onx_sensor_view::index(entity);
+    if(i>=0 && onx_sensor_view::configs[i].secondary[0]) {
+      const auto &s=onx_sensor_view::states[i];
+      if(s.received && s.available && (s.unit=="W" || s.unit=="kWh")) {
+        v.value.text=(d->state=="on"?std::string("On"):std::string("Off"))+" · "+compact(s.value)+" "+s.unit;
+        v.value.size=24;v.context.text.clear();return v;
+      }
+    }
+  }
   const auto domain = entity.substr(0,entity.find('.'));
   if(domain=="sensor" && v.icon.empty()) {v.icon=onx_icon_state::selected_icon(entity);if(v.icon.empty())v.icon="mdi:"+onx_icon_state::fallback(entity);}
   if (domain == "light" || domain == "switch") {

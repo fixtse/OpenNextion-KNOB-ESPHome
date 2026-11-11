@@ -146,3 +146,22 @@ their graph presentation. Missing values or invalid ranges hide the ring.
 Number, input number, fan, selection, scene and button controls can all be opened
 from the main list. Their detail icons and labels stay clear of the value and
 confirmation text.
+
+## Light controls
+
+Open a light to adjust brightness by default. The edge ring uses its current
+color and fills to the requested brightness. Hold and turn to select RGB or color
+temperature, release, then turn to adjust that setting. Only modes reported by
+Home Assistant are available. The mode list wraps in both directions.
+
+RGB uses a color wheel with a selection marker and an RGB hex value. Color
+temperature uses a warm-to-cool selector and a Kelvin value within the light's
+advertised range. An off light shows Off and its icon; a short press toggles it.
+Older saved on/off presentation choices no longer hide advertised controls.
+
+## Switch power and energy
+
+In a switch slot's **Display → Power & energy**, select a secondary sensor in W
+or kWh. The main view shows it beside On/Off. Open the switch for its 12-hour
+history graph; short press still toggles the switch. History uses Home Assistant
+statistics when available and samples received since boot as a fallback.

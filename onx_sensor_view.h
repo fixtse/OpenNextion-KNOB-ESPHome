@@ -55,6 +55,10 @@ inline int index(const std::string &entity) {
   for(size_t i=0;i<configs.size();++i)if(entity==configs[i].primary)return int(i);
   return -1;
 }
+inline std::string history_entity(const std::string &primary) {
+  const int i=index(primary);
+  return primary.rfind("switch.",0)==0 && i>=0 && configs[i].secondary[0] ? std::string(configs[i].secondary) : primary;
+}
 inline void replace(std::string &text,const std::string &key,const std::string &value) {
   size_t at=0;while((at=text.find(key,at))!=std::string::npos){text.replace(at,key.size(),value);at+=value.size();}
 }

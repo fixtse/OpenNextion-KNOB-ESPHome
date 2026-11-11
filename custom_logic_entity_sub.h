@@ -1,5 +1,6 @@
 #pragma once
 #include "onx_gesture.h"
+#include "onx_light_state.h"
 #include "onx_memory.h"
 
 #include <algorithm>
@@ -123,8 +124,9 @@ inline std::string entity_id_from_select(esphome::select::Select *select) {
   return custom_logic::extract_entity_id_from_device1_option(select->current_option().str());
 }
 
-inline const std::array<const char *, 8> &light_attributes() {
-  static const std::array<const char *, 8> attrs{{
+inline const std::array<const char *, 9> &light_attributes() {
+  static const std::array<const char *, 9> attrs{{
+      "color_mode",
       "supported_color_modes",
       "min_color_temp_kelvin",
       "max_color_temp_kelvin",
@@ -347,6 +349,8 @@ inline std::string automation_last_triggered_relative_text(size_t ui_slot, const
 // Runtime values are keyed by entity ID so compact slot reordering cannot mix feedback.
 struct EntityDetailState {
   std::string entity_id, state, unit, current, target, low, high, modes, humidity;
+  float light_hue{NAN},light_saturation{NAN};
+  bool light_temperature{false};
   std::string volume, media_title, media_artist, picture, media_content_id, brightness, position;
   std::string apparent_temperature, wind_speed, wind_unit, wind_bearing, pressure, pressure_unit, visibility, visibility_unit, uv_index;
   struct ForecastDay { std::string date, condition, high, low, rain; };
@@ -461,6 +465,11 @@ class DeviceSlotStateUpdater {
       return;
     }
     if (custom_logic::cached_device_entity_id(this->slot_) != this->entity_id_) return;
+    if(field=="color_mode" && this->is_light_()) {
+      auto &detail=entity_details[this->slot_];
+      if(detail.entity_id!=this->entity_id_) {detail=EntityDetailState{};detail.entity_id=this->entity_id_;}
+      detail.light_temperature=value=="color_temp";return;
+    }
     if (field == "icon" || field == "device_class") {
       auto &icon = onx_icon_state::metadata[this->slot_];
       icon.bind(this->entity_id_);
@@ -813,7 +822,7 @@ class DeviceSlotStateUpdater {
     if (field == "hs_color") {
       JsonDocument doc = custom_logic::make_psram_json_document();
       int rgb_tick = -1;
-      if (deserializeJson(doc, value) == DeserializationError::Ok && doc.is<JsonArray>()) {
+      if (deserializeJson(doc, onx_light::array_json(value)) == DeserializationError::Ok && doc.is<JsonArray>()) {
         JsonArray hs = doc.as<JsonArray>();
         if (hs.size() >= 2) {
           int hue = static_cast<int>(hs[0].as<float>() + 0.5f);
@@ -946,13 +955,14 @@ class DeviceSlotStateUpdater {
 
   void apply_hs_color_(const std::string &value) {
     JsonDocument doc = custom_logic::make_psram_json_document();
-    if (deserializeJson(doc, value) != DeserializationError::Ok || !doc.is<JsonArray>()) {
+    if (deserializeJson(doc, onx_light::array_json(value)) != DeserializationError::Ok || !doc.is<JsonArray>()) {
       return;
     }
     JsonArray hs = doc.as<JsonArray>();
     if (hs.size() < 2) {
       return;
     }
+    if(!hs[0].is<float>() || !hs[1].is<float>() || !std::isfinite(hs[0].as<float>()) || !std::isfinite(hs[1].as<float>()))return;
     int hue = static_cast<int>(hs[0].as<float>() + 0.5f);
     int saturation = static_cast<int>(hs[1].as<float>() + 0.5f);
     if (hue < 0) {
@@ -971,6 +981,9 @@ class DeviceSlotStateUpdater {
             ui_slot, custom_logic::NORMAL_LIGHT_FEEDBACK_RGB)) {
       return;
     }
+    auto &detail=entity_details[this->slot_];
+    if(detail.entity_id!=this->entity_id_) {detail=EntityDetailState{};detail.entity_id=this->entity_id_;}
+    detail.light_hue=hs[0].as<float>();detail.light_saturation=hs[1].as<float>();
     esphome::onx_storage::NormalLightStatePatch patch{};
     patch.has_rgb_tick = true;
     patch.rgb_tick = static_cast<uint8_t>(rgb_tick);
@@ -1009,9 +1022,10 @@ class DeviceSlotStateUpdater {
 
   void apply_supported_color_modes_(const std::string &value) {
     JsonDocument doc = custom_logic::make_psram_json_document();
-    if (deserializeJson(doc, value) != DeserializationError::Ok || !doc.is<JsonArray>()) {
-      return;
-    }
+    const auto modes=onx_control::options(value);
+    if(modes.empty())return;
+    auto array=doc.to<JsonArray>();
+    for(const auto &mode:modes)array.add(mode);
     uint32_t mask = custom_logic::infer_light_capability_mask(doc.as<JsonArrayConst>());
     const size_t ui_slot = this->ui_slot_();
     if (ui_slot == static_cast<size_t>(-1)) {
@@ -1117,8 +1131,12 @@ inline void sample_sensor_history(time_t now) {
   for(size_t i=0;i<20;++i) {
     const auto &c=onx_sensor_view::configs[i];if(!c.graph || custom_logic::cached_device_entity_id(i)!=c.primary)continue;
     auto &s=onx_sensor_view::states[i];s.bind(c);
-    const auto *d=entity_detail(c.primary);
-    if(d&&d->received&&d->available)s.sample(now,detail_number(d->state));
+    if(std::string(c.primary).rfind("switch.",0)==0) {
+      if(s.received && s.available && (s.unit=="W" || s.unit=="kWh"))s.sample(now,detail_number(s.value));
+    } else {
+      const auto *d=entity_detail(c.primary);
+      if(d&&d->received&&d->available)s.sample(now,detail_number(d->state));
+    }
   }
 }
 
