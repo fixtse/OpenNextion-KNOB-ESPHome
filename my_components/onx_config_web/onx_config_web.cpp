@@ -34,6 +34,7 @@ void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const std::st
   // ESPHome 2026.10's IDF wrapper defaults unsupported status codes to 500.
   // Preserve our asynchronous protocol and meaningful client error responses.
   switch (code) {
+    case 400: httpd_resp_set_status(*request, "400 Bad Request"); break;
     case 202: httpd_resp_set_status(*request, "202 Accepted"); break;
     case 403: httpd_resp_set_status(*request, "403 Forbidden"); break;
     case 405: httpd_resp_set_status(*request, "405 Method Not Allowed"); break;

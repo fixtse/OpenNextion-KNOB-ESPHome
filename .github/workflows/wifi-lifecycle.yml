@@ -118,6 +118,7 @@ jobs:
           if-no-files-found: ignore
       - name: Resume validation thread
         if: ${{ always() }}
+        continue-on-error: true
         env:
           CALLBACK_URL: ${{ secrets.T3_BUILD_CALLBACK_URL }}
           OUTCOME: ${{ job.status }}

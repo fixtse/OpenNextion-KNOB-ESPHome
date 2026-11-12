@@ -33,6 +33,9 @@ const { chromium } = require('playwright');
     const source=fs.readFileSync('my_components/onx_config_web/config_app.h','utf8').split('R"ONXJS(')[1].split(')ONXJS"')[0];
     await route.fulfill({contentType:'text/javascript',body:source});return;
    }
+   if(url.pathname==='/knob/fixtse-logo.png'){
+    await route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgo=', 'base64')});return;
+   }
    if(url.pathname==='/knob/api'){
     const values=new URLSearchParams(request.postData());
     let result;

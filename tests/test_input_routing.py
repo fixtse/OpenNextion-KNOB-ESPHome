@@ -29,6 +29,7 @@ class InputRouting(unittest.TestCase):
 #include <string>
 #define id(name) name
 #define ESP_LOGI(...) ((void)0)
+#define ESP_LOGW(...) ((void)0)
 KINDS
 uint32_t clock_ms=2000;
 uint32_t millis(){return clock_ms;}

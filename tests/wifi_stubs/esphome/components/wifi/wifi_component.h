@@ -29,6 +29,7 @@ class WiFiComponent {
   WiFiAP get_ap() const { return ap_; }
   void set_ap(const WiFiAP &ap) { ap_ = ap; }
   bool has_sta() const { return !sta_.get_ssid().empty(); }
+  bool is_connected() const { return connected; }
   void set_sta(const WiFiAP &ap) { sta_ = ap; }
   void clear_sta() { sta_ = {}; }
   // Configured networks need not have a selected/scanned AP yet.
