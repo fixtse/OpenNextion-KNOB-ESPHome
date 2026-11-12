@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL-3.0-only
 // ESPHome 2026.10.2 OnlineImage API with a bounded background network fetch.
 #pragma once
 #include "esphome/components/http_request/http_request.h"

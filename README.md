@@ -89,3 +89,11 @@ feedback, and the brief popup does not consume wheel input.
 **Starting over?** A separate **10-second hold** in normal mode clears Wi-Fi and
 device configuration. Read the [reset instructions](docs/knob-controls.md#reset-wi-fi-and-device-configuration)
 before using it. Pressing to dismiss a reminder does not reset your knob.
+
+## License
+
+This project is licensed under **AGPL-3.0-only**. See [LICENSE](LICENSE).
+It builds on OpenNextion's MIT-licensed example; its copyright and permission
+notice are preserved in [LICENSES/OpenNextion-MIT.txt](LICENSES/OpenNextion-MIT.txt).
+Third-party code, fonts and assets retain their own terms; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,5 +1,6 @@
 This component retains the ESPHome 2026.10.2 online_image Python schema and C++
-public API. ESPHome is MIT licensed: https://github.com/esphome/esphome/tree/2026.10.2
+public API. ESPHome licenses C++/runtime code under GPLv3 and Python/other parts under MIT.
+See the retained LICENSE and https://github.com/esphome/esphome/blob/2026.10.2/LICENSE
 
 The local C++ implementation runs artwork network requests in a worker task.
 It bounds responses to 512 KB in PSRAM, limits redirects and request duration,

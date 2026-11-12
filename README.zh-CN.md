@@ -69,3 +69,11 @@ HTTP 或 HTTPS 图片地址。四个字段均需填写；`timeout_seconds: 0` �
 3. 打开设备的 **Visit** 链接或 `http://<旋钮 IP>/`，登录 Home Assistant、选择实体并保存配置。
 
 [控制指南](docs/knob-controls.md) · [配置与备份](docs/web-configuration.md)
+
+## 许可证
+
+本项目采用 **AGPL-3.0-only** 许可证，详见 [LICENSE](LICENSE)。
+本项目基于 OpenNextion 的 MIT 许可示例，其版权及许可声明保留在
+[LICENSES/OpenNextion-MIT.txt](LICENSES/OpenNextion-MIT.txt)。
+第三方代码、字体和素材保留各自的许可条款，详见
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
