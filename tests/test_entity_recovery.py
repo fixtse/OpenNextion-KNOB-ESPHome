@@ -45,7 +45,7 @@ struct APIServer {
 };
 }}
 namespace custom_logic {
-std::array<std::string,10> ids;
+std::array<std::string,20> ids;
 std::string cached_standby_weather_entity_id;
 std::string cached_device_entity_id(size_t i){return ids[i];}
 }

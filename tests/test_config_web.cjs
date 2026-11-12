@@ -49,7 +49,7 @@ const { chromium } = require('playwright');
       {text:media?'Christina Aguilera':climate?'Press: mode\nHold + turn: setting':'',y:media?144:147,size:media?16:14,width:198},
       {text:s.name||s.entity,y:media?192:185,size:16,width:180}
      ]};
-     detail.carousel={layout:'carousel',available:true,icon:'mdi:thermometer',icon_x:0,icon_y:34,icon_size:40,pagination:'· · · · ● · ·',lines:[
+     detail.carousel={layout:'carousel',available:true,icon:'mdi:thermometer',icon_x:0,icon_y:34,icon_size:40,pagination:'· · · · ● · ·',navigator:[{visible:true,selected:true,icon:'mdi:thermometer',offset:0}],lines:[
       {text:'',y:36,size:16,width:156},
       {text:media?'Playing':climate?'21.5°':'16.63 °C',y:88,size:32,width:216},
       {text:media?'Silent Night':climate?'🔥 Heat':'',y:124,size:14,width:198},
@@ -91,8 +91,7 @@ const { chromium } = require('playwright');
   await page.locator('#device-preview text').filter({hasText:'16.63 °C'}).waitFor();
   assert.equal(await page.locator('#device-preview text').filter({hasText:'16.63 °C'}).getAttribute('font-size'),'32');
   await page.locator('#preview-screen').selectOption('main');
-  assert.match(await page.locator('#device-preview').textContent(),/●/);
-  assert.equal(await page.locator('#device-preview text').filter({hasText:'●'}).getAttribute('font-size'),'12');
+  assert.match(await page.locator('#device-preview image').first().getAttribute('href'),/mdi\/thermometer/);
   await page.locator('#preview-screen').selectOption('detail');
   await page.getByRole('button',{name:'Slot 2: Empty',exact:true}).click();
   if(await page.locator('#entity-picker').isVisible())await page.locator('#close-picker').click();

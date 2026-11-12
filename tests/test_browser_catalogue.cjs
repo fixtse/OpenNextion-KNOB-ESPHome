@@ -50,7 +50,7 @@ vm.runInNewContext(js,context);const {catalogue,search,Client,baseUrl}=context.O
  const page=fs.readFileSync('my_components/onx_config_web/config_page.h','utf8');for(const script of page.matchAll(/<script>([\s\S]*?)<\/script>/g))new vm.Script(script[1]);
  assert(!page.includes("op:'search'"));assert(!page.includes("op:'refresh'"));
  const interval=fs.readFileSync('packages/features/normal_mode/normal_mode_interval.yaml','utf8');assert(!interval.includes('maintain_ha_websocket('));
- const source=fs.readFileSync('custom_logic.h','utf8');assert(source.includes('MAX_HA_ENTITY_COUNT = 21;'));assert(source.includes('ha-selected-entities-v5-chunk'));
+ const source=fs.readFileSync('custom_logic.h','utf8');assert(source.includes('MAX_HA_ENTITY_COUNT = 41;'));assert(source.includes('ha-selected-entities-v5-chunk'));
  const selects=fs.readFileSync('packages/features/normal_mode/normal_mode_entities.yaml','utf8').split('\nselect:\n')[1].split('\nswitch:')[0];assert.equal((selects.match(/internal: true/g)||[]).length,21);
  console.log('Browser catalogue: 12,000 entities, metadata, paging, OAuth/PKCE, token refresh, device isolation passed');
 })().catch(error=>{console.error(error);process.exitCode=1});
