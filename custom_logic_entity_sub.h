@@ -363,6 +363,7 @@ struct EntityDetailState {
   std::string percentage, oscillating, direction, sources, source, muted;
   uint32_t features{0}, received_ms{0};
   bool received{false}, available{false};
+  bool media_player_off_transition_pending{false};
   std::string timer_duration, timer_remaining, timer_finishes_at, timer_name, timer_last_finish;
   bool voice_timer{false}, google_timer{false};
   std::string google_state;
@@ -500,6 +501,16 @@ class DeviceSlotStateUpdater {
       custom_logic::set_normal_ui_device_online_state(ui_slot, online);
       auto &detail = entity_details[this->slot_];
       if (detail.entity_id != this->entity_id_) { detail = EntityDetailState{}; detail.entity_id = this->entity_id_; }
+      if (has_prefix(this->entity_id_, "media_player.")) {
+        if (value == "off") {
+          // Ignore an initial or repeated off state. Only a transition from a
+          // previously received non-off state should close an open player view.
+          if (detail.received && detail.available && detail.state != "off")
+            detail.media_player_off_transition_pending = true;
+        } else {
+          detail.media_player_off_transition_pending = false;
+        }
+      }
       detail.received = true; detail.available = online; detail.received_ms = millis();
       detail.state = detail.google_timer ? detail.google_state : value;
       if (!online && control_entity == this->entity_id_) cancel_controls();

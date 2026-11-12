@@ -653,12 +653,13 @@ script:
 
           int detail_index = std::clamp(id(normal_device_detail_index), 0, 19);
           const std::string entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
-          const auto *media_state=custom_logic_entity_sub::entity_detail(entity_id);
-          if(entity_id.rfind("media_player.",0)==0 && media_state && media_state->received &&
+          auto *media_state=custom_logic_entity_sub::entity_detail(entity_id);
+          if(entity_id.rfind("media_player.",0)==0 && media_state &&
+              media_state->media_player_off_transition_pending && media_state->received &&
               media_state->available && media_state->state=="off" &&
               id(normal_ha_api_connected) && id(normal_device_detail_online)) {
-            // Only an explicit, available off state closes the player. Idle,
-            // paused and missing/disconnected state keep their existing views.
+            // Only a new off transition closes an already-open player view.
+            media_state->media_player_off_transition_pending = false;
             onx_playlist::browser.clear();
             id(exit_normal_switch_detail).execute();
             return;
@@ -2084,6 +2085,12 @@ script:
             return;
           }
           std::string detail_entity_id = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+          if (detail_entity_id.rfind("media_player.", 0) == 0) {
+            // An off transition on the main page must not prevent opening this
+            // player's detail page. Only transitions after entry may close it.
+            if (auto *media = custom_logic_entity_sub::entity_detail(detail_entity_id))
+              media->media_player_off_transition_pending = false;
+          }
           auto local_hmi_gpio_switch_state = [&](const std::string &entity_id, bool *state) -> bool {
             switch (local_hmi_gpio_switch_io_from_entity_id(entity_id)) {
               case 10:
