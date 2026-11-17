@@ -6,9 +6,7 @@
 // Avoid reallocating label buffers or invalidating image caches for unchanged UI.
 namespace onx_render {
 inline void label(lv_obj_t *widget, const char *text) {
-  onx_emoji::enable(widget);
-  const auto encoded = onx_emoji::encode(text);
-  if (std::strcmp(lv_label_get_text(widget), encoded.c_str()) != 0) lv_label_set_text(widget, encoded.c_str());
+  onx_emoji::set_label(widget, text);
 }
 inline void image(lv_obj_t *widget, const void *source) {
   if (lv_img_get_src(widget) != source) lv_img_set_src(widget, source);

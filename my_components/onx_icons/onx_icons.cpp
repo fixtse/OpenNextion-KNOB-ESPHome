@@ -12,9 +12,11 @@
 #include "src/misc/cache/instance/lv_image_cache.h"
 #include "src/misc/cache/instance/lv_image_header_cache.h"
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstring>
 #include <new>
+#include <vector>
 #include <ctime>
 // NanoSVG's parser alone requires a large contiguous allocation. Keep all SVG
 // working memory in external RAM rather than the constrained internal/DMA heap.
@@ -38,14 +40,15 @@ static constexpr size_t CACHE_SIZE = 25;  // ~25 KB of PSRAM each.
 static const char *const TAG = "onx_icons";
 
 // Both endpoints are fixed HTTPS hosts; redirects and device credentials are never used.
-static bool fetch_svg(const std::string &url, std::string &svg, std::string &error) {
+template<typename Text>
+static bool fetch_svg(const std::string &url, Text &svg, std::string &error, size_t limit = MAX_SVG_BYTES) {
   esp_http_client_config_t config{};
   config.url = url.c_str();
   config.crt_bundle_attach = esp_crt_bundle_attach;
   config.timeout_ms = 5000;
   config.disable_auto_redirect = true;
   config.buffer_size = 1024;
-  config.user_agent = "ONX2424G013/MDI-icons";
+  config.user_agent = "ONX2424G013/icons";
   auto client = esp_http_client_init(&config);
   if (client == nullptr) { error = "HTTP client allocation failed"; return false; }
   esp_http_client_set_header(client, "Accept", "image/svg+xml");
@@ -57,9 +60,9 @@ static bool fetch_svg(const std::string &url, std::string &svg, std::string &err
   if (opened == ESP_OK) {
     const int64_t length = esp_http_client_fetch_headers(client);
     const int status = esp_http_client_get_status_code(client);
-    if (status == 200 && (length < 0 || length <= static_cast<int64_t>(MAX_SVG_BYTES))) {
+    if (status == 200 && (length < 0 || length <= static_cast<int64_t>(limit))) {
       char chunk[1024];
-      while (millis() - started < 10000 && svg.size() <= MAX_SVG_BYTES) {
+      while (millis() - started < 10000 && svg.size() <= limit) {
         const int count = esp_http_client_read(client, chunk, sizeof(chunk));
         if (count < 0) break;
         if (count > 0) svg.append(chunk, count);
@@ -67,7 +70,7 @@ static bool fetch_svg(const std::string &url, std::string &svg, std::string &err
         // A zero-byte read is not necessarily EOF for a chunked response.
         if (count == 0) vTaskDelay(1);
       }
-      okay &= !svg.empty() && svg.size() <= MAX_SVG_BYTES && svg.find("<svg") != std::string::npos;
+      okay &= !svg.empty() && svg.size() <= limit && svg.find("<svg") != Text::npos;
       if (!okay) error = "incomplete, oversized, or invalid SVG response";
     } else error = "HTTP " + std::to_string(status) + " or oversized icon";
   } else error = std::string("HTTPS connect: ") + esp_err_to_name(opened);
@@ -104,6 +107,57 @@ static uint8_t *raster_bitmap(std::string svg, std::string &error) {
   if (pixels == nullptr) error = "SVG dimensions invalid or raster allocation failed";
   return pixels;
 }
+// Full-color raster for emoji, BGRA for LVGL ARGB8888. Noto SVGs can be large,
+// so the text lives in PSRAM rather than an internal-heap std::string.
+using PsramText = std::basic_string<char, std::char_traits<char>, RAMAllocator<char>>;
+static constexpr size_t MAX_EMOJI_SVG_BYTES = 64 * 1024;  // Noto SVGs are typically 2-15 KB.
+static uint8_t *raster_emoji(PsramText &svg, std::string &error) {
+  svg.push_back('\0');
+  auto *parsed = nsvgParse(svg.data(), "px", 96);
+  if (!parsed) { error = "SVG parser PSRAM allocation failed"; return nullptr; }
+  constexpr size_t N = ::onx_emoji_queue::SIZE;
+  uint8_t *pixels = nullptr;
+  if (parsed->shapes && std::isfinite(parsed->width) && std::isfinite(parsed->height) &&
+      parsed->width > 0 && parsed->height > 0 && parsed->width <= 4096 && parsed->height <= 4096) {
+    pixels = static_cast<uint8_t *>(heap_caps_calloc(N * N, 4, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+    auto *rasterizer = nsvgCreateRasterizer();
+    if (pixels && rasterizer) {
+      const float scale = std::min(N / parsed->width, N / parsed->height);
+      nsvgRasterize(rasterizer, parsed, (N - parsed->width * scale) / 2, (N - parsed->height * scale) / 2,
+                    scale, pixels, N, N, N * 4);
+      bool visible = false;
+      for (size_t i = 0; i < N * N; ++i) {
+        visible |= pixels[4 * i + 3] != 0;
+        std::swap(pixels[4 * i], pixels[4 * i + 2]);  // RGBA -> BGRA.
+      }
+      if (!visible) { heap_caps_free(pixels); pixels = nullptr; }
+    } else {
+      heap_caps_free(pixels); pixels = nullptr;
+    }
+    nsvgDeleteRasterizer(rasterizer);
+  }
+  nsvgDelete(parsed);
+  if (pixels == nullptr) error = "SVG dimensions invalid or raster allocation failed";
+  return pixels;
+}
+// Fixed HTTPS hosts; the stem is built on-device from the emoji table, never from user text.
+static uint8_t *fetch_emoji(const std::string &stem, std::string &error) {
+  for (char c : stem)
+    if (!(std::isxdigit(static_cast<unsigned char>(c)) || c == '_')) { error = "invalid emoji name"; return nullptr; }
+  // Google's Noto emoji CDN covers every sequence, including flags and keycaps.
+  // jsDelivr only mirrors the flag folder (the repository exceeds its size limit).
+  const bool flag = stem.size() == 11 && stem.rfind("1f1", 0) == 0 && stem.compare(5, 4, "_1f1") == 0;
+  std::vector<std::string> urls{"https://fonts.gstatic.com/s/e/notoemoji/latest/" + stem + "/emoji.svg"};
+  if (flag) urls.push_back("https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/third_party/region-flags/waved-svg/emoji_u" + stem + ".svg");
+  for (const auto &url : urls) {
+    PsramText svg;
+    if (fetch_svg(url, svg, error, MAX_EMOJI_SVG_BYTES)) {
+      if (auto *pixels = raster_emoji(svg, error)) return pixels;
+    }
+    ESP_LOGW(TAG, "emoji %s source failed (%s)", stem.c_str(), error.c_str());
+  }
+  return nullptr;
+}
 static uint8_t *fetch_bitmap(const std::string &icon, std::string &error) {
   for (const auto &url : {::onx_icon_state::download_url(icon), ::onx_icon_state::backup_url(icon)}) {
     std::string svg;
@@ -136,7 +190,7 @@ void IconDownloader::download_task_(void *arg) {
     }
     if (icon.empty()) continue;
     std::string error;
-    auto *pixels = fetch_bitmap(icon, error);
+    auto *pixels = icon.rfind("emoji:", 0) == 0 ? fetch_emoji(icon.substr(6), error) : fetch_bitmap(icon, error);
     LockGuard lock(owner->mutex_);
     owner->completed_icon_ = std::move(icon);
     owner->completed_error_ = std::move(error);
@@ -166,42 +220,68 @@ std::string IconDownloader::status(const std::string &icon) const {
   if (!memory_ready()) return "waiting_for_memory";
   return "awaiting_display";
 }
-void IconDownloader::request_(const std::string &icon) {
-  if (busy_ || artwork_busy_ || !::onx_icon_state::valid_icon(icon) || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return;
+bool IconDownloader::can_start_() const {
+  if (busy_ || artwork_busy_ || wifi::global_wifi_component == nullptr || !wifi::global_wifi_component->is_connected()) return false;
   // Starting before wall-clock synchronization can make certificate validation fail.
-  // Wait instead of poisoning the icon retry cache during normal boot.
-  if (std::time(nullptr) < 1577836800) return;
-  auto failed = failures_.find(icon);
-  if (failed != failures_.end() && !failed->second.due(millis())) return;
-  if (!memory_ready()) return;
+  // Wait instead of poisoning the retry caches during normal boot.
+  return std::time(nullptr) >= 1577836800 && memory_ready();
+}
+bool IconDownloader::start_(const std::string &key) {
   if (worker_ == nullptr) {
     TaskHandle_t handle = nullptr;
     if (xTaskCreatePinnedToCoreWithCaps(download_task_, "onx_icon", 16384, this, 1, &handle, tskNO_AFFINITY,
-                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) {
-      failures_[icon].fail(millis());
-      return;
-    }
+                                        MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT) != pdPASS) return false;
     worker_ = handle;
   }
   {
     LockGuard lock(mutex_);
-    requested_icon_ = icon;
+    requested_icon_ = key;
   }
   busy_ = true;
-  ESP_LOGI(TAG, "Downloading %s", icon.c_str());
+  ESP_LOGI(TAG, "Downloading %s", key.c_str());
   xTaskNotifyGive(static_cast<TaskHandle_t>(worker_));
+  return true;
+}
+void IconDownloader::request_(const std::string &icon) {
+  if (!::onx_icon_state::valid_icon(icon) || !can_start_()) return;
+  auto failed = failures_.find(icon);
+  if (failed != failures_.end() && !failed->second.due(millis())) return;
+  if (!start_(icon)) failures_[icon].fail(millis());
+}
+// Emoji wait behind icons and artwork; one at a time through the same worker.
+void IconDownloader::request_emoji_() {
+  auto &pending = ::onx_emoji_queue::pending;
+  if (pending.empty() || !can_start_()) return;
+  auto next = pending.front();
+  if (!start_("emoji:" + next.stem)) return;
+  pending.pop_front();
+  emoji_index_ = next.index;
 }
 void IconDownloader::loop() {
   std::string icon, error;
   uint8_t *pixels;
+  bool done;
   {
     LockGuard lock(mutex_);
-    if (!completed_) return;
+    done = completed_;
+  }
+  if (!done) {
+    if (!busy_) request_emoji_();
+    return;
+  }
+  {
+    LockGuard lock(mutex_);
     icon = std::move(completed_icon_); pixels = completed_pixels_;
     error = std::move(completed_error_);
     completed_pixels_ = nullptr; completed_ = false;
   }
   busy_ = false;
+  if (icon.rfind("emoji:", 0) == 0) {
+    if (!pixels) ESP_LOGW(TAG, "%s unavailable (%s)", icon.c_str(), error.c_str());
+    if (::onx_emoji_queue::completed) ::onx_emoji_queue::completed(emoji_index_, pixels);
+    else heap_caps_free(pixels);
+    return;
+  }
   if (pixels) {
     if (cache_.size() >= CACHE_SIZE) {
       const uint32_t now = millis();

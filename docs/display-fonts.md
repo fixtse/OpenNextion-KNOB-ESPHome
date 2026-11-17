@@ -13,13 +13,18 @@ Text fonts also include a bounded set of monochrome emoji from Noto Emoji:
 ❤ ☀ ☁ ☂ ☕ ❄ ⚡ ✅ ❌ ⭐ 🌙 🌞 🌧 🌡 🌈 🎵 🎶 🎧 🎤 🎸 🎹 🎷 🎺 🎻 🥁 📻 💿 📀
 🔊 🔇 🔔 🔥 💡 🏠 😀 😊 😂 😍 😎 😢 😭 👍 👏 💙 💚 💛 💜 🎉
 
-Dynamic labels updated through `onx_render::label` render Noto Color Emoji glyphs,
+Dynamic labels updated through `onx_render::label` show Noto Color Emoji,
 including joined families and professions, skin-tone variants, country flags,
-subdivision flags, and keycaps. Matching uses the longest supported UTF-8
-sequence before LVGL lays out the text; ordinary text retains its existing font.
-Emoji presentation selectors are normalized during matching. Coverage follows the
-installed Noto Color Emoji font used to generate the atlas, rather than arbitrary
-future Unicode sequences. Unknown sequences retain their text fallback.
+subdivision flags, and keycaps. Color emoji are **not stored in the firmware**:
+only the list of 5,575 known sequences is. The first time a label contains one,
+the knob downloads that emoji's Noto SVG from Google's emoji CDN (`fonts.gstatic.com`),
+draws it in color at 48 px and redraws the label. Until then, and when offline,
+the text keeps its original characters, so the monochrome set above still
+appears. Failed downloads are retried after 10 minutes.
+
+Matching uses the longest supported UTF-8 sequence before LVGL lays out the
+text; emoji presentation selectors are normalized. Unknown sequences retain
+their text fallback.
 
 ## Font source and license
 
@@ -29,19 +34,16 @@ https://github.com/google/fonts/tree/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/of
 
 Its SIL Open Font License is retained in `fonts/OFL-NotoEmoji.txt`.
 
-The checked-in atlas contains 5,575 glyphs at 24 px, with 32 RGBA palette
-entries per glyph and lossless run-length compression of the palette/index data.
-RGB565 colors and alpha expand to LVGL 9 ARGB8888 images in PSRAM on demand.
-Decoded variants use a 512 KiB cache target. When that target is exceeded,
-the cache is retired after the current frame completes, allowing later glyphs
-to load without invalidating pending draws. Allocation failure falls back to
-LVGL's missing-glyph behavior.
+Downloads share the icon worker (one at a time, after icons and album art) and
+need Wi-Fi, a synchronized clock and the same free-memory margin as icons. Up to
+48 downloaded emoji stay in PSRAM (about 9 KiB each); scaled copies for each
+text size use a 512 KiB cache that is retired after the current frame completes.
+Emoji are downloaded again after a restart.
 
-Regenerate with `python scripts/generate_color_emoji.py /path/to/NotoColorEmoji.ttf`
-(Pillow with color-font shaping and fontTools required). The font itself is not
-needed during ESPHome compilation. Run `g++ -std=c++17 -Itests/emoji_stubs
-tests/test_emoji.cpp -o /tmp/test-emoji && /tmp/test-emoji` for sequence and atlas
-integrity tests.
+Regenerate the sequence list with
+`python scripts/generate_color_emoji.py /path/to/NotoColorEmoji.ttf` (fontTools
+required). Run `g++ -std=c++17 -Itests/emoji_stubs tests/test_emoji.cpp -o /tmp/test-emoji && /tmp/test-emoji`
+for the sequence, download hand-off and scaling tests.
 
 Sequence lookup narrows sorted UTF-8 prefixes with binary searches rather than
 scanning the atlas for every character. Identical pixel buffers are shared by

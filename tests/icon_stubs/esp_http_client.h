@@ -19,7 +19,7 @@ inline std::vector<std::string> requested_icon_urls;
 inline bool fail_primary=false,fail_all=false,stall_once=false;
 inline const std::string icon_svg="<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"80\" height=\"80\" viewBox=\"0 0 24 24\"><path fill=\"#fff\" d=\"M2 2H22V22H2Z\"/></svg>";
 inline FakeHttp *esp_http_client_init(const esp_http_client_config_t *config){
- if(!config->crt_bundle_attach||!config->disable_auto_redirect||std::string(config->user_agent)!="ONX2424G013/MDI-icons")return nullptr;
+ if(!config->crt_bundle_attach||!config->disable_auto_redirect||std::string(config->user_agent)!="ONX2424G013/icons")return nullptr;
  requested_icon_urls.emplace_back(config->url);
  auto *http=new FakeHttp;http->url=config->url;
  http->status=fail_all||(fail_primary&&http->url.find("iconify")!=std::string::npos)?403:200;

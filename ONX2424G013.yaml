@@ -41,7 +41,8 @@ esphome:
     - onx_power_state.h
     - onx_light_state.h
     - onx_memory.h
-    - onx_emoji_pixels.h
+    - onx_emoji_table.h
+    - onx_emoji_queue.h
     - onx_emoji.h
     - onx_render.h
     - onx_navigation.h

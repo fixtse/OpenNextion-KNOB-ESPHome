@@ -1,6 +1,7 @@
 #pragma once
 #include "esphome/core/component.h"
 #include "onx_icon_state.h"
+#include "onx_emoji_queue.h"
 #include "esphome/core/helpers.h"
 #include "esphome/components/image/image.h"
 #include <map>
@@ -35,6 +36,10 @@ class IconDownloader : public Component {
   void *worker_{nullptr};  // TaskHandle_t of the persistent download worker.
   std::string requested_icon_;
   void request_(const std::string &icon);
+  bool can_start_() const;
+  bool start_(const std::string &key);
+  void request_emoji_();
+  uint32_t emoji_index_{0};
   std::map<std::string, std::shared_ptr<Bitmap>> cache_;
   struct Binding {
     std::shared_ptr<Bitmap> bitmap;
