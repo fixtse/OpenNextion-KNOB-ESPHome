@@ -1,5 +1,13 @@
 # Boot/status pages used before a feature-specific page takes over.
 
+image:
+  - platform: file
+    file: "../../assets/branding/fixtse-logo.png"
+    id: boot_logo_img
+    type: RGB565
+    transparency: alpha_channel
+    resize: 96x90
+
 lvgl:
   pages:
     - id: boot_page
@@ -10,10 +18,13 @@ lvgl:
       pad_all: 0
       scrollable: false
       widgets:
-        - label:
-            x: 0
-            y: 0
+        - image:
+            src: boot_logo_img
             align: center
+            y: -18
+        - label:
+            align: center
+            y: 52
             text_font: fonts_MiSans_Bold_24
             text_color: 0xFFFFFF
-            text: "Open Nextion"
+            text: "fixtSE"
