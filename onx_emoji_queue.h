@@ -12,4 +12,6 @@ struct Request { uint32_t index; std::string stem; };  // stem: Noto file name, 
 inline std::deque<Request> pending;
 // Called on the UI task. pixels is SIZE*SIZE*4 BGRA owned by the receiver, or null on failure.
 inline void (*completed)(uint32_t index, uint8_t *pixels) = nullptr;
+// Called on the UI task while the worker is idle, so failed emoji can be retried.
+inline void (*tick)() = nullptr;
 }

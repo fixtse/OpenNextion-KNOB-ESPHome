@@ -71,6 +71,25 @@ int main() {
   onx_emoji::downloaded(sun, nullptr);
   onx_emoji::encode("\xE2\x98\x80");
   assert(onx_emoji_queue::pending.empty());
+  assert(onx_emoji::failed[sun].attempts == 1);
+  // A waiting label retries once the short delay passes (simulated by ageing the failure).
+  lv_obj_t sunny;
+  onx_emoji::set_label(&sunny, "\xE2\x98\x80 out");
+  assert(onx_emoji_queue::pending.empty());
+  onx_emoji::failed[sun].at -= std::chrono::seconds(3);
+  onx_emoji::last_tick = {};
+  onx_emoji_queue::tick();
+  assert(onx_emoji_queue::pending.size() == 1 && onx_emoji_queue::pending.front().index == sun);
+  onx_emoji_queue::pending.clear();
+  onx_emoji::downloaded(sun, nullptr);
+  assert(onx_emoji::failed[sun].attempts == 2);
+  // Changed labels stop retrying.
+  sunny.text = "other";
+  onx_emoji::failed[sun].at -= std::chrono::seconds(6);
+  onx_emoji::last_tick = {};
+  onx_emoji_queue::tick();
+  assert(onx_emoji_queue::pending.empty() && !onx_emoji::waiting.count(&sunny));
+  assert(onx_emoji::retry_delay(4) == std::chrono::minutes(10));
 
   // Scaled images keep the LVGL baseline contract and the master color.
   const uint32_t code = onx_emoji::FIRST_GLYPH + index_of(family);

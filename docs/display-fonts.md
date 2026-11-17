@@ -20,7 +20,8 @@ only the list of 5,575 known sequences is. The first time a label contains one,
 the knob downloads that emoji's Noto SVG from Google's emoji CDN (`fonts.gstatic.com`),
 draws it in color at 48 px and redraws the label. Until then, and when offline,
 the text keeps its original characters, so the monochrome set above still
-appears. Failed downloads are retried after 10 minutes.
+appears. While the text is still on screen, a failed download is retried after
+2, 5 and 15 seconds; after that, every 10 minutes.
 
 Matching uses the longest supported UTF-8 sequence before LVGL lays out the
 text; emoji presentation selectors are normalized. Unknown sequences retain

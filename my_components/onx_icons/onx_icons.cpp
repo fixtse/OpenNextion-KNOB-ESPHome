@@ -266,6 +266,7 @@ void IconDownloader::loop() {
     done = completed_;
   }
   if (!done) {
+    if (!busy_ && ::onx_emoji_queue::tick) ::onx_emoji_queue::tick();
     if (!busy_) request_emoji_();
     return;
   }

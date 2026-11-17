@@ -24,7 +24,16 @@ inline constexpr uint32_t FIRST_GLYPH = 0xF0000;
 inline constexpr size_t GLYPH_COUNT = sizeof(SEQUENCES) / sizeof(SEQUENCES[0]);
 inline constexpr size_t MASTER_LIMIT = 48;   // ~9 KB of PSRAM each.
 inline constexpr size_t PENDING_LIMIT = 24;
-inline constexpr auto RETRY_AFTER = std::chrono::minutes(10);
+// Retry quickly while a label still shows the emoji (a notification is short-lived),
+// then back off so an offline knob does not keep hitting the network.
+inline std::chrono::steady_clock::duration retry_delay(unsigned attempts) {
+  switch (attempts) {
+    case 1: return std::chrono::seconds(2);
+    case 2: return std::chrono::seconds(5);
+    case 3: return std::chrono::seconds(15);
+    default: return std::chrono::minutes(10);
+  }
+}
 
 struct CachedGlyph { uint32_t code; uint16_t size; lv_image_dsc_t image; };
 inline std::deque<CachedGlyph> cache;  // Per-font-size scaled copies.
@@ -34,7 +43,8 @@ struct Master { uint8_t *pixels; uint32_t used; };
 inline std::map<uint32_t, Master> masters;  // Downloaded SIZE x SIZE BGRA images by glyph index.
 inline uint32_t use_counter = 0;
 inline std::set<uint32_t> requested;
-inline std::map<uint32_t, std::chrono::steady_clock::time_point> failed;
+struct Failure { std::chrono::steady_clock::time_point at; unsigned attempts; };
+inline std::map<uint32_t, Failure> failed;
 
 // Noto names files by lowercase codepoints joined with '_', without U+FE0F.
 inline std::string stem(const char *sequence) {
@@ -58,10 +68,9 @@ inline std::string stem(const char *sequence) {
 inline void request(uint32_t index) {
   if (requested.count(index) || onx_emoji_queue::pending.size() >= PENDING_LIMIT) return;
   auto failure = failed.find(index);
-  if (failure != failed.end()) {
-    if (std::chrono::steady_clock::now() - failure->second < RETRY_AFTER) return;
-    failed.erase(failure);
-  }
+  // Keep the attempt count until a download succeeds, so backoff grows.
+  if (failure != failed.end() &&
+      std::chrono::steady_clock::now() - failure->second.at < retry_delay(failure->second.attempts)) return;
   requested.insert(index);
   onx_emoji_queue::pending.push_back({index, stem(SEQUENCES[index])});
 }
@@ -205,7 +214,13 @@ inline void set_label(lv_obj_t *widget, const char *text) {
 }
 inline void downloaded(uint32_t index, uint8_t *pixels) {
   requested.erase(index);
-  if (!pixels) { failed[index] = std::chrono::steady_clock::now(); return; }
+  if (!pixels) {
+    auto &failure = failed[index];
+    failure.at = std::chrono::steady_clock::now();
+    failure.attempts++;
+    return;
+  }
+  failed.erase(index);
   if (masters.size() >= MASTER_LIMIT) {
     // Scaled copies in `cache` stay valid; only the master is released.
     auto oldest = std::min_element(masters.begin(), masters.end(),
@@ -221,5 +236,18 @@ inline void downloaded(uint32_t index, uint8_t *pixels) {
       refresh.emplace_back(entry.first, entry.second.raw);
   for (const auto &entry : refresh) set_label(entry.first, entry.second.c_str());
 }
-inline const bool registered = (onx_emoji_queue::completed = downloaded, true);
+// Re-request emoji for labels still waiting on screen once their retry is due.
+// Deleted or changed labels drop out of `waiting`, which ends their retries.
+inline std::chrono::steady_clock::time_point last_tick{};
+inline void tick() {
+  const auto now = std::chrono::steady_clock::now();
+  if (waiting.empty() || now - last_tick < std::chrono::seconds(1)) return;
+  last_tick = now;
+  for (auto it = waiting.begin(); it != waiting.end();) {
+    if (std::strcmp(lv_label_get_text(it->first), it->second.shown.c_str()) != 0) { it = waiting.erase(it); continue; }
+    encode(it->second.raw.c_str());  // Queues any missing emoji whose retry is due.
+    ++it;
+  }
+}
+inline const bool registered = (onx_emoji_queue::completed = downloaded, onx_emoji_queue::tick = tick, true);
 }
