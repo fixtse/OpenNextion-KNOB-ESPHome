@@ -8,6 +8,14 @@
 #include <array>
 #include <charconv>
 #include <cstring>
+#ifdef USE_ESP32
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+#if __has_include(<mdns.h>)
+#include <mdns.h>
+#define ONX_HA_DISCOVERY 1
+#endif
+#endif
 
 namespace esphome::onx_config_web {
 static bool number(const std::string &text, unsigned &value) {
@@ -27,7 +35,7 @@ bool ConfigWeb::canHandle(AsyncWebServerRequest *request) const {
   // address open our app after Wi-Fi connects. Do not expose the generic server
   // entity-control endpoints alongside the configuration app.
   if (wifi::global_wifi_component != nullptr && wifi::global_wifi_component->is_connected()) return true;
-  return url == "/knob/favicon.svg" || url == "/knob/fixtse-logo.png" || url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js";
+  return url == "/knob/favicon.svg" || url == "/knob/fixtse-logo.png" || url == "/knob" || url == "/knob/" || url == "/knob/api" || url == "/knob/result" || url == "/knob/ha.js" || url == "/knob/app.js" || url == "/knob/discover";
 }
 void ConfigWeb::respond_(AsyncWebServerRequest *request, int code, const char *data, size_t size) {
   auto *response = request->beginResponse(code, "application/json", reinterpret_cast<const uint8_t *>(data), size);
@@ -77,6 +85,24 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
         httpd_resp_send_chunk(*request, nonce_.data(), nonce_.size()) != ESP_OK ||
         httpd_resp_send_chunk(*request, token + 13, std::strlen(token + 13)) != ESP_OK) return;
     httpd_resp_send_chunk(*request, nullptr, 0);
+    return;
+  }
+  if (url == "/knob/discover" && request->method() == HTTP_GET) {
+    const auto token = request->get_header("X-Onx-Token");
+    if (!token.has_value() || *token != nonce_) { respond_(request, 403, "{\"error\":\"Reload this page to authorize configuration\"}"); return; }
+    if (request->arg("scan") == "1") start_discovery_();
+    std::string body;
+    {
+      LockGuard lock(mutex_);
+      body = std::string("{\"scanning\":") + (discovering_ ? "true" : "false") + ",\"runs\":" + std::to_string(discovery_runs_) +
+#ifdef ONX_HA_DISCOVERY
+             ",\"supported\":true" +
+#else
+             ",\"supported\":false" +
+#endif
+             ",\"items\":" + discovered_ + "}";
+    }
+    respond_(request, 200, body);
     return;
   }
   if (url == "/knob/result" && request->method() == HTTP_GET) {
@@ -160,6 +186,70 @@ void ConfigWeb::loop() {
   LockGuard lock(mutex_);
   results_.emplace_back(query.ticket, std::move(body));
   while (results_.size() > 4) results_.pop_front();
+}
+#ifdef ONX_HA_DISCOVERY
+static std::string json_escape(const char *text) {
+  std::string out;
+  for (const char *c = text == nullptr ? "" : text; *c != '\0' && out.size() < 160; ++c) {
+    if (*c == '"' || *c == '\\') { out += '\\'; out += *c; }
+    else if (static_cast<unsigned char>(*c) < 0x20) out += ' ';
+    else out += *c;
+  }
+  return out;
+}
+static const char *txt_value(const mdns_result_t *r, const char *key) {
+  for (size_t i = 0; i < r->txt_count; i++)
+    if (r->txt[i].key != nullptr && std::strcmp(r->txt[i].key, key) == 0) return r->txt[i].value;
+  return nullptr;
+}
+void ConfigWeb::discovery_task_(void *arg) {
+  auto *self = static_cast<ConfigWeb *>(arg);
+  mdns_result_t *results = nullptr;
+  std::string items = "[";
+  if (mdns_query_ptr("_home-assistant", "_tcp", 3000, 8, &results) == ESP_OK) {
+    size_t count = 0;
+    for (mdns_result_t *r = results; r != nullptr; r = r->next) {
+      char ip[16] = "";
+      for (mdns_ip_addr_t *a = r->addr; a != nullptr; a = a->next)
+        if (a->addr.type == ESP_IPADDR_TYPE_V4) { snprintf(ip, sizeof(ip), IPSTR, IP2STR(&a->addr.u_addr.ip4)); break; }
+      const char *internal = txt_value(r, "internal_url");
+      const char *base = txt_value(r, "base_url");
+      std::string url = internal != nullptr && *internal ? internal : base != nullptr && *base ? base : "";
+      if (url.empty() && *ip) url = std::string("http://") + ip + ":" + std::to_string(r->port);
+      if (url.empty()) continue;
+      const char *name = txt_value(r, "location_name");
+      if (name == nullptr || !*name) name = r->instance_name;
+      const char *uuid = txt_value(r, "uuid");
+      const char *version = txt_value(r, "version");
+      if (count++) items += ',';
+      items += "{\"name\":\"" + json_escape(name ? name : "Home Assistant") + "\",\"url\":\"" + json_escape(url.c_str()) +
+               "\",\"ip\":\"" + ip + "\",\"port\":" + std::to_string(r->port) + ",\"uuid\":\"" + json_escape(uuid) +
+               "\",\"version\":\"" + json_escape(version) + "\"}";
+    }
+    mdns_query_results_free(results);
+  }
+  items += "]";
+  {
+    LockGuard lock(self->mutex_);
+    self->discovered_ = std::move(items);
+    self->discovering_ = false;
+    self->discovery_runs_++;
+  }
+  vTaskDelete(nullptr);
+}
+#endif
+void ConfigWeb::start_discovery_() {
+#ifdef ONX_HA_DISCOVERY
+  {
+    LockGuard lock(mutex_);
+    if (discovering_) return;
+    discovering_ = true;
+  }
+  if (xTaskCreate(&ConfigWeb::discovery_task_, "onx_ha_mdns", 4096, this, 1, nullptr) != pdPASS) {
+    LockGuard lock(mutex_);
+    discovering_ = false;
+  }
+#endif
 }
 Body ConfigWeb::take_result_(std::string &&result) {
   if (result == LARGE_BODY_MARKER) {

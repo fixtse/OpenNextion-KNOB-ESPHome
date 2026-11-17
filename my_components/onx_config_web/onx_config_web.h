@@ -56,5 +56,12 @@ class ConfigWeb : public Component, public AsyncWebHandler {
   InternalResult internal_result_;
   std::deque<std::pair<uint32_t, Body>> results_;
   uint32_t next_ticket_{0};
+  // Home Assistant mDNS discovery (_home-assistant._tcp), run in a short-lived
+  // worker task because mdns_query_ptr blocks for the scan window.
+  void start_discovery_();
+  static void discovery_task_(void *arg);
+  bool discovering_{false};
+  uint32_t discovery_runs_{0};
+  std::string discovered_{"[]"};
 };
 }  // namespace esphome::onx_config_web

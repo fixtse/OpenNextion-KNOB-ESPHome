@@ -38,7 +38,9 @@ static const char HA_BROWSER_JS[] = R"ONXJS(
  }
  function baseUrl(value){const u=new URL(value.includes('://')?value:'http://'+value);if(!['http:','https:'].includes(u.protocol)||u.username||u.password)throw Error('Enter a Home Assistant HTTP or HTTPS address');return u.origin;}
  class Client{
-  constructor(storage=window.sessionStorage){this.storage=storage;this.items=local();this.ready=false;}
+  // Keep sign-in across browser sessions. Older firmware kept it in sessionStorage, so
+  // carry that over once; fall back to sessionStorage where localStorage is blocked.
+  constructor(storage){if(!storage){try{storage=window.localStorage;const legacy=window.sessionStorage.getItem('onx.ha.auth');if(legacy&&!storage.getItem('onx.ha.auth'))storage.setItem('onx.ha.auth',legacy);window.sessionStorage.removeItem('onx.ha.auth')}catch{storage=window.sessionStorage}}this.storage=storage;this.items=local();this.ready=false;}
   read(key){try{return JSON.parse(this.storage.getItem(key)||'null')}catch{return null}}
   async login(value){
    const base=baseUrl(value);const state=Array.from(crypto.getRandomValues(new Uint8Array(24)),x=>x.toString(16).padStart(2,'0')).join('');
