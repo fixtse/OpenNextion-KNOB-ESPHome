@@ -54,8 +54,8 @@ inline std::string plain_text(const std::string &source,size_t limit) {
   for(size_t i=0;i<decoded.size() && (out.size()<limit || (static_cast<unsigned char>(decoded[i])&0xC0)==0x80);) {
     // Sender arrow variants are absent from the notification fonts; use U+2192.
     // Normalize after entity decoding so numeric HTML entities work too.
-    if(decoded.compare(i,3,u8"➜")==0 || decoded.compare(i,3,u8"➔")==0) {
-      out+=u8"→";i+=3;continue;
+    if(decoded.compare(i,3,"\xE2\x9E\x9C")==0 || decoded.compare(i,3,"\xE2\x9E\x94")==0) {
+      out+="\xE2\x86\x92";i+=3;continue;
     }
     if(decoded[i]=='<') {
       const auto end=decoded.find('>',i+1);
