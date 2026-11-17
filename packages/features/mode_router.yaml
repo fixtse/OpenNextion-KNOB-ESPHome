@@ -175,7 +175,8 @@ onx_config_web:
       if ((query.search.rfind("http://", 0) != 0 && query.search.rfind("https://", 0) != 0) ||
           custom_logic::build_ha_http_state_url(query.search, "sensor.placeholder").empty())
         return onx_entity_config::error("Enter a valid Home Assistant address");
-      id(ha_host).publish_state(query.search);
+      // publish_state() does not save a template text; make_call() does.
+      { auto call = id(ha_host).make_call(); call.set_value(query.search); call.perform(); }
       return std::string("{\"ok\":true}");
     }
     if (query.op == "retry") {

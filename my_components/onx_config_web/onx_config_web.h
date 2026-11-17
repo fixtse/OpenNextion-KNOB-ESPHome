@@ -5,6 +5,7 @@
 #include <deque>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace esphome::onx_config_web {
 // Response bodies live in PSRAM when available: internal RAM is fragmented and a
@@ -41,6 +42,9 @@ class ConfigWeb : public Component, public AsyncWebHandler {
   void enqueue_internal(Query query) { query.ticket = 0; internal_.push_back(std::move(query)); }
   void clear_internal() { internal_.clear(); }
   size_t internal_pending() const { return internal_.size(); }
+  // Home Assistant URL when the last network search found exactly one server;
+  // otherwise starts a new search (at most every 5 s) and returns "". Main loop only.
+  std::string auto_ha_url(uint32_t now);
   void set_internal_result(InternalResult callback) { internal_result_ = std::move(callback); }
  protected:
   void respond_(AsyncWebServerRequest *request, int code, const std::string &body) {
@@ -63,5 +67,8 @@ class ConfigWeb : public Component, public AsyncWebHandler {
   bool discovering_{false};
   uint32_t discovery_runs_{0};
   std::string discovered_{"[]"};
+  std::vector<std::string> discovered_urls_;
+  uint32_t last_discovery_start_{0};
+  bool discovery_started_{false};
 };
 }  // namespace esphome::onx_config_web

@@ -748,7 +748,7 @@ interval:
                   id(mode_manager)->clear_saved_normal_wifi_prefs_();
                 }
                 reset_normal_mode_preferences();
-                id(ha_host).publish_state("homeassistant.local");
+                { auto call = id(ha_host).make_call(); call.set_value("homeassistant.local"); call.perform(); }
                 id(standby_timeout_seconds).publish_state(300);
                 id(device1_type).publish_state("Switch");
                 id(device2_type).publish_state("Switch");

@@ -15,6 +15,22 @@ interval:
           onx_controls::tick(id(api_server), entity, id(normal_ha_api_connected));
           custom_logic_entity_sub::tick_subscriptions(id(api_server));
           custom_logic_entity_sub::recover_entity_states(id(api_server), id(normal_ha_api_connected));
+  # homeassistant.local often doesn't resolve (e.g. Docker installs announce
+  # <uuid>.local), which breaks album art and state polling. While the host is
+  # still the default, adopt the single Home Assistant found on the network.
+  # Never replaces an address the user set.
+  - interval: 15s
+    then:
+      - lambda: |-
+          static uint8_t attempts = 0;
+          if (attempts >= 40 || id(ha_host).state != "homeassistant.local" || !id(normal_wifi_connected)) return;
+          attempts++;
+          const std::string url = id(entity_config_web)->auto_ha_url(millis());
+          if (url.empty() || custom_logic::build_ha_http_state_url(url, "sensor.placeholder").empty()) return;
+          ESP_LOGI("ha_host", "Using discovered Home Assistant at %s", url.c_str());
+          auto call = id(ha_host).make_call();
+          call.set_value(url);
+          call.perform();
   - interval: 1s
     then:
       - lambda: |-

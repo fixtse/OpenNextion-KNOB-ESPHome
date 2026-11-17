@@ -206,6 +206,7 @@ void ConfigWeb::discovery_task_(void *arg) {
   auto *self = static_cast<ConfigWeb *>(arg);
   mdns_result_t *results = nullptr;
   std::string items = "[";
+  std::vector<std::string> urls;
   if (mdns_query_ptr("_home-assistant", "_tcp", 3000, 8, &results) == ESP_OK) {
     size_t count = 0;
     for (mdns_result_t *r = results; r != nullptr; r = r->next) {
@@ -221,6 +222,7 @@ void ConfigWeb::discovery_task_(void *arg) {
       if (name == nullptr || !*name) name = r->instance_name;
       const char *uuid = txt_value(r, "uuid");
       const char *version = txt_value(r, "version");
+      urls.push_back(url);
       if (count++) items += ',';
       items += "{\"name\":\"" + json_escape(name ? name : "Home Assistant") + "\",\"url\":\"" + json_escape(url.c_str()) +
                "\",\"ip\":\"" + ip + "\",\"port\":" + std::to_string(r->port) + ",\"uuid\":\"" + json_escape(uuid) +
@@ -232,6 +234,7 @@ void ConfigWeb::discovery_task_(void *arg) {
   {
     LockGuard lock(self->mutex_);
     self->discovered_ = std::move(items);
+    self->discovered_urls_ = std::move(urls);
     self->discovering_ = false;
     self->discovery_runs_++;
   }
@@ -250,6 +253,19 @@ void ConfigWeb::start_discovery_() {
     discovering_ = false;
   }
 #endif
+}
+std::string ConfigWeb::auto_ha_url(uint32_t now) {
+  {
+    // Read the finished result before starting another search, which would clear it.
+    LockGuard lock(mutex_);
+    if (discovering_) return "";
+    if (discovery_runs_ > 0 && discovered_urls_.size() == 1) return discovered_urls_[0];
+    if (discovery_started_ && now - last_discovery_start_ < 5000) return "";
+    discovery_started_ = true;
+    last_discovery_start_ = now;
+  }
+  start_discovery_();
+  return "";
 }
 Body ConfigWeb::take_result_(std::string &&result) {
   if (result == LARGE_BODY_MARKER) {
