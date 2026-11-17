@@ -129,7 +129,7 @@ inline bool save_hold_cue(const std::string &value) {
 
 // Keep subscriptions and compact runtime indices intact; hide only carousel entries.
 struct TimerVisibility { char entity[129]{}; bool hidden{false}; };
-inline std::array<TimerVisibility,20> timer_visibility;
+inline auto &timer_visibility=onx_memory::psram_object<std::array<TimerVisibility,20>>();
 inline std::array<esphome::ESPPreferenceObject,20> timer_visibility_preferences;
 inline bool timer_visibility_loaded=false;
 inline void load_timer_visibility() {
@@ -342,7 +342,7 @@ struct StoredBindings {
   uint32_t magic{0x4F4E5850};
   PressBinding slots[20]{};
 };
-static StoredBindings bindings;
+static StoredBindings &bindings = onx_memory::psram_object<StoredBindings>();
 static esphome::ESPPreferenceObject preference;
 static bool loaded = false;
 inline void load() {

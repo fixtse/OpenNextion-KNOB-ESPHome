@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <atomic>
 #include "onx_registry_queue.h"
+#include "onx_memory.h"
 #include "onx_gesture.h"
 #include <array>
 #include <cctype>
@@ -303,9 +304,12 @@ static std::string cached_device10_custom_type;
 static uint32_t cached_device10_custom_light_capability_mask = 1;
 static std::string cached_standby_weather_entity_id;
 static RamAllocatedPtr<StoredHaEntities> cached_ha_entities_storage;
-static StoredHaAreas cached_ha_areas{};
-static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> device_config_options;
-static std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT> staged_device_config_options;
+// Large tables live in PSRAM (onx_memory::psram_object) to keep internal RAM free.
+static StoredHaAreas &cached_ha_areas = onx_memory::psram_object<StoredHaAreas>();
+static auto &device_config_options =
+    onx_memory::psram_object<std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT>>();
+static auto &staged_device_config_options =
+    onx_memory::psram_object<std::array<DeviceConfigOptionArray, CONFIGURABLE_DEVICE_SLOT_COUNT>>();
 static RamAllocatedPtr<HaEntityOptionArray> standby_weather_config_option_strings_storage;
 static RamAllocatedPtr<HaEntityOptionArray> staged_standby_weather_config_option_strings_storage;
 static std::string cached_provisioning_ap_ssid;
@@ -1027,7 +1031,8 @@ inline uint32_t &cached_device_custom_light_capability_mask(size_t slot) {
 }
 
 inline InferredNormalDeviceConfig &device_inferred_config(size_t slot) {
-  static std::array<InferredNormalDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT - 10> extra{};
+  static auto &extra =
+      onx_memory::psram_object<std::array<InferredNormalDeviceConfig, CONFIGURABLE_DEVICE_SLOT_COUNT - 10>>();
   if (slot >= 10 && slot < CONFIGURABLE_DEVICE_SLOT_COUNT) return extra[slot - 10];
   switch (slot) {
     case 0:

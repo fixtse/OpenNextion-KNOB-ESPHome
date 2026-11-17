@@ -51,4 +51,16 @@ template<typename T, size_t N> class StateArray {
 #else
 template<typename T, size_t N> using StateArray = std::array<T, N>;
 #endif
+
+// Constructs a long-lived table in PSRAM instead of internal .data/.bss.
+// PSRAM is ready during static initialization; T{} keeps default member
+// initializers. Bind the result to a reference: `static T &table = psram_object<T>();`
+// (sizeof/&/memset on the reference still address the object itself).
+template<typename T> T &psram_object() {
+#ifdef USE_ESP32
+  if (void *memory = heap_caps_malloc(sizeof(T), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT))
+    return *new (memory) T{};
+#endif
+  return *new T{};
+}
 }  // namespace onx_memory

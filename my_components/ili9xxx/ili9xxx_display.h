@@ -111,6 +111,10 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
 
   virtual void set_madctl();
   void display_();
+  // Sends pixel data. Pointers that are not internal DMA memory (LVGL's PSRAM
+  // draw buffer) go through dma_bounce_ so the SPI driver never allocates a
+  // temporary DMA buffer per transfer from fragmented internal RAM.
+  void write_pixels_(const uint8_t *ptr, size_t length);
   void init_lcd_(const uint8_t *addr);
   void set_addr_window_(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2);
   void reset_();
@@ -126,6 +130,7 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
   uint16_t x_high_{0};
   uint16_t y_high_{0};
   const uint8_t *palette_{};
+  uint8_t *dma_bounce_{nullptr};
 
   ILI9XXXColorMode buffer_color_mode_{BITS_16};
 

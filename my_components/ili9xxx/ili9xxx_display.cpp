@@ -1,8 +1,15 @@
 #include "ili9xxx_display.h"
+#include <algorithm>
+#include <cstring>
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
+
+#ifdef USE_ESP32
+#include "esp_heap_caps.h"
+#include "esp_memory_utils.h"
+#endif
 
 namespace esphome {
 namespace ili9xxx {
@@ -34,6 +41,13 @@ void ILI9XXXDisplay::set_madctl() {
 }
 
 void ILI9XXXDisplay::setup() {
+#ifdef USE_ESP32
+  // One permanent internal DMA buffer for pixel data held in PSRAM.
+  this->dma_bounce_ =
+      static_cast<uint8_t *>(heap_caps_malloc(SPI_MAX_BLOCK_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+  if (this->dma_bounce_ == nullptr)
+    ESP_LOGW(TAG, "No internal DMA bounce buffer; PSRAM pixels use the SPI driver's per-transfer copy");
+#endif
   this->setup_pins_();
   this->init_lcd_(this->init_sequence_);
   this->init_lcd_(this->extra_init_sequence_.data());
@@ -260,7 +274,7 @@ void ILI9XXXDisplay::display_() {
     // 16 bit mode maps directly to display format
     ESP_LOGV(TAG, "Doing single write of %zu bytes", this->width_ * h * 2);
     set_addr_window_(0, this->y_low_, this->width_ - 1, this->y_high_);
-    this->write_array(this->buffer_ + this->y_low_ * this->width_ * 2, h * this->width_ * 2);
+    this->write_pixels_(this->buffer_ + this->y_low_ * this->width_ * 2, h * this->width_ * 2);
   } else {
     ESP_LOGV(TAG, "Doing multiple write");
     uint8_t transfer_buffer[ILI9XXX_TRANSFER_BUFFER_SIZE];
@@ -317,6 +331,23 @@ void ILI9XXXDisplay::display_() {
   this->y_high_ = 0;
 }
 
+void ILI9XXXDisplay::write_pixels_(const uint8_t *ptr, size_t length) {
+#ifdef USE_ESP32
+  const bool direct = esp_ptr_dma_capable(ptr) && esp_ptr_internal(ptr) && (reinterpret_cast<uintptr_t>(ptr) & 3) == 0;
+  if (this->dma_bounce_ != nullptr && !direct) {
+    while (length != 0) {
+      const size_t partial = std::min<size_t>(length, SPI_MAX_BLOCK_SIZE);
+      memcpy(this->dma_bounce_, ptr, partial);
+      this->write_array(this->dma_bounce_, partial);
+      ptr += partial;
+      length -= partial;
+    }
+    return;
+  }
+#endif
+  this->write_array(ptr, length);
+}
+
 // note that this bypasses the buffer and writes directly to the display.
 void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr,
                                     display::ColorOrder order, display::ColorBitness bitness, bool big_endian,
@@ -337,10 +368,11 @@ void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, cons
   if (!this->is_18bitdisplay_) {
     if (x_offset == 0 && x_pad == 0 && y_offset == 0) {
       // we could deal here with a non-zero y_offset, but if x_offset is zero, y_offset probably will be so don't bother
-      this->write_array(ptr, w * h * 2);
+      this->write_pixels_(ptr, w * h * 2);
     } else {
+      // ptr is a byte pointer to 16-bit pixels: offsets are in pixels.
       for (size_t y = 0; y != static_cast<size_t>(h); y++) {
-        this->write_array(ptr + (y + y_offset) * stride + x_offset, w * 2);
+        this->write_pixels_(ptr + ((y + y_offset) * stride + x_offset) * 2, w * 2);
       }
     }
   } else {

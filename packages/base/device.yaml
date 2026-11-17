@@ -97,6 +97,15 @@ esp32:
       # TLS records/certificates exhausted fragmented internal RAM on live units.
       # This board has 8 MB PSRAM; keep task stacks and DMA in internal memory.
       CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC: "y"
+      # Plain malloc/new (std::string, vectors, JSON) goes to PSRAM at every
+      # size. Thousands of small entity strings otherwise fill internal RAM.
+      # Drivers still request DMA/internal memory explicitly; FreeRTOS objects
+      # and task stacks stay internal. The reserve keeps a 64 KB internal pool
+      # for DMA and stacks created after boot.
+      CONFIG_SPIRAM_USE_CAPS_ALLOC: "n"
+      CONFIG_SPIRAM_USE_MALLOC: "y"
+      CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL: "0"
+      CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL: "65536"
       # ESPHome's IDF web server rejects POST bodies above this size. The
       # configuration page sends up to 8 KB (slots with playlists and gestures,
       # preset restore chunks); ESP-IDF 5.5 grows its buffer on demand.

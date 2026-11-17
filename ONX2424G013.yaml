@@ -49,6 +49,7 @@ esphome:
     - onx_notification.h
     - onx_gesture.h
     - onx_runtime_diagnostics.h
+    - onx_ble_gate.h
     - onx_crash_capture.h
     - onx_config_rules.h
     - onx_timer_state.h

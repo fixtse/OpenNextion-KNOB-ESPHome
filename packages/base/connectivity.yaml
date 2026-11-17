@@ -53,7 +53,7 @@ wifi:
             - script.execute: refresh_normal_curtain_detail_page
   on_disconnect:
     then:
-      - ble.enable:
+      # Bluetooth restarts through onx_ble_gate after 30 s offline (memory permitting).
       - lambda: |-
           id(normal_wifi_connected) = false;
           ++onx_runtime::wifi_disconnects;
@@ -87,6 +87,14 @@ improv_serial:
 
 esp32_ble:
   id: onx_ble
+  # Started by onx_ble_gate only when Wi-Fi needs provisioning or has been down
+  # for 30 s, and only with enough internal RAM for Bluedroid.
+  enable_on_boot: false
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: onx_ble_gate::tick(id(onx_ble));
 
 # BLE provisioning is authorized with a physical knob press.
 improv_ble:
