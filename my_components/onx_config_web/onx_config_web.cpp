@@ -7,6 +7,8 @@
 #include "esphome/components/wifi/wifi_component.h"
 #include <array>
 #include <charconv>
+#include <cinttypes>
+#include <cstdio>
 #include <cstring>
 #ifdef USE_ESP32
 #include <freertos/FreeRTOS.h>
@@ -23,7 +25,10 @@ static bool number(const std::string &text, unsigned &value) {
   return result.ec == std::errc{} && result.ptr == text.data() + text.size();
 }
 void ConfigWeb::setup() {
-  nonce_ = str_sprintf("%08x%08x%08x%08x", random_uint32(), random_uint32(), random_uint32(), random_uint32());
+  char nonce[33];
+  std::snprintf(nonce, sizeof(nonce), "%08" PRIx32 "%08" PRIx32 "%08" PRIx32 "%08" PRIx32,
+                random_uint32(), random_uint32(), random_uint32(), random_uint32());
+  nonce_ = nonce;
   auto *base = web_server_base::global_web_server_base;
   base->add_handler(this);
   base->init();

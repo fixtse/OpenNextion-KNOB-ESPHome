@@ -21,7 +21,9 @@ static const char *const NORMAL_HA_ADDED_PREF_KEY = "3139337893";
 
 static std::string build_provisioning_ap_ssid_() {
   std::string ssid = "ONX2424G013-";
-  std::string mac = get_mac_address();
+  char mac_buffer[MAC_ADDRESS_BUFFER_SIZE];
+  get_mac_address_into_buffer(mac_buffer);
+  std::string mac = mac_buffer;
   for (char &ch : mac) {
     ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
   }

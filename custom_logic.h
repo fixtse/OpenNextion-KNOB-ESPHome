@@ -1313,7 +1313,9 @@ inline std::string extract_entity_id_from_device1_option(const std::string &opti
 
 inline std::string get_provisioning_ap_ssid_string() {
   cached_provisioning_ap_ssid = "ONX2424G013-";
-  std::string mac = esphome::get_mac_address();
+  char mac_buffer[esphome::MAC_ADDRESS_BUFFER_SIZE];
+  esphome::get_mac_address_into_buffer(mac_buffer);
+  std::string mac = mac_buffer;
   for (char &ch : mac) {
     ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
   }

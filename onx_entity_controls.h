@@ -187,14 +187,19 @@ inline void tick(esphome::api::APIServer *api, const std::string &selected, bool
     if (!api || !command.due(now)) continue;
 #ifdef USE_API_HOMEASSISTANT_SERVICES
     esphome::api::HomeassistantActionRequest call;
-    call.service = esphome::StringRef(command.service);
+    // ESPHome 2026.11 wraps action strings in ProgmemStringRef.
+    call.service = decltype(call.service){esphome::StringRef(command.service)};
     call.data.init(command.values.size() + 1);
     esphome::api::HomeassistantServiceMap target;
-    target.key = esphome::StringRef("entity_id"); target.value = esphome::StringRef(selected); call.data.push_back(target);
+    target.key = decltype(target.key){esphome::StringRef("entity_id")};
+    target.value = decltype(target.value){esphome::StringRef(selected)};
+    call.data.push_back(target);
     for (const auto &value : command.values) {
       if (value.parameter.empty()) continue;
       esphome::api::HomeassistantServiceMap item;
-      item.key = esphome::StringRef(value.parameter); item.value = esphome::StringRef(value.requested); call.data.push_back(item);
+      item.key = decltype(item.key){esphome::StringRef(value.parameter)};
+      item.value = decltype(item.value){esphome::StringRef(value.requested)};
+      call.data.push_back(item);
     }
     api->send_homeassistant_action(call);
     if (onx_action_feedback::native_pending && onx_action_feedback::entity == selected &&
