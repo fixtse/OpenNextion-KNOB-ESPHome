@@ -3464,7 +3464,8 @@ inline bool is_supported_normal_device_entity_id(const char *entity_id) {
          strncmp(entity_id, "climate.", 8) == 0 || strncmp(entity_id, "script.", 7) == 0 ||
          strncmp(entity_id, "weather.", 8) == 0 || strncmp(entity_id, "timer.", 6) == 0 ||
          strncmp(entity_id, "media_player.", 13) == 0 ||
-         strncmp(entity_id, "fan.", 4) == 0 || strncmp(entity_id, "number.", 7) == 0 || strncmp(entity_id, "input_number.", 13) == 0 || strncmp(entity_id, "select.", 7) == 0 || strncmp(entity_id, "input_select.", 13) == 0 || strncmp(entity_id, "scene.", 6) == 0 || strncmp(entity_id, "button.", 7) == 0 || strncmp(entity_id, "input_button.", 13) == 0;
+         strncmp(entity_id, "fan.", 4) == 0 || strncmp(entity_id, "number.", 7) == 0 || strncmp(entity_id, "input_number.", 13) == 0 || strncmp(entity_id, "select.", 7) == 0 || strncmp(entity_id, "input_select.", 13) == 0 || strncmp(entity_id, "scene.", 6) == 0 || strncmp(entity_id, "button.", 7) == 0 || strncmp(entity_id, "input_button.", 13) == 0 ||
+         strncmp(entity_id, "siren.", 6) == 0 || strncmp(entity_id, "event.", 6) == 0;
 }
 
 inline bool is_local_hmi_gpio_switch_entity_id(const std::string &entity_id) {

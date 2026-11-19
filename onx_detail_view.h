@@ -47,6 +47,45 @@ inline std::string selected_setting(const custom_logic_entity_sub::EntityDetailS
   return custom_logic_entity_sub::control_entity == d.entity_id &&
       std::find(settings.begin(), settings.end(), current) != settings.end() ? current : settings.front();
 }
+// Home Assistant binary_sensor device-class wording.
+inline std::string binary_text(const std::string &kind, const std::string &state) {
+  const bool on = state == "on";
+  if (state != "on" && state != "off") return state;
+  struct Pair { const char *kind, *on, *off; };
+  static const Pair pairs[] = {
+      {"battery", "Low", "Normal"}, {"battery_charging", "Charging", "Not charging"},
+      {"co", "Detected", "Clear"}, {"cold", "Cold", "Normal"}, {"connectivity", "Connected", "Disconnected"},
+      {"door", "Open", "Closed"}, {"garage_door", "Open", "Closed"}, {"opening", "Open", "Closed"},
+      {"window", "Open", "Closed"}, {"gas", "Detected", "Clear"}, {"glass_break", "Detected", "Clear"},
+      {"heat", "Hot", "Normal"}, {"light", "Light detected", "No light"}, {"lock", "Unlocked", "Locked"},
+      {"moisture", "Wet", "Dry"}, {"motion", "Detected", "Clear"}, {"moving", "Moving", "Not moving"},
+      {"occupancy", "Detected", "Clear"}, {"plug", "Plugged in", "Unplugged"}, {"power", "Power", "No power"},
+      {"presence", "Home", "Away"}, {"problem", "Problem", "OK"}, {"running", "Running", "Not running"},
+      {"safety", "Unsafe", "Safe"}, {"smoke", "Detected", "Clear"}, {"sound", "Detected", "Clear"},
+      {"tamper", "Tampering", "Clear"}, {"update", "Update available", "Up-to-date"},
+      {"vibration", "Detected", "Clear"}};
+  for (const auto &p : pairs)
+    if (kind == p.kind) return on ? p.on : p.off;
+  return on ? "On" : "Off";
+}
+// Event entities: the state is the time of the last event; show its type and
+// how long ago it happened (Home Assistant's relative wording).
+inline std::string event_ago(const std::string &stamp) {
+  time_t at = 0;
+  const time_t now = std::time(nullptr);
+  if (!custom_logic_entity_sub::parse_ha_datetime_epoch(stamp, &at) || now < 1577836800) return "";
+  const long s = std::max<long>(0, long(now - at));
+  if (s < 45) return "now";
+  if (s < 3600) return std::to_string(std::max<long>(1, s / 60)) + " min ago";
+  if (s < 86400) return std::to_string(s / 3600) + " h ago";
+  if (s < 172800) return "yesterday";
+  return std::to_string(s / 86400) + " days ago";
+}
+inline void event_view(View &v, const custom_logic_entity_sub::EntityDetailState &d) {
+  const bool never = d.state.empty() || d.state == "unknown";
+  v.value.text = never ? "No events" : d.event_type.empty() ? "Event" : label(d.event_type);
+  v.context.text = never ? "" : event_ago(d.state);
+}
 inline View build(const std::string &entity, const std::string &name) {
   using namespace custom_logic_entity_sub;
   View v; v.badge.x = 16; v.name.text = onx_media::display_text(name); v.icon = onx_icon_state::selected_icon(entity);
@@ -60,6 +99,7 @@ inline View build(const std::string &entity, const std::string &name) {
   v.value.text = compact(d->state) + (d->unit.empty() ? "" : " " + d->unit);
   const auto feedback = onx_controls::feedback_text(entity);
   v.hint.text = feedback;
+  if (has_prefix(entity, "event.")) event_view(v, *d);
   if (has_prefix(entity, "climate.")) {
     const auto mode = onx_controls::effective(*d, "state");
     std::string mode_label = mode;
@@ -140,7 +180,7 @@ inline View build(const std::string &entity, const std::string &name) {
       const auto formatted=onx_display_settings::format_iso_date(d->state);
       if(formatted!=d->state) v.value.text=formatted+(kind=="timestamp" && d->state.size()>10 ? d->state.substr(10) : "");
     }
-    if (has_prefix(entity,"binary_sensor.")) v.value.text = d->state == "on" ? "On" : d->state == "off" ? "Off" : d->state;
+    if (has_prefix(entity,"binary_sensor.")) v.value.text = binary_text(kind, d->state);
     v.value.size = v.value.text.size() > 12 ? 24 : 32;
     v.value.y = 84; v.badge.x = 0;
     v.icon_x = 0; v.icon_y = 134; v.icon_size = 40;
@@ -294,6 +334,8 @@ inline View carousel(const std::string &entity, const std::string &name) {
     v.value.text = compact(d->target) + d->unit; v.context.text = label(d->state);
   } else if (domain == "timer") {
     v.value.text = label(d->state); v.context.text = d->timer_remaining;
+  } else if (domain == "event") {
+    event_view(v, *d);
   }
   if (!v.context.text.empty()) {
     v.context.y = domain == "climate" ? 30 : 130;

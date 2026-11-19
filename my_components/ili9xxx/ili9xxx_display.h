@@ -1,9 +1,22 @@
 #pragma once
+#include <utility>
 #include "esphome/components/spi/spi.h"
 #include "esphome/components/display/display_buffer.h"
 #include "esphome/components/display/display_color_utils.h"
 #include "ili9xxx_defines.h"
 #include "ili9xxx_init.h"
+#ifdef USE_ILI9XXX_QUEUED_SPI
+#include "esp_lcd_panel_io.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include <mutex>
+#endif
+#if defined(USE_ESP32) && defined(USE_LVGL)
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
+#include "lvgl.h"
+#endif
 
 namespace esphome {
 namespace ili9xxx {
@@ -91,6 +104,18 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
   void dump_config() override;
   void setup() override;
   void on_powerdown() override { this->command(ILI9XXX_SLPIN); }
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  void set_queued_spi(int clk, int mosi, int cs, int dc, uint32_t rate) {
+    this->queued_clk_ = clk;
+    this->queued_mosi_ = mosi;
+    this->queued_cs_ = cs;
+    this->queued_dc_ = dc;
+    this->data_rate_ = rate;
+  }
+#endif
+#if defined(USE_ESP32) && defined(USE_LVGL)
+  void enable_lvgl_pipeline(lv_display_t *display);
+#endif
 
   display::DisplayType get_display_type() override { return display::DisplayType::DISPLAY_TYPE_COLOR; }
   void draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr, display::ColorOrder order,
@@ -108,13 +133,34 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
 
   void draw_absolute_pixel_internal(int x, int y, Color color) override;
   void setup_pins_();
+  // Sends pixel data through a permanent internal DMA buffer when the source is
+  // in PSRAM, so a flush never needs a large transient DMA allocation.
+  void write_pixels_(const uint8_t *data, size_t length);
+  uint8_t *dma_bounce_{nullptr};
+  void wait_for_pixel_transfer_();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  bool setup_queued_spi_();
+  bool queue_pixels_(const uint8_t *data, size_t length);
+  void write_queued_param_(int command, const void *data, size_t length);
+  int queued_clk_{-1}, queued_mosi_{-1}, queued_cs_{-1}, queued_dc_{-1};
+  esp_lcd_panel_io_handle_t queued_io_{nullptr};
+  SemaphoreHandle_t queued_done_{nullptr};
+  std::recursive_mutex panel_mutex_;
+  bool queued_ram_write_{false};
+  bool queued_write_failed_{false};
+#endif
+#if defined(USE_ESP32) && defined(USE_LVGL)
+  static void flush_pixels_(lv_display_t *display, const lv_area_t *area, uint8_t *pixels);
+  static void wait_for_flush_(lv_display_t *display);
+  static void pixel_worker_(void *arg);
+  EventGroupHandle_t transfer_done_{nullptr};
+  TaskHandle_t pixel_worker_handle_{nullptr};
+  lv_area_t transfer_area_{};
+  const uint8_t *transfer_pixels_{nullptr};
+#endif
 
   virtual void set_madctl();
   void display_();
-  // Sends pixel data. Pointers that are not internal DMA memory (LVGL's PSRAM
-  // draw buffer) go through dma_bounce_ so the SPI driver never allocates a
-  // temporary DMA buffer per transfer from fragmented internal RAM.
-  void write_pixels_(const uint8_t *ptr, size_t length);
   void init_lcd_(const uint8_t *addr);
   void set_addr_window_(uint16_t x, uint16_t y, uint16_t x2, uint16_t y2);
   void reset_();
@@ -130,7 +176,6 @@ class ILI9XXXDisplay : public display::DisplayBuffer,
   uint16_t x_high_{0};
   uint16_t y_high_{0};
   const uint8_t *palette_{};
-  uint8_t *dma_bounce_{nullptr};
 
   ILI9XXXColorMode buffer_color_mode_{BITS_16};
 
@@ -273,6 +318,17 @@ class ILI9XXXS3BoxLite : public ILI9XXXDisplay {
   ILI9XXXS3BoxLite() : ILI9XXXDisplay(INITCMD_S3BOXLITE, 320, 240) {}
 };
 
+class ILI9XXXGC9D01N : public ILI9XXXDisplay {
+ public:
+  ILI9XXXGC9D01N() : ILI9XXXDisplay(INITCMD_GC9D01N, 160, 160) {}
+};
+
+//-----------   ILI9XXX_24_TFT display --------------
+class ILI9XXXST7735 : public ILI9XXXDisplay {
+ public:
+  ILI9XXXST7735() : ILI9XXXDisplay(INITCMD_ST7735, 128, 160) {}
+};
+
 class ILI9XXXGC9A01A : public ILI9XXXDisplay {
  public:
   ILI9XXXGC9A01A() : ILI9XXXDisplay(INITCMD_GC9A01A, 240, 240) {}
@@ -287,17 +343,6 @@ class ILI9XXXGC9A01A : public ILI9XXXDisplay {
   }
  protected:
   uint8_t hardware_orientation_{255};
-};
-
-class ILI9XXXGC9D01N : public ILI9XXXDisplay {
- public:
-  ILI9XXXGC9D01N() : ILI9XXXDisplay(INITCMD_GC9D01N, 160, 160) {}
-};
-
-//-----------   ILI9XXX_24_TFT display --------------
-class ILI9XXXST7735 : public ILI9XXXDisplay {
- public:
-  ILI9XXXST7735() : ILI9XXXDisplay(INITCMD_ST7735, 128, 160) {}
 };
 
 }  // namespace ili9xxx

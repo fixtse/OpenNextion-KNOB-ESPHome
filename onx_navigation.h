@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include "lvgl.h"
+#include "onx_render.h"
 
 namespace onx_navigation {
 constexpr int VISIBLE_ICONS=5;
@@ -59,7 +60,7 @@ template<typename Bind> void render(const std::vector<int> &entries,int selected
     }
     lv_obj_clear_flag(icons[n],LV_OBJ_FLAG_HIDDEN);
     bind(icons[n],entries[index],offset==0);
-    lv_obj_set_style_opa(icons[n],offset==0?LV_OPA_COVER:std::abs(offset)==1?170:110,0);
+    onx_render::style_number(icons[n],LV_STYLE_OPA,offset==0?LV_OPA_COVER:std::abs(offset)==1?170:110,0);
     if(changed) {
       lv_anim_delete(icons[n],icon_offset);
       icon_offset(icons[n],(offset+shift)*1000);

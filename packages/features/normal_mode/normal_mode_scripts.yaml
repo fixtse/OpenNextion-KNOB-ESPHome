@@ -122,6 +122,11 @@ script:
       - switch.turn_off: ha_screen_off
       - lambda: |-
           id(ui_presenter)->notify_user_activity();
+          if (lv_scr_act() == id(standby_page)->obj && id(ui_presenter)->is_normal_mode_active() &&
+              !id(mode_manager)->is_provisioning_mode_enabled() && id(normal_page_index) == 0 &&
+              !id(normal_device_detail_active) && !id(screen_off_state) && !id(sleep_mode_state)) {
+            id(show_normal_device_entry_page).execute(0);
+          }
   - id: refresh_normal_ha_connection_state
     mode: restart
     then:
@@ -359,7 +364,7 @@ script:
               lv_obj_set_y(w.icon_switch, onx_detail_view::image_object_y(view.icon_y, view.icon_size));
               lv_image_set_scale(w.icon_switch, view.icon_size * 256 / 80);
               lv_obj_set_y(w.title, view.name.y); lv_obj_set_width(w.title, 184); lv_obj_set_height(w.title, 40);
-              lv_obj_set_style_text_font(w.title, id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
+              onx_render::style_text_font(w.title, id(fonts_MiSans_Medium_16)->get_lv_font(), 0);
               lv_label_set_text(w.context, view.context.text.c_str());
               lv_obj_set_y(w.context, view.context.y);
               lv_obj_set_style_text_font(w.context, view.context.size == 24 ? id(fonts_MiSans_Medium_24)->get_lv_font() : id(fonts_MiSans_Medium_14)->get_lv_font(), 0);
@@ -374,7 +379,7 @@ script:
             else {
               const auto view=onx_detail_view::carousel(entity,device_title);
               onx_render::label(w.title,view.name.text.c_str());
-              lv_obj_set_style_text_font(w.title,view.name.size==14?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
+              onx_render::style_text_font(w.title,view.name.size==14?id(fonts_MiSans_Medium_14)->get_lv_font():id(fonts_MiSans_Medium_16)->get_lv_font(),0);
               lv_obj_set_width(w.title,view.name.width);lv_obj_set_height(w.title,40);
             }
             set_hidden(w.index_icon, true);
@@ -386,7 +391,7 @@ script:
                     onx_render::image(icon,id(normal_device_icon_settings_img)->get_lv_image_dsc());
                     lv_image_set_scale(icon,18*256/id(normal_device_icon_settings_img)->get_width());
                     lv_obj_set_style_image_recolor(icon,lv_color_hex(active?0x62B0FF:0xFFFFFF),0);
-                    lv_obj_set_style_image_recolor_opa(icon,LV_OPA_COVER,0);
+                    onx_render::style_number(icon,LV_STYLE_IMAGE_RECOLOR_OPA,LV_OPA_COVER,0);
                   } else {
                     id(apply_normal_entity_icon).execute(icon,
                         id(ui_presenter)->get_normal_device_entity_id(index),
@@ -1753,7 +1758,12 @@ script:
                     return !entity_id.empty() && !is_local_hmi_gpio_switch_entity_id(entity_id);
                 then:
                   - homeassistant.service:
-                      service: switch.toggle
+                      # Sirens share the switch control; Home Assistant needs their own domain.
+                      service: !lambda |-
+                        int detail_index = id(normal_device_detail_index);
+                        if (detail_index < 0) detail_index = 0;
+                        if (detail_index > 19) detail_index = 19;
+                        return id(ui_presenter)->get_normal_device_entity_id(detail_index).rfind("siren.",0)==0 ? std::string("siren.toggle") : std::string("switch.toggle");
                       data_template:
                         entity_id: "{{ target_entity_id }}"
                       variables:

@@ -3,6 +3,7 @@ import logging
 from esphome import core, pins
 import esphome.codegen as cg
 from esphome.components import display, spi
+from esphome.components.esp32 import include_builtin_idf_component
 from esphome.components.display import validate_rotation
 import esphome.config_validation as cv
 from esphome.const import (
@@ -10,6 +11,10 @@ from esphome.const import (
     CONF_COLOR_ORDER,
     CONF_COLOR_PALETTE,
     CONF_DC_PIN,
+    CONF_CS_PIN,
+    CONF_CLK_PIN,
+    CONF_MOSI_PIN,
+    CONF_DATA_RATE,
     CONF_DIMENSIONS,
     CONF_HEIGHT,
     CONF_ID,
@@ -32,7 +37,8 @@ from esphome.const import (
 from esphome.core import CORE, HexInt
 from esphome.final_validate import full_config
 
-DEPENDENCIES = ["spi"]
+AUTO_LOAD = ["spi"]
+CONF_QUEUED_SPI = "queued_spi"
 
 CODEOWNERS = ["@nielsnl68", "@clydebarrow"]
 LOGGER = logging.getLogger(__name__)
@@ -146,7 +152,7 @@ def _validate(config):
     return config
 
 
-CONFIG_SCHEMA = cv.All(
+DISPLAY_SCHEMA = (
     display.FULL_DISPLAY_SCHEMA.extend(
         {
             cv.GenerateID(): cv.declare_id(ILI9XXXDisplay),
@@ -190,7 +196,23 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.polling_component_schema("1s"))
-    .extend(spi.spi_device_schema(False, "40MHz")),
+)
+
+QUEUED_SPI_SCHEMA = cv.Schema({
+    cv.Required(CONF_CLK_PIN): pins.internal_gpio_output_pin_schema,
+    cv.Required(CONF_MOSI_PIN): pins.internal_gpio_output_pin_schema,
+    cv.Required(CONF_CS_PIN): pins.internal_gpio_output_pin_schema,
+    cv.Optional(CONF_DATA_RATE, default="40MHz"): spi.SPI_DATA_RATE_SCHEMA,
+})
+
+CONFIG_SCHEMA = cv.All(
+    cv.Any(
+        DISPLAY_SCHEMA.extend({
+            cv.Required(CONF_QUEUED_SPI): cv.All(cv.only_on_esp32, QUEUED_SPI_SCHEMA),
+            cv.Required(CONF_DC_PIN): pins.internal_gpio_output_pin_schema,
+        }),
+        DISPLAY_SCHEMA.extend(spi.spi_device_schema(False, "40MHz")),
+    ),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
     _validate,
 )
@@ -210,9 +232,11 @@ def final_validate(config):
     ):
         LOGGER.info("Consider enabling PSRAM if available for the display buffer")
 
+    if CONF_QUEUED_SPI in config:
+        return config
     return spi.final_validate_device_schema(
         "ili9xxx", require_miso=False, require_mosi=True
-    )
+    )(config)
 
 
 FINAL_VALIDATE_SCHEMA = final_validate
@@ -223,7 +247,14 @@ async def to_code(config):
     var = cg.Pvariable(config[CONF_ID], rhs)
 
     await display.register_display(var, config)
-    await spi.register_spi_device(var, config, write_only=True)
+    if queued := config.get(CONF_QUEUED_SPI):
+        include_builtin_idf_component("esp_lcd")
+        cg.add_define("USE_ILI9XXX_QUEUED_SPI")
+        cg.add(var.set_queued_spi(queued[CONF_CLK_PIN]["number"], queued[CONF_MOSI_PIN]["number"],
+                                  queued[CONF_CS_PIN]["number"], config[CONF_DC_PIN]["number"],
+                                  queued[CONF_DATA_RATE]))
+    else:
+        await spi.register_spi_device(var, config, write_only=True)
     dc = await cg.gpio_pin_expression(config[CONF_DC_PIN])
     cg.add(var.set_dc_pin(dc))
     if init_sequences := config.get(CONF_INIT_SEQUENCE):

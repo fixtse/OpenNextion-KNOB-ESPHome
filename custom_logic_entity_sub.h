@@ -360,7 +360,8 @@ struct EntityDetailState {
   uint32_t forecast_requested_ms{0};
   bool forecast_requested{false}, forecast_pending{false}, forecast_failed{false};
   onx_media::Progress progress;
-  std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode;
+  std::string event_type, tones;
+  std::string options, presets, preset, fan_modes, fan_mode, swing_modes, swing_mode, hswing_modes, hswing_mode;
   std::string percentage, oscillating, direction, sources, source, muted;
   uint32_t features{0}, received_ms{0};
   bool received{false}, available{false};
@@ -623,12 +624,16 @@ class DeviceSlotStateUpdater {
       else if (field == "target_temp_high") detail.high = value;
       else if (field == "hvac_modes") detail.modes = value;
       else if (field == "options") detail.options = value;
+      else if (field == "event_type") detail.event_type = value;
+      else if (field == "available_tones") detail.tones = value;
       else if (field == "preset_modes") detail.presets = value;
       else if (field == "preset_mode") detail.preset = value;
       else if (field == "fan_modes") detail.fan_modes = value;
       else if (field == "fan_mode") detail.fan_mode = value;
       else if (field == "swing_modes") detail.swing_modes = value;
       else if (field == "swing_mode") detail.swing_mode = value;
+      else if (field == "swing_horizontal_modes") detail.hswing_modes = value;
+      else if (field == "swing_horizontal_mode") detail.hswing_mode = value;
       else if (field == "percentage") detail.percentage = value;
       else if (field == "oscillating") detail.oscillating = value;
       else if (field == "direction") detail.direction = value;
@@ -1233,7 +1238,7 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
   } else if (has_prefix(entity_id, "climate.")) {
     for (const char *attribute : {"current_temperature", "temperature", "target_temp_low", "target_temp_high",
                                   "hvac_modes", "min_temp", "max_temp", "target_temp_step", "supported_features",
-                                  "preset_modes", "preset_mode", "fan_modes", "fan_mode", "swing_modes", "swing_mode",
+                                  "preset_modes", "preset_mode", "fan_modes", "fan_mode", "swing_modes", "swing_mode", "swing_horizontal_modes", "swing_horizontal_mode",
                                   "humidity", "min_humidity", "max_humidity"})
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "fan.")) {
@@ -1244,6 +1249,11 @@ inline void subscribe_entity(esphome::api::APIServer *api_server, size_t slot, c
       subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "select.") || has_prefix(entity_id, "input_select.")) {
     subscribe_field(api_server, slot, entity_id, "options", "options");
+  } else if (has_prefix(entity_id, "event.")) {
+    subscribe_field(api_server, slot, entity_id, "event_type", "event_type");
+  } else if (has_prefix(entity_id, "siren.")) {
+    for (const char *attribute : {"supported_features", "available_tones"})
+      subscribe_field(api_server, slot, entity_id, attribute, attribute);
   } else if (has_prefix(entity_id, "light.")) {
     for (const char *attribute : light_attributes()) {
       subscribe_field(api_server, slot, entity_id, attribute, attribute);

@@ -1,8 +1,3 @@
-spi:
-  id: bus_spi
-  clk_pin: GPIO5
-  mosi_pin: GPIO1
-
 output:
   - platform: ledc
     id: lcd_backlight_pwm
@@ -144,11 +139,13 @@ display:
   - platform: ili9xxx
     id: lcd_display
     model: GC9A01A
-    spi_id: bus_spi
-    data_rate: ${lcd_spi_data_rate}
+    queued_spi:
+      clk_pin: GPIO5
+      mosi_pin: GPIO1
+      cs_pin: GPIO2
+      data_rate: ${lcd_spi_data_rate}
     color_order: BGR
     dc_pin: GPIO3
-    cs_pin: GPIO2
     reset_pin: GPIO8
     invert_colors: true
     update_interval: never
@@ -158,6 +155,7 @@ lvgl:
   id: lvgl_ui
   displays:
     - lcd_display
+  byte_order: big_endian
   buffer_size: 100%
   default_font: fonts_MiSans_Medium_14
   log_level: WARN

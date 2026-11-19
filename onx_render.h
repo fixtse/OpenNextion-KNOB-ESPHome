@@ -5,6 +5,24 @@
 
 // Avoid reallocating label buffers or invalidating image caches for unchanged UI.
 namespace onx_render {
+inline void style_number(lv_obj_t *widget, lv_style_prop_t prop, int32_t number,
+                         lv_style_selector_t selector) {
+  lv_style_value_t old;
+  if (lv_obj_get_local_style_prop(widget, prop, &old, selector) == LV_STYLE_RES_FOUND && old.num == number) return;
+  lv_style_value_t value{}; value.num = number;
+  lv_obj_set_local_style_prop(widget, prop, value, selector);
+}
+inline void style_text_font(lv_obj_t *widget, const lv_font_t *font, lv_style_selector_t selector) {
+  lv_style_value_t old;
+  if (lv_obj_get_local_style_prop(widget, LV_STYLE_TEXT_FONT, &old, selector) == LV_STYLE_RES_FOUND) {
+    if (old.ptr == font) return;
+    // label() installs a colour-emoji wrapper for this same underlying font.
+    for (const auto &entry : onx_emoji::fonts)
+      if (old.ptr == entry.color && font == entry.original) return;
+  }
+  lv_obj_set_style_text_font(widget, font, selector);
+}
+
 inline void label(lv_obj_t *widget, const char *text) {
   onx_emoji::set_label(widget, text);
 }

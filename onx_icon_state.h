@@ -68,6 +68,10 @@ struct Metadata {
     if (valid_icon(runtime)) return runtime;
     if (entity.rfind("weather.", 0) == 0 && !condition.empty()) return weather_icon(condition);
     if (valid_icon(configured)) return configured;
+    // Event and siren icons follow Home Assistant's device classes.
+    if (entity.rfind("event.", 0) == 0)
+      return device_class == "button" ? "mdi:gesture-tap-button" : device_class == "motion" ? "mdi:motion-sensor" : "mdi:doorbell";
+    if (entity.rfind("siren.", 0) == 0) return "mdi:bullhorn";
     if (entity.rfind("sensor.", 0) == 0) {
       if (device_class == "temperature") return "mdi:thermometer";
       if (device_class == "humidity") return "mdi:water-percent";

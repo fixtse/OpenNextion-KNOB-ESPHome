@@ -196,8 +196,11 @@ interval:
                 set_hidden(id(standby_weather_sunny_widget), state != "sunny");
                 set_hidden(id(standby_weather_windy_widget), state != "windy");
                 set_hidden(id(standby_weather_windy_variant_widget), state != "windy-variant");
-            - lvgl.widget.refresh: standby_temperature_widget
-            - lvgl.widget.refresh: standby_humidity_widget
+            - lambda: |-
+                onx_render::label(id(standby_temperature_widget), onx_clock_sensors::temperature_text(
+                    id(standby_weather_temperature), id(standby_weather_temperature_unit)).c_str());
+                onx_render::label(id(standby_humidity_widget), onx_clock_sensors::humidity_text(
+                    id(standby_weather_humidity)).c_str());
             - lambda: |-
                 // Sensor icons replace the defaults once downloaded; both fit 16 px.
                 for (auto *w : {id(standby_temperature_icon_widget), id(standby_humidity_icon_widget)}) {
@@ -213,12 +216,21 @@ interval:
                 lv_obj_add_flag(id(normal_device_wifi_offline_widget), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_device_homeassistant_online_widget), LV_OBJ_FLAG_HIDDEN);
                 lv_obj_add_flag(id(normal_device_homeassistant_offline_widget), LV_OBJ_FLAG_HIDDEN);
-            - lvgl.page.show: standby_page
             - lambda: |-
-                lv_obj_set_style_text_font(id(standby_time_widget), onx_display_settings::datetime.hour_format == 1 && onx_display_settings::datetime.show_ampm ?
+                onx_render::style_text_font(id(standby_time_widget), onx_display_settings::datetime.hour_format == 1 && onx_display_settings::datetime.show_ampm ?
                     id(fonts_MiSans_Medium_32)->get_lv_font() : id(fonts_MiSans_Bold_64)->get_lv_font(), 0);
-            - lvgl.widget.refresh: standby_time_widget
-            - lvgl.widget.refresh: standby_date_widget
+                auto now = id(ha_time).now();  // strftime() is not const.
+                const bool ready = id(ha_time_ready) && now.is_valid();
+                onx_render::label(id(standby_time_widget), ready ? now.strftime(onx_display_settings::time_pattern()).c_str() : "--:--");
+                onx_render::label(id(standby_date_widget), ready ? now.strftime(onx_display_settings::date_pattern()).c_str() : "----");
+            - lambda: |-
+                const bool wifi_connected = id(normal_wifi_connected);
+                const bool ha_connected = id(api_server)->is_connected_with_state_subscription();
+                lv_obj_set_hidden(id(standby_wifi_online_widget), !wifi_connected);
+                lv_obj_set_hidden(id(standby_wifi_offline_widget), wifi_connected);
+                lv_obj_set_hidden(id(standby_homeassistant_online_widget), !ha_connected);
+                lv_obj_set_hidden(id(standby_homeassistant_offline_widget), ha_connected);
+            - lvgl.page.show: standby_page
       - if:
           condition:
             lambda: |-

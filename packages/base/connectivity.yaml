@@ -34,6 +34,9 @@ wifi:
       - lambda: |-
           id(normal_wifi_connected) = true;
           if(onx_power::sleeping)onx_power::apply_radio_sleep();
+      - lvgl.widget.refresh: standby_wifi_online_widget
+      - lvgl.widget.refresh: standby_wifi_offline_widget
+      - script.execute: refresh_normal_device_page
       - delay: 2s
       - if:
           condition:
@@ -45,9 +48,6 @@ wifi:
             lambda: |-
               return id(ui_presenter)->is_normal_mode_active();
           then:
-            - lvgl.widget.refresh: standby_wifi_online_widget
-            - lvgl.widget.refresh: standby_wifi_offline_widget
-            - script.execute: refresh_normal_device_page
             - script.execute: refresh_normal_switch_detail_page
             - script.execute: refresh_normal_light_detail_page
             - script.execute: refresh_normal_curtain_detail_page

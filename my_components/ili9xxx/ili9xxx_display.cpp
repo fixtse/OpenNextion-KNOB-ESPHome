@@ -1,14 +1,17 @@
 #include "ili9xxx_display.h"
-#include <algorithm>
-#include <cstring>
 #include "esphome/core/application.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/helpers.h"
 #include "esphome/core/log.h"
-
+#include <algorithm>
+#include <cstring>
 #ifdef USE_ESP32
 #include "esp_heap_caps.h"
 #include "esp_memory_utils.h"
+#endif
+#ifdef USE_ILI9XXX_QUEUED_SPI
+#include "driver/spi_master.h"
+#include "esp_lcd_io_spi.h"
 #endif
 
 namespace esphome {
@@ -16,9 +19,148 @@ namespace ili9xxx {
 
 static const uint16_t SPI_SETUP_US = 100;         // estimated fixed overhead in microseconds for an SPI write
 static const uint16_t SPI_MAX_BLOCK_SIZE = 4092;  // Max size of continuous SPI transfer
+// Internal DMA buffer for PSRAM pixel data (a multiple of 2 and 3 bytes). Without it
+// the SPI driver allocates a bounce buffer as large as each flush (up to ~38 KB),
+// which fails once internal RAM is fragmented and freezes the screen.
+static const size_t DMA_BOUNCE_SIZE = 4092;
 static const uint16_t COLD_BOOT_SETTLE_MS = 120;  // Give the GC9A01A panel time to stabilize after ESP32 power-on.
 static const uint16_t RESET_PULSE_MS = 20;        // Keep the reset pulse width unchanged from upstream defaults.
 static const uint16_t POST_RESET_SETTLE_MS = 120; // Longer post-reset wait helps on boards that only wake after manual reset.
+
+#ifdef USE_ILI9XXX_QUEUED_SPI
+static constexpr size_t QUEUED_DMA_BLOCK_SIZE = 16 * 1024;
+static constexpr size_t PSRAM_DMA_ALIGNMENT = 32;
+
+bool ILI9XXXDisplay::setup_queued_spi_() {
+  spi_bus_config_t bus{};
+  bus.sclk_io_num = this->queued_clk_;
+  bus.mosi_io_num = this->queued_mosi_;
+  bus.miso_io_num = bus.quadwp_io_num = bus.quadhd_io_num = -1;
+  bus.data4_io_num = bus.data5_io_num = bus.data6_io_num = bus.data7_io_num = -1;
+  bus.max_transfer_sz = QUEUED_DMA_BLOCK_SIZE;
+  auto error = spi_bus_initialize(SPI2_HOST, &bus, SPI_DMA_CH_AUTO);
+  if (error != ESP_OK) {
+    ESP_LOGE(TAG, "LCD SPI bus initialization failed: %s", esp_err_to_name(error));
+    return false;
+  }
+
+  this->queued_done_ = xSemaphoreCreateBinary();
+  esp_lcd_panel_io_spi_config_t io{};
+  io.cs_gpio_num = this->queued_cs_;
+  io.dc_gpio_num = this->queued_dc_;
+  io.pclk_hz = this->data_rate_;
+  io.lcd_cmd_bits = io.lcd_param_bits = 8;
+  io.trans_queue_depth = 4;
+  io.flags.psram_dma_direct = true;
+  io.user_ctx = this;
+  io.on_color_trans_done = [](esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t *, void *context) {
+    auto *lcd = static_cast<ILI9XXXDisplay *>(context);
+    BaseType_t woken = pdFALSE;
+    xSemaphoreGiveFromISR(lcd->queued_done_, &woken);
+    return woken == pdTRUE;
+  };
+  if (this->queued_done_ != nullptr && this->dma_bounce_ != nullptr) {
+    error = esp_lcd_new_panel_io_spi(SPI2_HOST, &io, &this->queued_io_);
+    if (error == ESP_OK) {
+      ESP_LOGI(TAG, "Queued LCD SPI DMA enabled");
+      return true;
+    }
+  } else {
+    error = ESP_ERR_NO_MEM;
+  }
+  if (this->queued_done_ != nullptr) vSemaphoreDelete(this->queued_done_);
+  this->queued_done_ = nullptr;
+  spi_bus_free(SPI2_HOST);
+  ESP_LOGE(TAG, "LCD SPI panel I/O initialization failed: %s", esp_err_to_name(error));
+  return false;
+}
+
+bool ILI9XXXDisplay::queue_pixels_(const uint8_t *data, size_t length) {
+  if (this->queued_write_failed_) return false;
+  const int command = this->queued_ram_write_ ? ILI9XXX_RAMWR : -1;
+  this->queued_ram_write_ = false;
+  auto error = esp_lcd_panel_io_tx_color(this->queued_io_, command, data, length);
+  if (error == ESP_OK && xSemaphoreTake(this->queued_done_, pdMS_TO_TICKS(250)) == pdTRUE) return true;
+
+  // Submission can fail after earlier chunks were queued. Drain them before
+  // returning the draw buffer to LVGL or overwriting the DMA staging buffer.
+  esp_lcd_panel_io_tx_param(this->queued_io_, -1, nullptr, 0);
+  xSemaphoreTake(this->queued_done_, 0);
+  this->queued_write_failed_ = true;
+  ESP_LOGW(TAG, "LCD color transfer failed: %s", esp_err_to_name(error == ESP_OK ? ESP_ERR_TIMEOUT : error));
+  return false;
+}
+
+void ILI9XXXDisplay::write_queued_param_(int command, const void *data, size_t length) {
+  const auto error = esp_lcd_panel_io_tx_param(this->queued_io_, command, data, length);
+  if (error != ESP_OK) ESP_LOGW(TAG, "LCD command transfer failed: %s", esp_err_to_name(error));
+}
+#endif
+
+#if defined(USE_ESP32) && defined(USE_LVGL)
+static constexpr EventBits_t TRANSFER_IDLE = BIT0;
+
+void ILI9XXXDisplay::enable_lvgl_pipeline(lv_display_t *display) {
+  if (display == nullptr || this->is_failed() || this->pixel_worker_handle_ != nullptr ||
+      this->is_18bitdisplay_ || this->rotation_ != display::DISPLAY_ROTATION_0_DEGREES ||
+      lv_display_get_rotation(display) != LV_DISPLAY_ROTATION_0 ||
+      lv_display_get_color_format(display) != LV_COLOR_FORMAT_RGB565_SWAPPED)
+    return;
+
+  auto *first = lv_display_get_buf_active(display);
+  if (first == nullptr || lv_display_get_render_mode(display) != LV_DISPLAY_RENDER_MODE_PARTIAL)
+    return;
+  auto *second = heap_caps_aligned_alloc(LV_DRAW_BUF_ALIGN, first->data_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if (second != nullptr)
+    this->transfer_done_ = xEventGroupCreate();
+  if (this->transfer_done_ == nullptr ||
+      xTaskCreatePinnedToCore(pixel_worker_, "onx_lcd", 3072, this, 2, &this->pixel_worker_handle_,
+                              portNUM_PROCESSORS > 1 ? 1 - xPortGetCoreID() : tskNO_AFFINITY) != pdPASS) {
+    if (this->transfer_done_ != nullptr) vEventGroupDelete(this->transfer_done_);
+    this->transfer_done_ = nullptr;
+    heap_caps_free(second);
+    ESP_LOGW(TAG, "LCD pipeline allocation failed; using synchronous LVGL transfers");
+    return;
+  }
+  xEventGroupSetBits(this->transfer_done_, TRANSFER_IDLE);
+  const auto bytes = first->data_size;
+  lv_display_set_buffers(display, first->data, second, bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_driver_data(display, this);
+  lv_display_set_flush_wait_cb(display, wait_for_flush_);
+  lv_display_set_flush_cb(display, flush_pixels_);
+  ESP_LOGI(TAG, "Double-buffered LCD transfers enabled (%u bytes per draw buffer)", static_cast<unsigned>(bytes));
+}
+
+void ILI9XXXDisplay::flush_pixels_(lv_display_t *display, const lv_area_t *area, uint8_t *pixels) {
+  auto *lcd = static_cast<ILI9XXXDisplay *>(lv_display_get_driver_data(display));
+  lcd->transfer_area_ = *area;
+  lcd->transfer_pixels_ = pixels;
+  xEventGroupClearBits(lcd->transfer_done_, TRANSFER_IDLE);
+  xTaskNotifyGive(lcd->pixel_worker_handle_);
+}
+
+void ILI9XXXDisplay::wait_for_flush_(lv_display_t *display) {
+  static_cast<ILI9XXXDisplay *>(lv_display_get_driver_data(display))->wait_for_pixel_transfer_();
+}
+
+void ILI9XXXDisplay::pixel_worker_(void *arg) {
+  auto *lcd = static_cast<ILI9XXXDisplay *>(arg);
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    const auto area = lcd->transfer_area_;
+    lcd->draw_pixels_at(area.x1, area.y1, lv_area_get_width(&area), lv_area_get_height(&area),
+                        lcd->transfer_pixels_, display::COLOR_ORDER_RGB, display::COLOR_BITNESS_565, true, 0, 0, 0);
+    xEventGroupSetBits(lcd->transfer_done_, TRANSFER_IDLE);
+  }
+}
+#endif
+
+void ILI9XXXDisplay::wait_for_pixel_transfer_() {
+#if defined(USE_ESP32) && defined(USE_LVGL)
+  if (this->transfer_done_ != nullptr && xTaskGetCurrentTaskHandle() != this->pixel_worker_handle_)
+    xEventGroupWaitBits(this->transfer_done_, TRANSFER_IDLE, pdFALSE, pdTRUE, portMAX_DELAY);
+#endif
+}
 
 // store a 16 bit value in a buffer, big endian.
 static inline void put16_be(uint8_t *buf, uint16_t value) {
@@ -42,13 +184,12 @@ void ILI9XXXDisplay::set_madctl() {
 
 void ILI9XXXDisplay::setup() {
 #ifdef USE_ESP32
-  // One permanent internal DMA buffer for pixel data held in PSRAM.
-  this->dma_bounce_ =
-      static_cast<uint8_t *>(heap_caps_malloc(SPI_MAX_BLOCK_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+  this->dma_bounce_ = static_cast<uint8_t *>(heap_caps_malloc(DMA_BOUNCE_SIZE, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
   if (this->dma_bounce_ == nullptr)
-    ESP_LOGW(TAG, "No internal DMA bounce buffer; PSRAM pixels use the SPI driver's per-transfer copy");
+    ESP_LOGW(TAG, "No internal DMA buffer; PSRAM pixels are sent in small blocks");
 #endif
   this->setup_pins_();
+  if (this->is_failed()) return;
   this->init_lcd_(this->init_sequence_);
   this->init_lcd_(this->extra_init_sequence_.data());
   switch (this->pixel_mode_) {
@@ -101,7 +242,17 @@ void ILI9XXXDisplay::setup_pins_() {
     delay(COLD_BOOT_SETTLE_MS);
   }
 
-  this->spi_setup();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_clk_ >= 0) {
+    if (!this->setup_queued_spi_()) {
+      this->mark_failed();
+      return;
+    }
+  } else
+#endif
+  {
+    this->spi_setup();
+  }
 
   this->reset_();
 }
@@ -236,6 +387,10 @@ void HOT ILI9XXXDisplay::draw_absolute_pixel_internal(int x, int y, Color color)
 }
 
 void ILI9XXXDisplay::update() {
+  this->wait_for_pixel_transfer_();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  std::lock_guard lock(this->panel_mutex_);
+#endif
   if (this->prossing_update_) {
     this->need_update_ = true;
     return;
@@ -307,7 +462,7 @@ void ILI9XXXDisplay::display_() {
         idx += 2;
       }
       if (idx == sizeof(transfer_buffer)) {
-        this->write_array(transfer_buffer, idx);
+        this->write_pixels_(transfer_buffer, idx);
         idx = 0;
         App.feed_wdt();
       }
@@ -319,7 +474,7 @@ void ILI9XXXDisplay::display_() {
     }
     // flush any balance.
     if (idx != 0) {
-      this->write_array(transfer_buffer, idx);
+      this->write_pixels_(transfer_buffer, idx);
     }
   }
   this->end_data_();
@@ -331,27 +486,68 @@ void ILI9XXXDisplay::display_() {
   this->y_high_ = 0;
 }
 
-void ILI9XXXDisplay::write_pixels_(const uint8_t *ptr, size_t length) {
-#ifdef USE_ESP32
-  const bool direct = esp_ptr_dma_capable(ptr) && esp_ptr_internal(ptr) && (reinterpret_cast<uintptr_t>(ptr) & 3) == 0;
-  if (this->dma_bounce_ != nullptr && !direct) {
+// note that this bypasses the buffer and writes directly to the display.
+void ILI9XXXDisplay::write_pixels_(const uint8_t *data, size_t length) {
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) {
+    if (length == 0 || this->queued_write_failed_) return;
+    const bool aligned = reinterpret_cast<uintptr_t>(data) % PSRAM_DMA_ALIGNMENT == 0 &&
+                         length % PSRAM_DMA_ALIGNMENT == 0;
+    if (aligned && (esp_ptr_dma_capable(data) || esp_ptr_dma_ext_capable(data))) {
+      this->queue_pixels_(data, length);
+      return;
+    }
     while (length != 0) {
-      const size_t partial = std::min<size_t>(length, SPI_MAX_BLOCK_SIZE);
-      memcpy(this->dma_bounce_, ptr, partial);
-      this->write_array(this->dma_bounce_, partial);
-      ptr += partial;
-      length -= partial;
+      const auto chunk = std::min(length, DMA_BOUNCE_SIZE);
+      std::memcpy(this->dma_bounce_, data, chunk);
+      if (!this->queue_pixels_(this->dma_bounce_, chunk)) return;
+      data += chunk;
+      length -= chunk;
     }
     return;
   }
 #endif
-  this->write_array(ptr, length);
+#ifdef USE_ESP32
+  if (esp_ptr_dma_capable(data) && esp_ptr_internal(data) && (reinterpret_cast<uintptr_t>(data) & 3) == 0) {
+    this->write_array(data, length);
+    return;
+  }
+#ifdef USE_SPI_PSRAM_DMA
+  // Keep every externally backed transaction cache-line aligned. The SPI
+  // delegate otherwise splits at 4092 bytes, misaligning the next chunk.
+  constexpr size_t alignment = 64;
+  constexpr size_t direct_chunk = SPI_MAX_BLOCK_SIZE / alignment * alignment;
+  if (this->psram_dma_ && esp_ptr_dma_ext_capable(data) &&
+      reinterpret_cast<uintptr_t>(data) % alignment == 0) {
+    while (length >= alignment) {
+      const size_t chunk = std::min(length / alignment * alignment, direct_chunk);
+      this->write_array(data, chunk);
+      data += chunk;
+      length -= chunk;
+    }
+  }
+#endif
+#endif
+  while (length != 0) {
+    const size_t chunk = std::min(length, DMA_BOUNCE_SIZE);
+    if (this->dma_bounce_ != nullptr) {
+      std::memcpy(this->dma_bounce_, data, chunk);
+      this->write_array(this->dma_bounce_, chunk);
+    } else {
+      this->write_array(data, chunk);
+    }
+    data += chunk;
+    length -= chunk;
+  }
 }
 
-// note that this bypasses the buffer and writes directly to the display.
 void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, const uint8_t *ptr,
                                     display::ColorOrder order, display::ColorBitness bitness, bool big_endian,
                                     int x_offset, int y_offset, int x_pad) {
+  this->wait_for_pixel_transfer_();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  std::lock_guard lock(this->panel_mutex_);
+#endif
   if (w <= 0 || h <= 0)
     return;
   // if color mapping or software rotation is required, hand this off to the parent implementation. This will
@@ -366,11 +562,29 @@ void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, cons
   // x_ and y_offset are offsets into the source buffer, unrelated to our own offsets into the display.
   auto stride = x_offset + w + x_pad;
   if (!this->is_18bitdisplay_) {
-    if (x_offset == 0 && x_pad == 0 && y_offset == 0) {
-      // we could deal here with a non-zero y_offset, but if x_offset is zero, y_offset probably will be so don't bother
-      this->write_pixels_(ptr, w * h * 2);
+    if (stride == w) {
+      this->write_pixels_(ptr + static_cast<size_t>(y_offset) * stride * 2, static_cast<size_t>(w) * h * 2);
     } else {
-      // ptr is a byte pointer to 16-bit pixels: offsets are in pixels.
+#ifdef USE_ILI9XXX_QUEUED_SPI
+      const size_t row_bytes = static_cast<size_t>(w) * 2;
+      if (this->queued_io_ != nullptr && row_bytes <= DMA_BOUNCE_SIZE) {
+        // JPEG blocks can have padded or clipped scanlines. Pack several
+        // visible rows into the existing DMA buffer before joining the queue.
+        const size_t rows_per_transfer = DMA_BOUNCE_SIZE / row_bytes;
+        const auto *row = ptr + (static_cast<size_t>(y_offset) * stride + x_offset) * 2;
+        const size_t source_stride = static_cast<size_t>(stride) * 2;
+        size_t remaining = h;
+        while (remaining != 0) {
+          const size_t rows = std::min(remaining, rows_per_transfer);
+          for (size_t i = 0; i < rows; ++i)
+            std::memcpy(this->dma_bounce_ + i * row_bytes, row + i * source_stride, row_bytes);
+          if (!this->queue_pixels_(this->dma_bounce_, rows * row_bytes)) break;
+          remaining -= rows;
+          if (remaining != 0) row += rows * source_stride;
+        }
+        return;  // The queued transport owns chip select.
+      }
+#endif
       for (size_t y = 0; y != static_cast<size_t>(h); y++) {
         this->write_pixels_(ptr + ((y + y_offset) * stride + x_offset) * 2, w * 2);
       }
@@ -390,7 +604,7 @@ void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, cons
       transfer_buffer[idx++] = ((hi_byte << 5) | (lo_byte) >> 5);  // Green
       transfer_buffer[idx++] = lo_byte << 3;                       // Red
       if (idx == sizeof(transfer_buffer)) {
-        this->write_array(transfer_buffer, idx);
+        this->write_pixels_(transfer_buffer, idx);
         idx = 0;
         App.feed_wdt();
       }
@@ -402,7 +616,7 @@ void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, cons
     }
     // flush any balance.
     if (idx != 0) {
-      this->write_array(transfer_buffer, idx);
+      this->write_pixels_(transfer_buffer, idx);
     }
   }
   this->end_data_();
@@ -413,18 +627,42 @@ void ILI9XXXDisplay::draw_pixels_at(int x_start, int y_start, int w, int h, cons
 uint32_t ILI9XXXDisplay::get_buffer_length_() { return this->get_width_internal() * this->get_height_internal(); }
 
 void ILI9XXXDisplay::command(uint8_t value) {
+  this->wait_for_pixel_transfer_();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) {
+    std::lock_guard lock(this->panel_mutex_);
+    this->write_queued_param_(value, nullptr, 0);
+    return;
+  }
+#endif
   this->start_command_();
   this->write_byte(value);
   this->end_command_();
 }
 
 void ILI9XXXDisplay::data(uint8_t value) {
+  this->wait_for_pixel_transfer_();
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) {
+    std::lock_guard lock(this->panel_mutex_);
+    this->write_queued_param_(-1, &value, 1);
+    return;
+  }
+#endif
   this->start_data_();
   this->write_byte(value);
   this->end_data_();
 }
 
 void ILI9XXXDisplay::send_command(uint8_t command_byte, const uint8_t *data_bytes, uint8_t num_data_bytes) {
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) {
+    this->wait_for_pixel_transfer_();
+    std::lock_guard lock(this->panel_mutex_);
+    this->write_queued_param_(command_byte, data_bytes, num_data_bytes);
+    return;
+  }
+#endif
   this->command(command_byte);  // Send the command byte
   this->start_data_();
   this->write_array(data_bytes, num_data_bytes);
@@ -441,7 +679,12 @@ void ILI9XXXDisplay::start_data_() {
 }
 
 void ILI9XXXDisplay::end_command_() { this->disable(); }
-void ILI9XXXDisplay::end_data_() { this->disable(); }
+void ILI9XXXDisplay::end_data_() {
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) return;
+#endif
+  this->disable();
+}
 
 void ILI9XXXDisplay::reset_() {
   if (this->reset_pin_ != nullptr) {
@@ -481,6 +724,20 @@ void ILI9XXXDisplay::set_addr_window_(uint16_t x1, uint16_t y1, uint16_t x2, uin
   x2 += this->offset_x_;
   y1 += this->offset_y_;
   y2 += this->offset_y_;
+#ifdef USE_ILI9XXX_QUEUED_SPI
+  if (this->queued_io_ != nullptr) {
+    uint8_t bounds[4];
+    put16_be(bounds, x1);
+    put16_be(bounds + 2, x2);
+    this->write_queued_param_(ILI9XXX_CASET, bounds, sizeof(bounds));
+    put16_be(bounds, y1);
+    put16_be(bounds + 2, y2);
+    this->write_queued_param_(ILI9XXX_PASET, bounds, sizeof(bounds));
+    this->queued_ram_write_ = true;
+    this->queued_write_failed_ = false;
+    return;
+  }
+#endif
   this->command(ILI9XXX_CASET);
   this->data(x1 >> 8);
   this->data(x1 & 0xFF);
@@ -497,7 +754,11 @@ void ILI9XXXDisplay::set_addr_window_(uint16_t x1, uint16_t y1, uint16_t x2, uin
 
 void ILI9XXXDisplay::invert_colors(bool invert) {
   this->pre_invertcolors_ = invert;
-  if (is_ready()) {
+  if (
+#ifdef USE_ILI9XXX_QUEUED_SPI
+      this->queued_io_ != nullptr ||
+#endif
+      is_ready()) {
     this->command(invert ? ILI9XXX_INVON : ILI9XXX_INVOFF);
   }
 }
