@@ -168,9 +168,9 @@ const { chromium } = require('playwright');
   assert.equal(await page.locator('.playlist-row').count(),1,'Cancelling the picker must not add an empty entry');
   await page.locator('#add-playlist').click();
   await page.locator('#results').getByRole('button',{name:'Welcome home'}).click();
-  await page.getByRole('button',{name:'Move up playlist 2',exact:true}).click();
+  await page.getByRole('button',{name:'Move up quick action 2',exact:true}).click();
   assert.equal(await page.getByRole('textbox',{name:'Quick action 1 name',exact:true}).inputValue(),'Welcome home');
-  await page.getByRole('button',{name:'Remove playlist 1',exact:true}).click();
+  await page.getByRole('button',{name:'Remove quick action 1',exact:true}).click();
   assert.equal(await page.getByRole('textbox',{name:'Quick action 1 name',exact:true}).inputValue(),'Jazz radio');
 
   await page.locator('#device-preview text').filter({hasText:'Christina Aguilera'}).waitFor();

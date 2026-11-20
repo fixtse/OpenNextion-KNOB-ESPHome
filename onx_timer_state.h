@@ -9,6 +9,43 @@
 
 namespace onx_timer {
 
+// Use the original duration for unnamed Assist timers, never the countdown.
+// HA resolves duplicate names/durations and sends the authoritative update.
+enum class Action { PAUSE, RESUME, STOP };
+inline constexpr const char *conversation_agent = "conversation.home_assistant";
+// HA's English sentences accept hours/minutes/seconds of 1-100 each, so say
+// "5 minute", "1 hour and 30 minute", never "300 second".
+inline std::string spoken_duration(uint32_t total) {
+  const uint32_t h = total / 3600, m = (total / 60) % 60, s = total % 60;
+  std::string out;
+  auto add = [&](uint32_t v, const char *unit) {
+    if (!v) return;
+    if (!out.empty()) out += " and ";
+    out += std::to_string(v) + ' ' + unit;
+  };
+  add(h, "hour"); add(m, "minute"); add(s, "second");
+  return out.empty() ? "0 second" : out;
+}
+inline std::string control_sentence(const std::string &name, uint32_t total, Action action) {
+  return std::string(action == Action::STOP ? "cancel the " : action == Action::RESUME ? "resume the " : "pause the ") +
+         (name.empty() ? spoken_duration(total) : name) + " timer";
+}
+
+inline std::string control_sentence(const std::string &name, uint32_t total, bool resume) {
+  return control_sentence(name, total, resume ? Action::RESUME : Action::PAUSE);
+}
+// One timer from a voice satellite's onx.timer.v1 "timers" list
+// ([name, duration, remaining, active]), soonest first.
+struct VoiceTimer { std::string name; uint32_t duration{0}, remaining{0}; bool active{false}; };
+// The satellite's "Stop timer alarm" button for its "Voice timer" sensor, using
+// Home Assistant's default entity ids ("" when the sensor id does not match).
+inline std::string stop_alarm_button(const std::string &sensor) {
+  const std::string prefix = "sensor.", suffix = "_voice_timer";
+  if (sensor.size() <= prefix.size() + suffix.size() || sensor.compare(0, prefix.size(), prefix) != 0 ||
+      sensor.compare(sensor.size() - suffix.size(), suffix.size(), suffix) != 0) return "";
+  return "button." + sensor.substr(prefix.size(), sensor.size() - prefix.size() - suffix.size()) + "_stop_timer_alarm";
+}
+
 struct Popup { bool visible{false}, dismissed{false}; int previous_index{0}; std::string entity; };
 inline Popup popup;
 inline bool popup_due(uint32_t idle_ms, bool detail_active, bool dismissed=false) {

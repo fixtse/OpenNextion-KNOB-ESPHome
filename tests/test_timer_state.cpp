@@ -3,6 +3,9 @@
 
 int main() {
   using namespace onx_timer;
+  assert(stop_alarm_button("sensor.kitchen_pe_voice_timer")=="button.kitchen_pe_stop_timer_alarm");
+  assert(stop_alarm_button("sensor.voice_timer").empty()&&stop_alarm_button("sensor.kitchen_timer").empty());
+  assert(control_sentence("", 300, Action::STOP) == "cancel the 5 minute timer");
   assert(!popup_due(9999,true,true));assert(popup_due(10000,true,true));
   assert(!popup_due(1500,false,true));assert(popup_due(1500,false,false));
   assert(attribute_json("[{'status': 'set', 'remaining': None}]")=="[{\"status\": \"set\", \"remaining\": null}]");

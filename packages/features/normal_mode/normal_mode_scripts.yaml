@@ -1089,8 +1089,11 @@ script:
           // With quick actions, a medium hold opens the list, so exit needs longer.
           const auto exit_entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
           // An offline entity cannot open its list, so it closes at the normal time.
+          // A voice timer's medium hold cancels its next timer, so it waits too.
+          const auto *exit_detail = custom_logic_entity_sub::entity_detail(exit_entity);
           const uint32_t exit_ms = id(normal_device_detail_online) && id(normal_ha_api_connected) &&
-              onx_entity_config::playlists_for_ui(id(normal_device_detail_index), exit_entity) != nullptr ?
+              (onx_entity_config::playlists_for_ui(id(normal_device_detail_index), exit_entity) != nullptr ||
+               (exit_detail != nullptr && exit_detail->voice_timer)) ?
               onx_playlist::BACK_MS : 688u;
           if (kind == NORMAL_DEVICE_DETAIL_KIND_SWITCH || kind == NORMAL_DEVICE_DETAIL_KIND_PLUG || kind == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION) {
             id(normal_detail_exit_switch_ready) = held_ms >= exit_ms;
@@ -1637,6 +1640,62 @@ script:
           id(refresh_normal_switch_detail_page).execute();
       - script.execute: emit_normal_switch_or_light_control_event
 
+  # Voice satellite timers are owned by Home Assistant: control the next one
+  # with an Assist sentence, and a ringing alarm with the satellite's
+  # "Stop timer alarm" button. cancel=true cancels the next timer.
+  - id: knob_voice_timer_command
+    mode: queued
+    max_runs: 2
+    parameters:
+      detail_index: int
+      cancel: bool
+    then:
+      - lambda: |-
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+          const auto *d = custom_logic_entity_sub::entity_detail(entity);
+          if (d == nullptr || !d->voice_timer || !id(normal_ha_api_connected)) return;
+          if (d->state == "ringing") {
+            const auto button = onx_timer::stop_alarm_button(entity);
+            if (button.empty()) { ESP_LOGW("timer", "No stop alarm button for %s", entity.c_str()); return; }
+            id(knob_timer_button) = button;
+            return;
+          }
+          if (d->voice_timers.empty() || (d->state != "active" && d->state != "paused")) return;
+          const auto &next = d->voice_timers.front();
+          const auto action = cancel ? onx_timer::Action::STOP :
+              next.active ? onx_timer::Action::PAUSE : onx_timer::Action::RESUME;
+          id(knob_timer_sentence) = onx_timer::control_sentence(next.name, next.duration, action);
+      - if:
+          condition:
+            lambda: return !id(knob_timer_button).empty();
+          then:
+            - homeassistant.action:
+                action: button.press
+                data:
+                  entity_id: !lambda 'return id(knob_timer_button);'
+            - script.execute: show_normal_action_sent
+            - lambda: id(knob_timer_button).clear();
+      - if:
+          condition:
+            lambda: return !id(knob_timer_sentence).empty();
+          then:
+            - homeassistant.action:
+                action: conversation.process
+                data:
+                  agent_id: !lambda 'return std::string(onx_timer::conversation_agent);'
+                  language: en
+                  text: !lambda 'return id(knob_timer_sentence);'
+                capture_response: true
+                response_template: "{{ dict(type=response.get('response', {}).get('response_type', ''), code=response.get('response', {}).get('data', {}).get('code', '')) }}"
+                on_success:
+                  - lambda: |-
+                      if (std::string(response["response"]["type"] | "") == "error")
+                        ESP_LOGW("timer", "HA rejected the timer command: %s", response["response"]["code"] | "unknown");
+                on_error:
+                  - lambda: 'ESP_LOGW("timer", "Timer action failed: %s", error.c_str());'
+            - script.execute: show_normal_action_sent
+            - lambda: id(knob_timer_sentence).clear();
+
   - id: emit_normal_automation_control_event
     mode: restart
     parameters:
@@ -1660,10 +1719,24 @@ script:
                       data:
                         entity_id: !lambda return id(ui_presenter)->get_normal_device_entity_id(detail_index);
                   - script.execute: show_normal_action_sent
+            # A voice satellite's "Voice timer" sensor: press pauses/resumes its
+            # next timer, or stops its ringing alarm (knob_voice_timer_command).
+            - if:
+                condition:
+                  lambda: |-
+                    const auto *d = custom_logic_entity_sub::entity_detail(id(ui_presenter)->get_normal_device_entity_id(detail_index));
+                    return d != nullptr && d->voice_timer;
+                then:
+                  - script.execute:
+                      id: knob_voice_timer_command
+                      detail_index: !lambda return detail_index;
+                      cancel: false
             - if:
                 condition:
                   lambda: |-
                     const auto entity = id(ui_presenter)->get_normal_device_entity_id(detail_index);
+                    const auto *d = custom_logic_entity_sub::entity_detail(entity);
+                    if (d != nullptr && d->voice_timer) return false;
                     return entity.rfind("sensor.", 0) == 0 || entity.rfind("binary_sensor.", 0) == 0;
                 then:
                   - homeassistant.event:
@@ -2922,7 +2995,11 @@ script:
           const char *status = !view.ready ? "Syncing" : detail->state == "paused" ? "Paused" :
                                detail->state == "ringing" ? "Time is up" : detail->state == "idle" ? "Idle" :
                                view.seconds_left <= 0 ? "Time is up" : "Running";
-          lv_label_set_text(id(normal_timer_detail_status), status);
+          // A voice satellite with several timers shows the next and how many more.
+          std::string status_text = status;
+          if (detail->voice_timer && detail->voice_timers.size() > 1)
+            status_text += " +" + std::to_string(detail->voice_timers.size() - 1);
+          lv_label_set_text(id(normal_timer_detail_status), status_text.c_str());
           lv_arc_set_value(id(normal_timer_detail_arc), view.ready ? static_cast<int>(view.fraction * 1000) : 0);
           time_t completed_at=0;
           const auto current_time=id(ha_time).now();

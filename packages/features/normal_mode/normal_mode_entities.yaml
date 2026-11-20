@@ -694,6 +694,13 @@ time:
     id: ha_time
 
 globals:
+  # Pending voice satellite timer command (knob_voice_timer_command).
+  - id: knob_timer_sentence
+    type: std::string
+    restore_value: false
+  - id: knob_timer_button
+    type: std::string
+    restore_value: false
   - id: normal_wifi_connected
     type: bool
     restore_value: no

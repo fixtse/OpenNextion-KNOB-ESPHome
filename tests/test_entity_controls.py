@@ -56,6 +56,7 @@ struct APIServer {
 }
 namespace custom_logic_entity_sub {
 inline bool has_prefix(const std::string &s, const std::string &prefix) { return s.rfind(prefix, 0) == 0; }
+inline bool parse_ha_datetime_epoch(const std::string &, time_t *) { return false; }
 CACHE
 }
 HANDLERS

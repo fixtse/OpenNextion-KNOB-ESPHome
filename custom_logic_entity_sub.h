@@ -10,6 +10,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <vector>
 #include <utility>
 
 #include <ArduinoJson.h>
@@ -370,6 +371,7 @@ struct EntityDetailState {
   bool voice_timer{false}, google_timer{false};
   std::string google_state;
   double voice_duration{NAN}, voice_remaining{NAN};
+  std::vector<onx_timer::VoiceTimer> voice_timers;  // Every timer on a voice satellite.
   uint32_t timer_received_ms{0};
   float minimum{NAN}, maximum{NAN}, step{NAN}, humidity_min{NAN}, humidity_max{NAN};
 };
@@ -540,6 +542,7 @@ class DeviceSlotStateUpdater {
         if (has_prefix(this->entity_id_, "media_player.")) detail.progress.set_state(value, millis());
         detail.state = detail.google_timer ? detail.google_state : value;
         detail.voice_timer = false;
+        detail.voice_timers.clear();
         if (has_prefix(this->entity_id_, "sensor.") && value.size() <= 255) {
           JsonDocument doc = custom_logic::make_psram_json_document();
           if (deserializeJson(doc, value) == DeserializationError::Ok &&
@@ -556,6 +559,17 @@ class DeviceSlotStateUpdater {
               detail.voice_remaining = remaining;
               detail.timer_name = doc["name"].as<std::string>();
               detail.timer_received_ms = millis();
+              // Newer satellites also list every timer; older ones only the next.
+              detail.voice_timers.clear();
+              for (JsonArrayConst item : doc["timers"].as<JsonArrayConst>()) {
+                if (item.size() < 4 || !item[1].is<double>() || !item[2].is<double>()) continue;
+                const double d = item[1].as<double>(), r = item[2].as<double>();
+                if (!std::isfinite(d) || !std::isfinite(r) || d < 0 || r < 0 || d > 4e9 || r > 4e9) continue;
+                detail.voice_timers.push_back({item[0].as<std::string>(), uint32_t(d), uint32_t(r), item[3].as<int>() != 0});
+                if (detail.voice_timers.size() >= 8) break;
+              }
+              if (detail.voice_timers.empty() && (state == "active" || state == "paused"))
+                detail.voice_timers.push_back({detail.timer_name, uint32_t(duration), uint32_t(remaining), state == "active"});
             }
           }
         }

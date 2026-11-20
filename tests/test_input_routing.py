@@ -56,9 +56,9 @@ struct Script {
  void turn_off(){}
 } exit_standby_mode,ha_screen_off,retry_normal_entity_state,refresh_normal_automation_detail_page,
   emit_normal_media_track,emit_configured_press_action,refresh_normal_light_detail_page,request_normal_weather_forecast,
-  emit_normal_playlist_action,refresh_normal_playlist;
+  emit_normal_playlist_action,refresh_normal_playlist,knob_voice_timer_command;
 namespace custom_logic_entity_sub {
-struct Detail {int weather_page=0,forecast_count=0;bool received{true},available{true};std::string state="playing";} detail;
+struct Detail {int weather_page=0,forecast_count=0;bool received{true},available{true},voice_timer{false};std::string state="playing";} detail;
 std::string control_preview;
 Detail *entity_detail(const std::string &){return &detail;}
 void select_control_entity(const std::string &){}
@@ -173,6 +173,14 @@ int main(){
  key_btn.state=false;release();assert(!emit_normal_playlist_action.calls&&!onx_controls::presses);
 
 
+ // A voice satellite timer: a ~1 s hold cancels its next timer; a short press does not.
+ reset();normal_device_detail_kind=NORMAL_DEVICE_DETAIL_KIND_AUTOMATION;configured_entity="sensor.kitchen_voice_timer";
+ custom_logic_entity_sub::detail.voice_timer=true;custom_logic_entity_sub::detail.state="active";
+ knob_voice_timer_command.calls=0;key_press_started_ms=clock_ms-1000;release();
+ assert(knob_voice_timer_command.calls==1&&knob_voice_timer_command.previous&&key_long_press_handled&&!detail_long_press_exit_fired);
+ reset();custom_logic_entity_sub::detail.voice_timer=true;knob_voice_timer_command.calls=0;release();
+ assert(!knob_voice_timer_command.calls);
+ custom_logic_entity_sub::detail.voice_timer=false;
 }
 '''.replace('KINDS', kinds).replace('BODY', body).replace('ROTATION', rotation).replace('ENTRY', entry).replace('OVERLAY', overlay)
         with tempfile.TemporaryDirectory() as directory:
