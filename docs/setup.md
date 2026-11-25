@@ -65,13 +65,13 @@ The supported hardware is **ONX2424G013** with ESP32-S3, 16 MB flash, Octal PSRA
 and a GC9A01A round display. Use a USB cable that supports data.
 
 The source configuration needs its bundled components, packages, fonts and assets.
-For users building their own factory image with **ESPHome 2026.11.0**:
+For users building their own factory image with **ESPHome 2026.11.1**:
 
 ```bash
 git clone https://github.com/fixtse/OpenNextion-KNOB-ESPHome.git
 cd OpenNextion-KNOB-ESPHome
 docker run --rm -v "$PWD":/config -w /config \
-  ghcr.io/esphome/esphome:2026.11.0 compile ONX2424G013.yaml
+  ghcr.io/esphome/esphome:2026.11.1 compile ONX2424G013.yaml
 ```
 
 Open [ESPHome Web](https://web.esphome.io/) in Chrome or Edge, connect the knob,
