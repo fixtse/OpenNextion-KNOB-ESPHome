@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <memory>
 #include "onx_config_web.h"
 #include "config_page.h"
 #include "branding_assets.h"
@@ -128,7 +129,10 @@ void ConfigWeb::handleRequest(AsyncWebServerRequest *request) {
     respond_(request, 403, "{\"error\":\"Reload this page to authorize configuration\"}"); return;
   }
   if (request->contentLength() > 8192) { respond_(request, 413, "{\"error\":\"Request too large\"}"); return; }
-  Query query;
+  // Query holds ~50 strings (~1.7 KB). Build it on the heap (PSRAM): on the
+  // HTTP task's small stack it overflowed while a reopened page polled during boot.
+  auto owned = std::make_unique<Query>();
+  Query &query = *owned;
   query.clock_seconds_ring = request->arg("clock_seconds_ring");
   query.hold_cue = request->arg("hold_cue");
   query.clock_temperature = request->arg("clock_temperature");
