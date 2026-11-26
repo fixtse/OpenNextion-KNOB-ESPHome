@@ -37,12 +37,6 @@ wifi:
       - lvgl.widget.refresh: standby_wifi_online_widget
       - lvgl.widget.refresh: standby_wifi_offline_widget
       - script.execute: refresh_normal_device_page
-      - delay: 2s
-      - if:
-          condition:
-            wifi.connected:
-          then:
-            - ble.disable:
       - if:
           condition:
             lambda: |-
@@ -53,7 +47,6 @@ wifi:
             - script.execute: refresh_normal_curtain_detail_page
   on_disconnect:
     then:
-      # Bluetooth restarts through onx_ble_gate after 30 s offline (memory permitting).
       - lambda: |-
           id(normal_wifi_connected) = false;
           ++onx_runtime::wifi_disconnects;
@@ -87,9 +80,23 @@ improv_serial:
 
 esp32_ble:
   id: onx_ble
-  # Started by onx_ble_gate only when Wi-Fi needs provisioning or has been down
-  # for 30 s, and only with enough internal RAM for Bluedroid.
+  # Started once by onx_ble_gate shortly after boot, only with enough internal
+  # RAM for Bluedroid, and then kept on for Improv and the Bluetooth proxy.
   enable_on_boot: false
+  max_connections: 2
+
+# Home Assistant Bluetooth proxy (Bermuda, Xiaomi BLE, ...). Active mode lets
+# Home Assistant open GATT connections, e.g. authenticated scale readings. The
+# short scan window leaves the shared radio mostly to Wi-Fi.
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+    interval: 320ms
+    window: 30ms
+
+bluetooth_proxy:
+  active: true
+  connection_slots: 2
 
 interval:
   - interval: 5s
