@@ -408,6 +408,7 @@ interval:
             id(refresh_normal_automation_detail_page).execute();
           }
       - script.execute: refresh_normal_media_progress
+      - script.execute: refresh_normal_media_clock
       - script.execute: refresh_normal_media_overlay
       - script.execute: refresh_normal_playlist
       - script.execute: refresh_normal_action_feedback

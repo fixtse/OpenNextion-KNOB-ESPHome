@@ -205,6 +205,7 @@ onx_config_web:
         root["clock_seconds_ring"] = onx_display_settings::behavior.clock_seconds?"1":"0";
         onx_entity_config::load_display_settings();
         root["hold_cue"] = onx_display_settings::hold_cue.show?"1":"0";
+        root["media_clock"] = onx_display_settings::media_clock.show?"1":"0";
         onx_clock_sensors::load();
         root["clock_temperature"] = std::string(onx_clock_sensors::config.temperature);
         root["clock_humidity"] = std::string(onx_clock_sensors::config.humidity);
@@ -226,6 +227,7 @@ onx_config_web:
       if ((!query.orientation.empty() && !onx_display_settings::parse_orientation(query.orientation,orientation)) ||
           (!query.clock_seconds_ring.empty() && query.clock_seconds_ring!="0" && query.clock_seconds_ring!="1") ||
           (!query.hold_cue.empty() && query.hold_cue!="0" && query.hold_cue!="1") ||
+          (!query.media_clock.empty() && query.media_clock!="0" && query.media_clock!="1") ||
           (query.clock_temperature!="none" && !onx_clock_sensors::valid(query.clock_temperature)) ||
           (query.clock_humidity!="none" && !onx_clock_sensors::valid(query.clock_humidity)) ||
           (!query.notifications_cover_timers.empty() && query.notifications_cover_timers!="0" && query.notifications_cover_timers!="1") ||
@@ -254,8 +256,9 @@ onx_config_web:
         return onx_entity_config::error("Could not persist appearance settings; retry");
       if (!onx_clock_sensors::save(id(api_server), query.clock_temperature, query.clock_humidity))
         return onx_entity_config::error("Could not save the clock sensors; retry");
-      if (!onx_entity_config::save_hold_cue(query.hold_cue))
+      if (!onx_entity_config::save_hold_cue(query.hold_cue) || !onx_entity_config::save_media_clock(query.media_clock))
         return onx_entity_config::error("Could not persist appearance settings; retry");
+      id(refresh_normal_media_clock).execute();
       id(lcd_display)->set_hardware_orientation(onx_display_settings::orientation.turns);
       lv_obj_invalidate(lv_scr_act());
       auto standby_call = id(standby_timeout_seconds).make_call();

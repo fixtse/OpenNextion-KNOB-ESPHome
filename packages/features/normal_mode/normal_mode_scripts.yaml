@@ -813,6 +813,7 @@ script:
           }
           id(apply_normal_media_style).execute();
           id(refresh_normal_media_progress).execute();
+          id(refresh_normal_media_clock).execute();
 
 
           const bool is_online = (id(normal_device_online_mask) & (1 << detail_index)) != 0;
@@ -3197,6 +3198,31 @@ script:
           lv_obj_set_style_arc_color(id(normal_media_progress_arc),
               lv_color_hex(onx_display_settings::current.media_color), LV_PART_INDICATOR);
           lv_obj_set_style_arc_opa(id(normal_media_progress_arc), detail->state == "paused" ? 153 : LV_OPA_COVER, LV_PART_INDICATOR);
+
+  - id: refresh_normal_media_clock
+    then:
+      - lambda: |-
+          auto *clock = id(normal_media_clock);
+          const auto entity = id(ui_presenter)->get_normal_device_entity_id(id(normal_device_detail_index));
+          auto now = id(ha_time).now();  // strftime() is not const.
+          const bool visible = onx_display_settings::media_clock.show && id(normal_device_detail_active) &&
+                               !id(screen_off_state) && id(ui_presenter)->is_normal_mode_active() &&
+                               !id(ui_presenter)->is_standby_active() &&
+                               id(normal_device_detail_kind) == NORMAL_DEVICE_DETAIL_KIND_AUTOMATION &&
+                               entity.rfind("media_player.", 0) == 0 &&
+                               custom_logic_entity_sub::entity_detail(entity) != nullptr &&
+                               id(ha_time_ready) && now.is_valid();
+          if (!visible) { lv_obj_add_flag(clock, LV_OBJ_FLAG_HIDDEN); return; }
+          // Runs every 100 ms; format only when the second changes.
+          static time_t shown = 0;
+          if (now.timestamp != shown || lv_obj_has_flag(clock, LV_OBJ_FLAG_HIDDEN)) {
+            shown = now.timestamp;
+            onx_render::label(clock, now.strftime(onx_display_settings::time_pattern()).c_str());
+          }
+          if (lv_obj_has_flag(clock, LV_OBJ_FLAG_HIDDEN)) {
+            lv_obj_clear_flag(clock, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_move_foreground(clock);
+          }
 
   - id: apply_normal_media_style
     then:

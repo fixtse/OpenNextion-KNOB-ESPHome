@@ -1913,6 +1913,22 @@ lvgl:
                         id: normal_media_transport_icon
                         align: center
                         src: media_overlay_pause_img
+              - label:
+                  id: normal_media_clock
+                  align: top_mid
+                  y: 8
+                  pad_left: 6
+                  pad_right: 6
+                  pad_top: 2
+                  pad_bottom: 2
+                  radius: 7
+                  bg_color: 0x14171D
+                  bg_opa: 70%
+                  text_align: CENTER
+                  text_font: fonts_MiSans_Medium_14
+                  text_color: 0xFFFFFF
+                  text: ""
+                  hidden: true
               - obj:
                   id: normal_playlist_overlay
                   radius: 120

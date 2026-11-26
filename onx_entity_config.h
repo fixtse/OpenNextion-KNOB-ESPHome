@@ -35,6 +35,7 @@ template<typename F> inline std::string build_json(F &&fill) {
 
 inline esphome::ESPPreferenceObject behavior_preference;
 inline esphome::ESPPreferenceObject hold_cue_preference;
+inline esphome::ESPPreferenceObject media_clock_preference;
 inline esphome::ESPPreferenceObject display_preference;
 inline esphome::ESPPreferenceObject orientation_preference;
 inline esphome::ESPPreferenceObject idle_preference;
@@ -78,6 +79,10 @@ inline void load_display_settings() {
   onx_display_settings::HoldCue hold_saved{};
   if(hold_cue_preference.load(&hold_saved) && hold_saved.magic==0x4F4E5848 && hold_saved.show<=1)
     onx_display_settings::hold_cue=hold_saved;
+  media_clock_preference=esphome::global_preferences->make_preference<onx_display_settings::MediaClock>(esphome::fnv1_hash("onx.media_clock.v1"));
+  onx_display_settings::MediaClock clock_saved{};
+  if(media_clock_preference.load(&clock_saved) && clock_saved.magic==0x4F4E584B && clock_saved.show<=1)
+    onx_display_settings::media_clock=clock_saved;
   display_settings_loaded = true;
 }
 inline bool save_display_settings(const std::string &color, const std::string &scope, const std::string &date_format, const std::string &hour_format, bool show_ampm,const std::string &idle_view="",const std::string &media_view="",const std::string &orientation="",const std::string &notifications_cover_timers="",const std::string &clock_seconds_ring="") {
@@ -125,6 +130,16 @@ inline bool save_hold_cue(const std::string &value) {
   if(next.show==onx_display_settings::hold_cue.show)return true;
   if(!hold_cue_preference.save(&next) || !esphome::global_preferences->sync())return false;
   onx_display_settings::hold_cue=next;return true;
+}
+
+inline bool save_media_clock(const std::string &value) {
+  if(value.empty())return true;
+  if(value!="0" && value!="1")return false;
+  load_display_settings();
+  auto next=onx_display_settings::media_clock;next.show=value=="1";
+  if(next.show==onx_display_settings::media_clock.show)return true;
+  if(!media_clock_preference.save(&next) || !esphome::global_preferences->sync())return false;
+  onx_display_settings::media_clock=next;return true;
 }
 
 // Keep subscriptions and compact runtime indices intact; hide only carousel entries.
