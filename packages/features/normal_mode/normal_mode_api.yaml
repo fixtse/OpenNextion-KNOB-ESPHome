@@ -49,6 +49,18 @@ api:
         - lambda: |-
             const auto error = onx_presets::remove_preset(name);
             if (!error.empty()) ESP_LOGW("onx_presets", "delete_preset \"%s\": %s", name.c_str(), error.c_str());
+    # Sent by the Room Companion integration (github.com/fixtse/ha-room-companion):
+    # icons, emoji and covers then come from Home Assistant.
+    - action: set_companion
+      description: Base URL of this knob's assets in the Room Companion integration; empty turns it off.
+      variables:
+        url: string
+      then:
+        - lambda: |-
+            if (!onx_companion::set(url)) { ESP_LOGW("companion", "Ignored invalid URL"); return; }
+            ESP_LOGI("companion", "%s", url.empty() ? "Off" : "Assets from Home Assistant");
+            id(entity_icon_downloader)->retry();
+            onx_media::artwork_refresh_pending = true;
     - action: dismiss_message
       description: Dismiss the current or pending display reminder.
       then:

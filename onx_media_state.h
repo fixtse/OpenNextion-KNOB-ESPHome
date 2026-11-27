@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "onx_playlist.h"
+#include "onx_companion.h"
 #include <string>
 #include <algorithm>
 #include <cmath>
@@ -134,6 +135,13 @@ inline std::string artwork_url(const std::string &origin, const std::string &pic
   if (picture.rfind("http://", 0) == 0 || picture.rfind("https://", 0) == 0) return picture;
   if (picture[0] == '/' && picture.rfind("//", 0) != 0 && !origin.empty()) return origin + picture;
   return "";
+}
+// The art to download for an entity: the Room Companion integration's cover,
+// cropped to size x size on Home Assistant, else Home Assistant's own picture.
+inline std::string media_art_url(const std::string &origin, const std::string &entity, const std::string &picture, int size) {
+  if (artwork_url(origin, picture).empty()) return "";
+  const std::string local = onx_companion::cover_url(entity, picture, size, size);
+  return local.empty() ? artwork_url(origin, picture) : local;
 }
 
 }

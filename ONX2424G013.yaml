@@ -14,7 +14,7 @@ substitutions:
   lcd_spi_data_rate: 40MHz
   lcd_backlight_default: 100%
   encoder_resolution: "4"
-  product_firmware_version: "2026.11.1.3"
+  product_firmware_version: "2026.11.1.4"
   product_firmware_manifest_url: "https://raw.githubusercontent.com/fixtse/esp-ota/main/ota/releases/onx2424g013_manifest.yml"
 
 packages:
@@ -55,6 +55,7 @@ esphome:
     - onx_timer_state.h
     - onx_control_state.h
     - onx_icon_state.h
+    - onx_companion.h
     - onx_recovery_state.h
     - onx_playlist.h
     - onx_media_state.h

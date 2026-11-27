@@ -1443,6 +1443,8 @@ image:
               d.heap_largest_start=f.heap_largest_start; d.heap_free_after_open=f.heap_free_after_open; d.https=f.https; d.stack_psram=f.stack_psram; d.host=f.host; }
             onx_media::stat_last_failure = id(media_cover_image)->last_error();
             onx_media::requested_ms = millis() - 50000;
+            // Home Assistant's cover failed: use the direct picture for a while.
+            if (onx_companion::owns(onx_media::requested_url)) onx_companion::fail();
             onx_media::artwork_refresh_pending = true;
             onx_runtime::record("artwork_error");
 

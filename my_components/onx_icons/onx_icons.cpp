@@ -1,5 +1,6 @@
 #include "onx_icons.h"
 #include "onx_icon_state.h"
+#include "onx_companion.h"
 #include "esphome/components/wifi/wifi_component.h"
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -147,22 +148,33 @@ static uint8_t *fetch_emoji(const std::string &stem, std::string &error) {
   // Google's Noto emoji CDN covers every sequence, including flags and keycaps.
   // jsDelivr only mirrors the flag folder (the repository exceeds its size limit).
   const bool flag = stem.size() == 11 && stem.rfind("1f1", 0) == 0 && stem.compare(5, 4, "_1f1") == 0;
-  std::vector<std::string> urls{"https://fonts.gstatic.com/s/e/notoemoji/latest/" + stem + "/emoji.svg"};
+  // Home Assistant (Room Companion integration) first, when configured.
+  const std::string local = ::onx_companion::emoji_url(stem);
+  std::vector<std::string> urls;
+  if (!local.empty()) urls.push_back(local);
+  urls.push_back("https://fonts.gstatic.com/s/e/notoemoji/latest/" + stem + "/emoji.svg");
   if (flag) urls.push_back("https://cdn.jsdelivr.net/gh/googlefonts/noto-emoji@main/third_party/region-flags/waved-svg/emoji_u" + stem + ".svg");
   for (const auto &url : urls) {
     PsramText svg;
     if (fetch_svg(url, svg, error, MAX_EMOJI_SVG_BYTES)) {
       if (auto *pixels = raster_emoji(svg, error)) return pixels;
+    } else if (url == local && error.rfind("HTTP ", 0) != 0) {
+      ::onx_companion::fail();  // Not reachable (an HTTP status means it answered).
     }
     ESP_LOGW(TAG, "emoji %s source failed (%s)", stem.c_str(), error.c_str());
   }
   return nullptr;
 }
 static uint8_t *fetch_bitmap(const std::string &icon, std::string &error) {
-  for (const auto &url : {::onx_icon_state::download_url(icon), ::onx_icon_state::backup_url(icon)}) {
+  // Home Assistant (Room Companion integration) first, when configured.
+  const std::string local = ::onx_companion::icon_url(icon, static_cast<int>(SIZE));
+  for (const auto &url : {local, ::onx_icon_state::download_url(icon), ::onx_icon_state::backup_url(icon)}) {
+    if (url.empty()) continue;
     std::string svg;
     if (fetch_svg(url, svg, error)) {
       if (auto *pixels = raster_bitmap(std::move(svg), error)) return pixels;
+    } else if (url == local && error.rfind("HTTP ", 0) != 0) {
+      ::onx_companion::fail();
     }
     ESP_LOGW(TAG, "%s icon source failed (%s)", icon.c_str(), error.c_str());
   }

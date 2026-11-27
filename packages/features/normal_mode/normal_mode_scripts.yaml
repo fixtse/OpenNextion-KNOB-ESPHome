@@ -3327,7 +3327,7 @@ script:
           const bool playable = media && detail->available && id(normal_ha_api_connected) &&
               id(normal_device_detail_online) && !id(screen_off_state) && !id(sleep_mode_state) &&
               !id(ui_presenter)->is_standby_active() && onx_media::has_playback(detail->state);
-          const std::string desired = playable ? onx_media::artwork_url(origin, detail->picture) : "";
+          const std::string desired = playable ? onx_media::media_art_url(origin, entity, detail->picture, 240) : "";
           if (desired != onx_media::candidate_url) {
             onx_media::candidate_url = desired; onx_media::candidate_ms = millis();
           }
