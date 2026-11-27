@@ -1,4 +1,5 @@
 #pragma once
+#define ONX_LVGL_STUB 1  // Host tests: no glyph downloads (onx_glyphs.h).
 #include <cstdint>
 #include <cstdlib>
 #define LV_COLOR_16_SWAP 0

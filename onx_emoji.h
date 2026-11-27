@@ -4,6 +4,9 @@
 #include "esp_heap_caps.h"
 #include "onx_emoji_table.h"
 #include "onx_emoji_queue.h"
+#ifndef ONX_LVGL_STUB
+#include "onx_glyphs.h"  // Characters the fonts lack, from Home Assistant.
+#endif
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -178,6 +181,9 @@ inline std::vector<Font> fonts;
 inline void enable(lv_obj_t *label) {
   const auto *original = lv_obj_get_style_text_font(label, LV_PART_MAIN);
   if (!original) return;
+#ifndef ONX_LVGL_STUB
+  onx_glyphs::attach(original);
+#endif
   for (const auto &entry : fonts) {
     if (entry.color == original) return;
     if (entry.original == original) {

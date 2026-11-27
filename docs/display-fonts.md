@@ -27,6 +27,20 @@ Matching uses the longest supported UTF-8 sequence before LVGL lays out the
 text; emoji presentation selectors are normalized. Unknown sequences retain
 their text fallback.
 
+## Other scripts (Room Companion integration)
+
+The text fonts cover Latin script only. With the
+[Room Companion integration](https://github.com/fixtse/ha-room-companion)
+installed, any other character a label needs (Chinese, Japanese, Korean,
+Greek, Cyrillic and more) is drawn by Home Assistant with the integration's
+bundled Noto fonts, or a font you choose there. The knob downloads each
+character once per text size over the local network (about 1 KB each, up to
+600 kept in PSRAM) and redraws the text when they arrive, usually within a
+second. Until then, and without the integration, those characters are not
+shown. Characters no font has are not asked for again; failed downloads are
+retried after five minutes. Right-to-left and joined scripts (Arabic, Hebrew,
+Thai, Devanagari) are drawn one character at a time, without shaping.
+
 ## Font source and license
 
 `fonts/NotoEmoji.ttf` is the monochrome variable Noto Emoji font from Google Fonts,
