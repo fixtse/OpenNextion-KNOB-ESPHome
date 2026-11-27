@@ -10,6 +10,8 @@ esphome:
     priority: -100
     then:
       - lambda: |-
+          // Read the integration's asset URL here: the icon and glyph workers cannot read NVS.
+          onx_companion::ensure_loaded();
           id(lcd_display)->enable_lvgl_pipeline(id(lvgl_ui)->get_disp());
           onx_runtime::start();
           onx_entity_config::load_icons();
