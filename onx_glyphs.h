@@ -9,11 +9,15 @@
 // and reports the glyph as missing for now. A small worker task fetches the
 // glyphs over the LAN; when some arrive, every style is refreshed once so
 // labels lay their text out again. Without the integration nothing changes.
+// Glyphs are cached per size; the least recently drawn are dropped when the
+// cache is full. prefetch() asks for a text's glyphs before it is shown (for
+// example the next lyric lines in the fonts they will use).
 #include "lvgl.h"
 #include "onx_companion.h"
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
 #include <cstring>
 #include <deque>
 #include <map>
@@ -33,8 +37,10 @@
 #endif
 
 namespace onx_glyphs {
-constexpr size_t GLYPH_LIMIT = 600;          // ~1 KB of PSRAM each at panel sizes.
-constexpr size_t QUEUE_LIMIT = 64;
+constexpr size_t GLYPH_LIMIT = 1200;         // Under 1 KB of PSRAM each at panel sizes.
+constexpr size_t GLYPH_KEEP = 1000;          // Trimmed to this many when full.
+constexpr uint32_t IN_USE_MS = 10 * 1000;    // Drawn this recently: never dropped.
+constexpr size_t QUEUE_LIMIT = 256;
 constexpr size_t MAX_BYTES = 8 + 160 * 160;  // Header plus the largest bitmap accepted.
 constexpr uint32_t RETRY_MS = 5 * 60 * 1000;
 
@@ -42,6 +48,7 @@ struct Glyph {
   uint8_t *a8{nullptr};
   uint16_t w{0}, h{0}, adv{0};
   int16_t ofs_y{0};  // Bottom of the bitmap relative to the baseline (LVGL convention).
+  uint32_t used{0};  // When it was last looked up (UI task).
 };
 inline uint64_t key(uint32_t cp, uint16_t size) { return (uint64_t(size) << 32) | cp; }
 
@@ -50,6 +57,8 @@ inline std::map<uint64_t, Glyph> &ready() { static std::map<uint64_t, Glyph> m; 
 inline std::set<uint64_t> &queued() { static std::set<uint64_t> s; return s; }
 inline std::set<uint64_t> &absent() { static std::set<uint64_t> s; return s; }  // No font has it.
 inline std::map<uint64_t, uint32_t> &failed() { static std::map<uint64_t, uint32_t> m; return m; }
+// Bumped whenever glyphs arrive, so views that size themselves to their text can lay out again.
+inline uint32_t &generation() { static uint32_t g = 0; return g; }
 
 // Worker hand-off.
 struct Result { uint64_t key; Glyph glyph; bool absent; };
@@ -58,10 +67,13 @@ inline std::deque<uint64_t> &requests() { static std::deque<uint64_t> d; return 
 inline std::vector<Result> &results() { static std::vector<Result> v; return v; }
 
 // Which characters are worth asking for: not controls, private use (color
-// emoji use it) or emoji (onx_emoji draws those).
+// emoji are drawn as private-use glyphs) or emoji joiners. Symbols and emoji
+// are asked for too: onx_emoji replaces the sequences it recognizes before
+// LVGL looks them up, so this only draws what it leaves (dingbats such as
+// ⚙ ✔ ➜, and emoji in labels without color emoji) instead of a box.
 inline bool wanted(uint32_t cp) {
   if (cp < 0xA0 || (cp >= 0xD800 && cp < 0xF900) || cp >= 0xF0000) return false;
-  if ((cp >= 0x1F000 && cp < 0x1FB00) || (cp >= 0x2600 && cp < 0x27C0) || cp == 0xFE0F || cp == 0x200D) return false;
+  if (cp == 0xFE0F || cp == 0xFE0E || cp == 0x200D) return false;
   return true;
 }
 
@@ -163,9 +175,18 @@ inline void start_worker() {
 #endif
 
 inline uint32_t now_ms() { return onx_companion::now_ms(); }
-inline void request(uint64_t k) {
+// Glyphs on screen go to the front of the queue (urgent), prefetches to the back.
+inline void request(uint64_t k, bool urgent = true) {
 #ifdef ONX_GLYPHS_FETCH
-  if (queued().count(k) || queued().size() >= QUEUE_LIMIT || ready().size() >= GLYPH_LIMIT) return;
+  if (queued().count(k)) {
+    if (!urgent) return;
+    std::lock_guard<std::mutex> g(mutex());
+    auto &q = requests();
+    for (auto it = q.begin(); it != q.end(); ++it)
+      if (*it == k) { q.erase(it); q.push_front(k); break; }
+    return;
+  }
+  if (queued().size() >= QUEUE_LIMIT) return;
   auto f = failed().find(k);
   if (f != failed().end()) {
     if (now_ms() - f->second < RETRY_MS) return;
@@ -177,11 +198,11 @@ inline void request(uint64_t k) {
   queued().insert(k);
   {
     std::lock_guard<std::mutex> g(mutex());
-    requests().push_back(k);
+    if (urgent) requests().push_front(k); else requests().push_back(k);
   }
   xTaskNotifyGive(worker());
 #else
-  (void) k;
+  (void) k; (void) urgent;
 #endif
 }
 
@@ -195,7 +216,8 @@ inline bool get_glyph_dsc(const lv_font_t *font, lv_font_glyph_dsc_t *dsc, uint3
     if (!absent().count(k)) request(k);
     return false;
   }
-  const Glyph &g = found->second;
+  Glyph &g = found->second;
+  g.used = now_ms();
   dsc->adv_w = g.adv;
   dsc->box_w = g.w;
   dsc->box_h = g.h;
@@ -254,6 +276,60 @@ inline void attach(const lv_font_t *font) {
 #endif
 }
 
+// Drops the least recently drawn glyphs once the cache is full, never ones
+// drawn in the last IN_USE_MS (LVGL may still hold them for a pending frame).
+inline void trim() {
+  auto &m = ready();
+  if (m.size() <= GLYPH_LIMIT) return;
+  const uint32_t now = now_ms();
+  std::vector<std::pair<uint32_t, uint64_t>> old;  // (age, key)
+  for (const auto &entry : m) {
+    const uint32_t age = now - entry.second.used;
+    if (age >= IN_USE_MS) old.emplace_back(age, entry.first);
+  }
+  const size_t drop = std::min(old.size(), m.size() - GLYPH_KEEP);
+  std::partial_sort(old.begin(), old.begin() + drop, old.end(),
+                    [](const auto &a, const auto &b) { return a.first > b.first; });
+  for (size_t i = 0; i < drop; ++i) {
+    auto it = m.find(old[i].second);
+    if (it->second.a8 != nullptr) free(it->second.a8);
+    m.erase(it);
+  }
+}
+
+inline uint32_t next_utf8(const std::string &s, size_t &i) {
+  const uint8_t c = uint8_t(s[i++]);
+  int extra = c >= 0xF0 ? 3 : c >= 0xE0 ? 2 : c >= 0xC0 ? 1 : 0;
+  uint32_t cp = extra == 3 ? c & 0x07 : extra == 2 ? c & 0x0F : extra == 1 ? c & 0x1F : c;
+  for (; extra > 0 && i < s.size() && (uint8_t(s[i]) & 0xC0) == 0x80; --extra) cp = (cp << 6) | (uint8_t(s[i++]) & 0x3F);
+  return cp;
+}
+// Queues the glyphs text needs in font that its fonts lack, behind the ones on screen.
+inline void prefetch(const std::string &text, const lv_font_t *font) {
+#ifdef ONX_GLYPHS_FETCH
+  if (font == nullptr || text.empty() || !onx_companion::active()) return;
+  attach(font);
+  auto slot = fonts().find(font->line_height);
+  if (slot == fonts().end()) return;
+  const uint16_t size = uint16_t(reinterpret_cast<uintptr_t>(slot->second->user_data));
+  for (size_t i = 0; i < text.size();) {
+    const uint32_t cp = next_utf8(text, i);
+    if (!wanted(cp)) continue;
+    const uint64_t k = key(cp, size);
+    auto found = ready().find(k);
+    if (found != ready().end()) { found->second.used = now_ms(); continue; }
+    if (absent().count(k) || queued().count(k)) continue;
+    bool covered = false;
+    lv_font_glyph_dsc_t dsc;
+    for (const lv_font_t *f = font; f != nullptr && !is_glyph_font(f) && !covered; f = f->fallback)
+      covered = f->get_glyph_dsc != nullptr && f->get_glyph_dsc(f, &dsc, cp, 0);
+    if (!covered) request(k, false);
+  }
+#else
+  (void) text; (void) font;
+#endif
+}
+
 // Takes finished downloads; when glyphs arrived, labels lay out again.
 inline void poll(lv_timer_t *) {
   std::vector<Result> done;
@@ -266,9 +342,15 @@ inline void poll(lv_timer_t *) {
     queued().erase(r.key);
     if (r.absent) { absent().insert(r.key); continue; }
     if (r.glyph.a8 == nullptr && r.glyph.adv == 0) { failed()[r.key] = now_ms(); continue; }
-    ready()[r.key] = r.glyph;
+    r.glyph.used = now_ms();
+    auto &slot = ready()[r.key];
+    if (slot.a8 != nullptr && slot.a8 != r.glyph.a8) free(slot.a8);
+    slot = r.glyph;
     arrived = true;
   }
-  if (arrived) lv_obj_report_style_change(nullptr);
+  if (!arrived) return;
+  trim();
+  ++generation();
+  lv_obj_report_style_change(nullptr);
 }
 }  // namespace onx_glyphs
